@@ -93,7 +93,7 @@ inputPage <- function(..., name="untitled", description="", groups = NULL) {
 }
 
 
-inputGroup <- function(..., name = "Group", layout = "flow", condition = "", inputs = NULL) {
+inputGroup <- function(..., name = "Group", layout = "flow-2", condition = "", inputs = NULL) {
   if (is.null(inputs))
     inputs <- list(...)
 
@@ -122,7 +122,6 @@ slateOutput <- function(name, type, source="") { #source=list(generate=function(
 slateDataset <- function(name, type, source = "", export = FALSE, export.name = "") {
   list(
     name = name,
-    type = type,
     source = source,
     export = export,
     export.name = export.name

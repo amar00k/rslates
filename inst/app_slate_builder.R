@@ -197,7 +197,7 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
         tags$hr(),
         selectInput(
           ns("import_type"), label = "Type",
-          choices = list("file"), selected = "file"
+          choices = list("file", "url", "built-in"), selected = "file"
         ),
         textInput(ns("import_description"), label = "Description"),
         textInput(ns("import_filetype"), label = "Accepted File Types")
@@ -358,8 +358,6 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
         shinyjs::hidden(textInput(ns("dataset_id"), label = "")),
         #tags$h4(paste0(active$name)),
         tags$hr(),
-        selectInput(ns("dataset_type"), label = "Type",
-                    choices = c("standalone", "file", "url")),
         flowLayout(
           checkboxInput(ns("dataset_export"), label = "Export Dataset"),
           textInput(ns("dataset_export_name"), label = "Export Name")
@@ -434,7 +432,7 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
           checkboxInput(ns("show_slate_preview"), label = "Show Preview", value = FALSE),
           tags$div(
             id = ns("slate_preview"),
-            uiOutput(ns("slate_datasets_source")),
+            uiOutput(ns("slate_imports")),
             uiOutput(ns("slate_ui")),
           ),
           tags$h3("Session Info"),
@@ -526,7 +524,7 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
     # download button
     output$save_blueprint <- downloadHandler(
       filename = function() {
-        paste0(input$blueprint_title, '.json')
+        paste0(gsub(" ", "_", input$blueprint_title), '.json')
       },
       content = function(con) {
         bprint <- simplifyBlueprint(restoreBlueprint(blueprint()))
@@ -555,26 +553,41 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
 
     slate.data <- reactiveValues()
 
-    output$slate_datasets_source <- renderUI({
-      req(bp <- blueprint())
+    output$slate_imports <- renderUI({
+      req(bprint <- blueprint())
       req(slate.data$module)
 
-      print("slate_datasets_source")
+      print("slate_imports")
 
       inputs <- list()
-      for (x in bp$datasets) {
+      for (x in bprint$imports) {
+        input.id <- paste0("slate_import_", x$name)
+
+        if (x$description != "")
+          label <- paste0(x$name, ": ", x$description)
+        else
+          label <- x$name
+
         if (x$type == "file") {
-          input.id <- paste0("slate_file_", x$name)
-
-          inputs[[ x$name ]] <- fileInput(session$ns(input.id), label = x$name)
-          name <- x$name
-
-          observeEvent(input[[ input.id ]], {
-            data <- input[[ input.id ]]
-
-            slate.data$module$dataset.data[[ name ]] <- data
-          })
+          inputs[[ x$name ]] <- fileInput(session$ns(input.id), label = label)
+        } else if (x$type == "built-in") {
+          datasets <- as.data.frame(data()$results)
+          inputs[[ x$name ]] <- shinyWidgets::pickerInput(
+            inputId = session$ns(input.id),
+            label = label,
+            choices = datasets$Item,
+            choicesOpt = list(
+              subtext = datasets$Title
+            )
+          )
         }
+
+        name <- x$name
+        observeEvent(input[[ input.id ]], {
+          data <- input[[ input.id ]]
+
+          slate.data$module$import.data[[ name ]] <- data
+        })
       }
 
       do.call(flowLayout, unname(inputs))
@@ -637,6 +650,7 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
 
     observeEvent(input$import_type, updateImportVariable("type", "import_type"))
     observeEvent(input$import_filetype, updateImportVariable("filetype", "import_filetype"))
+    observeEvent(input$import_description, updateImportVariable("description", "import_description"))
 
     observeEvent(input$add_import, {
       modal.text$show(
@@ -806,7 +820,7 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
           else
             path <- c(active$ancestry, active$name)
 
-          new.item <- slateInput(name = name, type = type, default = "")
+          new.item <- slateInput(name = name, input.type = type, default = "")
 
           tree <- addItemToTree(tree, new.item, path = path)
 
@@ -1010,8 +1024,6 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
 
       updateTextInput(session, "dataset_id", value = input$select_dataset)
 
-      updateSelectInput(session, "dataset_type",
-                        selected = active$type)
       shinyAce::updateAceEditor(session, "dataset_source",
                                 value = active$source)
 
@@ -1036,7 +1048,6 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
       blueprint.datasets(datasets)
     }
 
-    observeEvent(input$dataset_type, updateDatasetVariable("type", "dataset_type"))
     observeEvent(input$dataset_source, updateDatasetVariable("source", "dataset_source"))
     observeEvent(input$dataset_export, updateDatasetVariable("export", "dataset_export"))
     observeEvent(input$dataset_export_name, updateDatasetVariable("export.name", "dataset_export_name"))

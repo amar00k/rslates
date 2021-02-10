@@ -78,10 +78,12 @@ slateServer <- function(input, output, session,
                         global.options = NULL) {
   ns <- session$ns
 
+  # append the source code outputs
   blueprint$outputs[[ length(blueprint$outputs) + 1 ]] <- slateOutput("Source", type="source")
+
   # modal.edit <- slate_modal(ns, "edit_modal", input, output, session, blueprint, global.envir)
 
-  # list of observers
+  # list of observers to be destroyed on exit
   observers <- list()
 
   # slate reactives
@@ -98,6 +100,7 @@ slateServer <- function(input, output, session,
     )
   }
 
+
   # extract inputs from layout and update values
   input.list <- reactive({
     inputs <- lapply(blueprint$input.layout$pages, function(p) {
@@ -107,16 +110,16 @@ slateServer <- function(input, output, session,
           return(i)
         })
       }) %>% unlist(recursive = FALSE)
-    }) %>% unlist(recursive = FALSE) #%>% set_names(sapply(., "[[", "name"))
+    }) %>% unlist(recursive = FALSE)
 
-    if (length(blueprint$datasets) > 0) {
-      datasets <- lapply(blueprint$datasets, function(x) {
-        x$data <- dataset.data[[ x$name ]]
+    if (length(blueprint$imports) > 0) {
+      imports <- lapply(blueprint$imports, function(x) {
+        x$data <- import.data[[ x$name ]]
         x$value <- input.handlers[[ x$type ]]$get.value(x, session)
         return(x)
       })
 
-      inputs <- append(inputs, datasets)
+      inputs <- append(inputs, imports)
     }
 
     names(inputs) <- sapply(inputs, "[[", "name")
@@ -134,10 +137,15 @@ slateServer <- function(input, output, session,
 
 
   # dataset content
-  dataset.data <- reactiveValues()
-  for (x in blueprint$datasets) {
+  # dataset.data <- reactiveValues()
+  # for (x in blueprint$datasets) {
+  #   if (x$type == "file")
+  #     dataset.data[[ x$name ]] <- x$data
+  # }
+  import.data <- reactiveValues()
+  for (x in blueprint$imports) {
     if (x$type == "file")
-      dataset.data[[ x$name ]] <- x$data
+      import.data[[ x$name ]] <- x
   }
 
 
@@ -148,12 +156,17 @@ slateServer <- function(input, output, session,
 
     env <- tryCatch({
       for (d in blueprint$datasets) {
-        if (d$type == "file" && !is.null(d$source)) {
-          if (is.null(dataset.data[[ d$name ]]))
-            stop(paste0("Missing data: ", d$name))
-
+        # if (d$type == "file" && !is.null(d$source)) {
+        #   if (is.null(dataset.data[[ d$name ]]))
+        #     stop(paste0("Missing data: ", d$name))
+        #
+        #   src <- buildSource(d$source, input.list())
+        #   eval(parse(text = src), envir = env)
+        # }
+        if (!is.null(d$source)) {
           src <- buildSource(d$source, input.list())
-          eval(parse(text = src), envir = env)
+          val <- eval(parse(text = src), envir = env)
+          # save variable for export
         }
       }
 
@@ -225,7 +238,7 @@ slateServer <- function(input, output, session,
   return(
     list(blueprint = blueprint,
          inputs = input.list,
-         dataset.data = dataset.data,
+         import.data = import.data,
          destroy = destroy)
   )
 }

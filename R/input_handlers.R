@@ -107,8 +107,6 @@ input.handlers <- list(
 )
 
 
-
-
 createInput <- function(input, ns = function(x) x) {
   input.handlers[[ input$input.type ]]$create.ui(
     ns(input$id), input$name, input$value, input
@@ -117,8 +115,6 @@ createInput <- function(input, ns = function(x) x) {
 
 
 createInputGroup <- function(group, id = NULL, ns = function(x) x) {
-  #inputs <- inputs[ group$input.names ]
-
   ui.elements <- unname(lapply(group$inputs, function(x) {
     createInput(x, ns = ns)
   }))
