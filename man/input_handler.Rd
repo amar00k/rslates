@@ -7,7 +7,8 @@
 input_handler(
   create.ui = function(...) {     tagList() },
   update.ui = function(...) { },
-  get.value = function(id, input, ...) {     input[[id]] }
+  get.value = function(input, session, ...) {     session$input[[input$id]] },
+  create.observers = function(...) { }
 )
 }
 \arguments{

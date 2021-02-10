@@ -4,7 +4,14 @@
 \alias{slates_editServer}
 \title{Editor Panel Server Function}
 \usage{
-slates_editServer(input, output, session, project, session.data)
+slates_editServer(
+  input,
+  output,
+  session,
+  project,
+  session.data,
+  global.options
+)
 }
 \description{
 Editor Panel Server Function

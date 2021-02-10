@@ -4,7 +4,7 @@ Title: An Experimental R Editor with Shiny
 Version: 0.0.0.9000
 Author: Daniel Neves
 Maintainer: Daniel Neves <danielneves2005@gmail.com>
-Description: 
+Description: An experimental R editor with Shiny
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -19,7 +19,10 @@ Imports:
     shinyFiles,
     magrittr,
     digest,
-    rlang
+    rlang,
+    reactable
+Remotes:
+    rstudio/shiny
 RoxygenNote: 7.1.1
 Suggests: 
     testthat

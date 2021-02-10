@@ -4,7 +4,7 @@
 \alias{create_file_import_modal}
 \title{Create a file import modal}
 \usage{
-create_file_import_modal(id, input, output, session)
+create_file_import_modal(id, session)
 }
 \arguments{
 \item{session}{}
