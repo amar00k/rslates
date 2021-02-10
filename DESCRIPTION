@@ -23,3 +23,5 @@ Imports:
 RoxygenNote: 7.1.1
 Suggests: 
     testthat
+URL: https://github.com/amar00k/rslates
+BugReports: https://github.com/amar00k/rslates/issues
