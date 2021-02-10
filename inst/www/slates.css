@@ -1,0 +1,235 @@
+
+/* Application Title */
+
+#title {
+  background-color: #202525;
+  padding: 10px 20px;
+  margin: 0 -30px 10px;
+  box-shadow: 0px 1px 10px black;
+}
+
+#title > h2 {
+  color: white;
+  display: inline-block;
+  font-size: 2.5em;
+  vertical-align: text-top;
+  font-weight: initial;
+  margin: 10px 10px 0px 10px;
+}
+
+#title > img {
+  width: 48px;
+}
+
+
+/* Project Editor */
+
+.project-section-anchor {
+  width: 140px;
+  text-transform: uppercase;
+  text-align: right;
+  color: inherit;
+  cursor: pointer;
+  font-size: large;
+  font-stretch: condensed;
+  font-weight: bold;
+}
+
+.project-section-anchor:after {
+  font-family: "Font Awesome 5 Free";
+  font-weight: bold;
+  content: "\f13a";
+  padding-left: 8px;
+}
+
+.project-section-anchor.collapsed:after {
+  font-family: "Font Awesome 5 Free";
+  font-weight: bold;
+  content: "\f138";
+  padding-left: 8px;
+}
+
+
+
+
+
+
+
+
+.section-anchor {
+  width: 140px;
+  text-transform: uppercase;
+  text-align: right;
+  color: inherit;
+  cursor: pointer;
+  font-size: large;
+  font-stretch: condensed;
+  font-weight: bold;
+}
+
+.section-anchor:after {
+  font-family: "Font Awesome 5 Free";
+  font-weight: bold;
+  content: "\f138";
+  padding-left: 8px;
+}
+
+.section-anchor.in:after {
+  font-family: "Font Awesome 5 Free";
+  font-weight: bold;
+  content: "\f13a";
+  padding-left: 8px;
+}
+
+.editor-section-subheader {
+  text-transform: uppercase;
+  font-stretch: condensed;
+  text-align: right;
+  min-width: 120px;
+  min-height: 30px;
+}
+
+.editor-section-sep {
+  align-self: stretch;
+  margin-left: 10px;
+  border-left: 2px solid #929292;
+}
+
+.editor-section-contents {
+  padding-left: 20px;
+  width: 100%;
+}
+
+/* Editor styles */
+
+#project-title {
+  font-size: xx-large;
+}
+
+#project-author {
+  font-size: large;
+}
+
+#project-date {
+  font-size: large;
+}
+
+
+/* Slate */
+
+/*.slate {
+  height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}*/
+
+.slate > .card-header > p {
+  font-size: larger;
+  font-weight: lighter;
+  text-transform: uppercase;
+  margin-bottom: auto;
+}
+
+.slate-inputs-container {
+  display: flex;
+  padding-right: 0;
+}
+
+
+/* Flex containers */
+
+
+
+.flex-container {
+  display: flex;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.baseline {
+  align-items: baseline;
+}
+
+/* Section headers */
+
+/*div {
+  background-color: white;
+}*/
+
+
+/* Bootstrap 4 stuff */
+
+
+
+
+/* Inputs */
+
+.expression-input > input {
+  font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
+  border-radius: 0;
+  border-bottom-width: 3px;
+}
+
+.invalid-expression, .invalid-expression:focus {
+  border-color: red;
+}
+
+.wizard-btn > button,
+.wizard-btn > button:hover,
+.wizard-btn > button:active {
+  padding: unset;
+  font-size: 16px;
+  color: currentColor;
+  background: none;
+  border: none;
+}
+
+
+/* Fixes */
+
+.jstree-proton {
+  font-family: unset;
+}
+
+.jstree-proton .jstree-anchor {
+  margin: unset;
+}
+
+
+/* Layouts */
+
+.slates-flow-2 {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.slates-flow-2 > * {
+  flex: 0 0 50%;
+  padding-right: 8px;
+}
+
+.slates-flow-3 {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.slates-flow-3 > * {
+  flex: 0 0 33%;
+  padding-right: 8px;
+}
+
+.slates-flow-4 {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.slates-flow-4 > * {
+  flex: 0 0 25%;
+  padding-right: 8px;
+}
+
+
+
+
