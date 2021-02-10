@@ -10,6 +10,6 @@ An experimental live R editor using shiny. Not suitable for human consumption (y
 ## Installation
 
 ``` r
-devtools::install_github("amar00k/rslates")
+# devtools::install_github("amar00k/rslates")
 ```
 
