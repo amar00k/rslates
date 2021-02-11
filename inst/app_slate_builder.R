@@ -73,7 +73,7 @@ treeToLayout <- function(tree) {
         else
           group$inputs <- lapply(g, function(i) {
             item <- attr(i, "stinfo")
-            item$choices <- as.character(item$choices)
+            #item$choices <- as.character(item$choices)
             item$wizards <- as.character(item$wizards)
             item
           }) %>% set_names(sapply(., "[[", "name"))
@@ -154,7 +154,7 @@ updateTreeItem <- function(tree, item, path) {
 #
 # App
 #
-slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
+slateBuilderApp <- function(blueprint.ini = NULL) {
   default.theme <- "solar"
   default.ace.theme <- "twilight"
 
@@ -412,6 +412,7 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
           fileInput(ns("load_blueprint"), label = "Load Blueprint"),
           tags$div(
             class = "card",
+            style = "height: 620px;",
             tags$div(
               class = "card-body",
               tags$div(
@@ -619,7 +620,7 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
 
       slateUI(id,
               blueprint(),
-              input.container = input.container)
+              input.container = options()$rslates.input.container)
     })
 
 
@@ -714,6 +715,8 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
       #isolate(layoutToTree(blueprint.ini$input.layout))
       tree <- layoutToTree(blueprint.inputs())
     })
+    outputOptions(output, "layout_tree", suspendWhenHidden = FALSE)
+
 
     # when tree changes
     observeEvent(input$layout_tree, {
@@ -886,14 +889,18 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
         updateTextInput(session, "group_condition", value = item$condition)
       } else if (item$type == "input") {
         updateSelectInput(session, "input_type", selected = item$input.type)
-        updateSelectInput(session, "input_choices", choices = item$choices, selected = item$choices)
+
+        choices.strings <- paste(names(item$choices), item$choices, sep = "=")
+        updateSelectInput(session, "input_choices",
+                          choices = choices.strings,
+                          selected = choices.strings)
+
         updateTextInput(session, "input_default", value = item$default)
         updateSelectInput(session, "input_default_logical", selected = item$default)
         updateSelectizeInput(session, "input_wizards", selected = item$wizards)
         updateTextAreaInput(session, "input_description", value = item$description)
       }
     })
-
 
     observe({
       input$input_id
@@ -903,8 +910,18 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
       shinyjs::toggle("input_default_logical", condition = input$input_type == "logical")
     })
 
+    choices.to.list <- function(choices) {
+      if (all(grepl("=", choices))) {
+        strsplit(choices, split="=") %>%
+          { setNames(lapply(., "[[", 2), sapply(., "[[", 1)) }
+      } else {
+        as.list(choices) %>% unname
+      }
+    }
 
-    updateInputVariable <- function(var.name, input.name, null.value = "") {
+    updateInputVariable <- function(var.name, input.name,
+                                    null.value = "",
+                                    transform.fun = function(x) x) {
       req(active <- active.item())
       req(!is.null(active) && input$input_id == active$id)
       req(!identical(active$item[[ var.name ]], input[[ input.name ]]))
@@ -914,7 +931,7 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
 
       pprint("Update input", active$item$name, ":", var.name, "=", new.val)
 
-      active$item[[ var.name ]] <- new.val
+      active$item[[ var.name ]] <- transform.fun(new.val)
 
       path <- c(active$ancestry, active$item$name)
       tree <- fixTree(updateTreeItem(tree, active$item, path))
@@ -926,7 +943,8 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
     observeEvent(input$group_condition, updateInputVariable("condition", "group_condition"))
     observeEvent(input$input_type, updateInputVariable("input.type", "input_type"))
     observeEvent(input$input_description, updateInputVariable("description", "input_description"))
-    observeEvent(input$input_choices, updateInputVariable("choices", "input_choices"))
+    observeEvent(input$input_choices, updateInputVariable("choices", "input_choices",
+                                                          transform.fun = choices.to.list))
     observeEvent(input$input_default_logical, {
       if (input$input_type == "logical")
         updateInputVariable("default", "input_default_logical")
@@ -1099,8 +1117,6 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
     })
 
 
-
-
     #
     # Export tab behaviour
     #
@@ -1116,11 +1132,14 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
     loadBlueprint(blueprint.ini)
   }
 
-  shiny::shinyApp(builderUI(), builderServer)
+  if (options()$rslates.run.themer == TRUE)
+    bslib::run_with_themer(shiny::shinyApp(builderUI(), builderServer))
+  else
+    shiny::shinyApp(builderUI(), builderServer)
 }
 
 blueprint <- getOption("rslates.builder.blueprint")
-input.container <- getOption("rslates.builder.input.container")
+#input.container <- getOption("rslates.builder.input.container")
 
-slateBuilderApp(blueprint, input.container)
+slateBuilderApp(blueprint)
 
