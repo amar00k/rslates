@@ -396,7 +396,7 @@ runSlatesApp <- function() {
 }
 
 
-runSlatePreviewApp <- function(blueprint = NULL, input.container = "tabset") {
+runSlatePreviewApp <- function(blueprint = NULL, input.container = "collapse") {
     options(rslates.preview.blueprint = blueprint)
     options(rslates.preview.input.container = input.container)
 
@@ -404,17 +404,21 @@ runSlatePreviewApp <- function(blueprint = NULL, input.container = "tabset") {
 }
 
 
-runSlateBuilderApp <- function(blueprint = NULL, input.container = "tabset") {
+runSlateBuilderApp <- function(blueprint = NULL, input.container = "collapse", run.themer = FALSE) {
     options(rslates.builder.blueprint = blueprint)
-    options(rslates.builder.input.container = input.container)
+    options(rslates.input.container = input.container)
+    options(rslates.run.themer = run.themer)
 
     runApp(system.file("app_slate_builder.R", package = "rslates"))
 }
 
 
-runProjectEditorApp <- function(project = NULL, input.container = "tabset") {
+runProjectEditorApp <- function(project = NULL, input.container = "collapse", run.themer = FALSE) {
     options(rslates.blueprints = loadBlueprints(system.file("blueprints", package="rslates")))
+    options(rslates.data.blueprints = loadBlueprints(system.file("blueprints/data_blueprints", package="rslates")))
+    options(rslates.input.container = input.container)
     options(rslates.editor.project = project)
+    options(rslates.run.themer = run.themer)
 
     runApp(system.file("app_project_editor.R", package = "rslates"))
 }
