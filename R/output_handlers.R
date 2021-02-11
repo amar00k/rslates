@@ -103,14 +103,14 @@ output.handlers <- list(
         return("")
       }
 
-      has.source <- sapply(blueprint$datasets, function(x) !is.null(x$source))
-      datasets.src <- lapply(blueprint$datasets, function(x) {
-        paste0("#-- ", x$name, "\n", buildSource(x$source, input.list()))
+      to.display <- sapply(blueprint$datasets, function(x) !is.null(x$source))
+      datasets.src <- lapply(blueprint$datasets[ to.display ], function(x) {
+        paste0("#-- ", x$name, "\n", assignValue(buildSource(x$source, input.list()), x$name))
       }) %>% paste(collapse = "\n\n")
 
-      has.source <- sapply(blueprint$output, function(x) !is.null(x$source))
+      to.display <- sapply(blueprint$output, function(x) !is.null(x$source) && x$name != "Source")
       outputs.src <- paste(
-        lapply(blueprint$output[ has.source ], function(x) {
+        lapply(blueprint$output[ to.display ], function(x) {
           paste0("#-- ", x$name, "\n", buildSource(x$source, input.list()))
         }), collapse="\n\n")
 

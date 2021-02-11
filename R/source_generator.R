@@ -163,41 +163,11 @@ srcBuild <- function(src, inputs) {
 }
 
 
-#   #1: !all(is_default(mar_bottom, mar_left))
-
-#   $1:par(mar=c(${mar_bottom, mar_left, mar_top, mar_right}))
-
-
-
-#
-# Utilities for writing conditions
-#
-
-# is_default <- function(varname) {
-#
-# }
-
-
-
-
-
-
-#
-#
-
-
-
-
-#
-# txt <- "par(mar=c(${mar_bottom}, ${mar_left}, ${mar_top}, ${mar_right}))"
-# txt1 <- "par(mar=c(${mar_bottom, mar_left, mar_top, mar_right}))"
-# txt2 <- "plot(${dn:: x:x, y=y, q:type=type, q:main=main, q:xlab=xlab, q:ylab=ylab})"
-#
-# srcBuild(srcParse(txt), inputs)
-# srcBuild(srcParse(txt1), inputs)
-# srcBuild(srcParse(txt2), inputs)
-#
-
+assignValue <- function(src, varname) {
+  src <- strsplit(src, split = "\n")[[1]]
+  src[ length(src) ] <- paste(varname, "<-", src[ length(src) ])
+  paste(src, collapse="\n")
+}
 
 
 
