@@ -99,7 +99,13 @@ input.handlers <- list(
     }
   ),
   file = input_handler(
-    get.value = function(input, session, ...) { if (!is.null(input$data)) input$data$datapath else NULL }
+    get.value = function(input, session, ...) {
+      if (!is.null(input$data)) {
+        gsub("\\\\", "/", input$data$datapath)
+      } else {
+        NULL
+      }
+    }
   ),
   standalone = input_handler(
     get.value = function(input, session, ...) { NULL }

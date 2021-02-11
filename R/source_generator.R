@@ -139,7 +139,7 @@ srcBuild <- function(src, inputs) {
       value.text <- if (val.null) "NULL" else input$value
 
       # escape escapes...
-      value.text <- gsub("\\", "\\\\", value.text, fixed = TRUE)
+      # value.text <- gsub("\\", "\\\\", value.text, fixed = TRUE)
 
       # q: single quote
       if (!val.null && ("q" %in% v$opts))

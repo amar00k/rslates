@@ -586,7 +586,7 @@ slateBuilderApp <- function(blueprint.ini = NULL, input.container = "tabset") {
         observeEvent(input[[ input.id ]], {
           data <- input[[ input.id ]]
 
-          slate.data$module$import.data[[ name ]] <- data
+          slate.data$module$import.data[[ name ]]$data <- data
         })
       }
 

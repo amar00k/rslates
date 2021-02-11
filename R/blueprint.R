@@ -143,7 +143,8 @@ slateImport <- function(name, type, value = "", description = "") {
     name = name,
     type = "file",
     description = description,
-    value = ""
+    value = "",
+    data = NULL
   )
 }
 

@@ -114,7 +114,7 @@ slateServer <- function(input, output, session,
 
     if (length(blueprint$imports) > 0) {
       imports <- lapply(blueprint$imports, function(x) {
-        x$data <- import.data[[ x$name ]]
+        x$data <- import.data[[ x$name ]]$data
         x$value <- input.handlers[[ x$type ]]$get.value(x, session)
         return(x)
       })
@@ -136,12 +136,6 @@ slateServer <- function(input, output, session,
   })
 
 
-  # dataset content
-  # dataset.data <- reactiveValues()
-  # for (x in blueprint$datasets) {
-  #   if (x$type == "file")
-  #     dataset.data[[ x$name ]] <- x$data
-  # }
   import.data <- reactiveValues()
   for (x in blueprint$imports) {
     if (x$type == "file")
@@ -149,24 +143,16 @@ slateServer <- function(input, output, session,
   }
 
 
-  # run datasets code in slate environment prior to output code
+  # run datasets code in slate environment
   slate.envir <- reactive({
     inputs <- input.list()
     env <- new.env(parent = slate.options$envir())
 
     env <- tryCatch({
       for (d in blueprint$datasets) {
-        # if (d$type == "file" && !is.null(d$source)) {
-        #   if (is.null(dataset.data[[ d$name ]]))
-        #     stop(paste0("Missing data: ", d$name))
-        #
-        #   src <- buildSource(d$source, input.list())
-        #   eval(parse(text = src), envir = env)
-        # }
         if (!is.null(d$source)) {
           src <- buildSource(d$source, input.list())
-          val <- eval(parse(text = src), envir = env)
-          # save variable for export
+          env[[ d$name ]] <- eval(parse(text = src), envir = new.env(parent = env))
         }
       }
 
