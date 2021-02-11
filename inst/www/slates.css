@@ -172,6 +172,10 @@
   border-bottom-width: 3px;
 }
 
+.numeric-input > input {
+  border-radius: 1.5em;
+}
+
 .invalid-expression, .invalid-expression:focus {
   border-color: red;
 }

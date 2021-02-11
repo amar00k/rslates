@@ -96,7 +96,8 @@ slatesSelectInput <- function(id, ..., wizards = NULL) {
 
 
 slatesNumericInput <- function(id, ..., wizards = NULL) {
-  input <- numericInput(id, ...)
+  input <- numericInput(id, ...) %>%
+    addTagAttribs(class = "numeric-input")
 
   if (is.null(wizards) || length(wizards) == 0) {
     return(input)
