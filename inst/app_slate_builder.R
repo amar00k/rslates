@@ -890,7 +890,11 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       } else if (item$type == "input") {
         updateSelectInput(session, "input_type", selected = item$input.type)
 
-        choices.strings <- paste(names(item$choices), item$choices, sep = "=")
+        if (!is.null(names(item$choices)))
+          choices.strings <- paste(names(item$choices), item$choices, sep = "=")
+        else
+          choices.strings <- item$choices
+
         updateSelectInput(session, "input_choices",
                           choices = choices.strings,
                           selected = choices.strings)
