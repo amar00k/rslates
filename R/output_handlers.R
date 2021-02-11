@@ -103,18 +103,21 @@ output.handlers <- list(
         return("")
       }
 
-      to.display <- sapply(blueprint$datasets, function(x) !is.null(x$source))
-      datasets.src <- lapply(blueprint$datasets[ to.display ], function(x) {
+      sources <- list()
+
+      to.display <- as.logical(sapply(blueprint$datasets, function(x) !is.null(x$source)))
+      sources$datasets.src <- lapply(blueprint$datasets[ to.display ], function(x) {
         paste0("#-- ", x$name, "\n", assignValue(buildSource(x$source, input.list()), x$name))
       }) %>% paste(collapse = "\n\n")
 
       to.display <- sapply(blueprint$output, function(x) !is.null(x$source) && x$name != "Source")
-      outputs.src <- paste(
+      sources$outputs.src <- paste(
         lapply(blueprint$output[ to.display ], function(x) {
           paste0("#-- ", x$name, "\n", buildSource(x$source, input.list()))
         }), collapse="\n\n")
 
-      src <- paste(datasets.src, outputs.src, sep="\n\n")
+      sources <- sources[ sources != "" ]
+      src <- paste(sources, collapse="\n\n")
 
       shinyAce::updateAceEditor(session, editorId = id, value = src, theme = global.options$ace.theme)
     }
