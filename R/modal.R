@@ -1,7 +1,31 @@
 
 
 
-modal <- function(id, session, results.fun, body.ui, title = NULL, observers=list()) {
+#' Create a Modal Dialog
+#'
+#' @param id id of the modal dialog.
+#' @param session server session.
+#' @param submit.fun a function without arguments that returns the a list
+#'   of results of the modal dialog when the user presses OK.
+#' @param ui.fun a function taking any number of arguments that returns
+#'   the ui of the body of the modal.
+#' @param observers an optional list of observers to be destroyed when the
+#'   modal is destroyed.
+#'
+#' @return a list with the following members. `id`: the id of the modal,
+#'   `show`: a function with signature `function(callback, title = NULL, ...)`
+#'   that brings up the modal dialog when called. The `callback` function is
+#'   called by the modal dialog when the user presses OK. Each value returned
+#'   by `submit.fun` is passed to this function as an argument. Extra `...`
+#'   parameters are passed to the `ui.fun` function.
+#'
+#' @export
+#'
+#' @examples
+slatesModal <- function(id, session,
+                  submit.fun,
+                  ui.fun,
+                  observers=list()) {
   ID <- function(x) paste0(id, "_", x)
   ns <- session$ns
   input <- session$input
@@ -12,13 +36,13 @@ modal <- function(id, session, results.fun, body.ui, title = NULL, observers=lis
     removeModal(session)
 
     if (!is.null(.callback)) {
-      results <- results.fun()
+      results <- submit.fun()
 
       do.call(.callback, results)
     }
   })
 
-  show <- function(callback, ...) {
+  show <- function(callback, title = NULL, ...) {
     ns <- session$ns
 
     .callback <<- callback
@@ -27,7 +51,7 @@ modal <- function(id, session, results.fun, body.ui, title = NULL, observers=lis
       modalDialog(
         title = title,
         easyClose = TRUE,
-        body.ui,
+        ui.fun(...),
         footer = tagList(
           modalButton("Cancel"),
           actionButton(ns(ID("btn_ok")), "OK")
@@ -47,21 +71,45 @@ modal <- function(id, session, results.fun, body.ui, title = NULL, observers=lis
 }
 
 
+select_modal <- function(id, session) {
+  ID <- function(x) paste0(id, "_", x)
+  ns <- session$ns
+
+  ui.fun <- function(label, choices) {
+    selectInput(ns(ID("select_input")), label = label, choices = choices, selected = choices[1])
+  }
+
+  submit.fun <- function() {
+    list(session$input[[ ID("select_input") ]])
+  }
+
+  slatesModal(
+    id, session,
+    ui.fun = ui.fun,
+    submit.fun = submit.fun
+  )
+}
+
+
+
 new_input_modal <- function(id, session) {
   ID <- function(x) paste0(id, "_", x)
   ns <- session$ns
   input <- session$input
 
-  body.ui <- tagList(
-    textInput(ns(ID("name_input")), label = "Input Name", value = ""),
-    selectInput(ns(ID("type_input")), label = "Input Type",
-                selectize = TRUE,
-                choices = c("Select input type"="", "numeric", "logical", "character", "expression", "choices"),
-                selected = "")
+  ui.fun <- function(...) {
+    tagList(
+      textInput(ns(ID("name_input")), label = "Input Name", value = ""),
+      selectInput(ns(ID("type_input")), label = "Input Type",
+                  selectize = TRUE,
+                  choices = c("Select input type"="",
+                              "numeric", "logical", "character", "expression", "choices"),
+                  selected = "")
 
-  )
+    )
+  }
 
-  results.fun <- function(session) {
+  submit.fun <- function() {
     list(name = input[[ ID("name_input") ]],
          type = input[[ ID("type_input") ]])
   }
@@ -78,12 +126,18 @@ new_input_modal <- function(id, session) {
       shinyjs::enable(ID("btn_ok"))
   })
 
-  modal(id, session,
-        results.fun = results.fun,
-        body.ui = body.ui,
-        observers = list(accept.observer)
-        )
+  slatesModal(
+    id, session,
+    submit.fun = submit.fun,
+    ui.fun = ui.fun,
+    observers = list(accept.observer)
+  )
 }
+
+
+
+
+
 
 
 

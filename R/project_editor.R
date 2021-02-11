@@ -156,9 +156,8 @@ slates_editUI <- function(id, project.data) {
           tags$div(class="editor-section-subheader", ""),
           tags$div(class="editor-section-sep"),
           tags$div(class="editor-section-contents",
-                   uiOutput(ns("datasets_ui"))
-                   #div(id = "slates_begin"),
-                   #div(id = "slates_end")
+                   div(id = "slates_begin"),
+                   div(id = "slates_end")
           )
         ),
         tags$div(
@@ -205,7 +204,8 @@ slates_editServer <- function(input, output, session,
   ns <- session$ns
 
   modals <- list(
-    select.input = create_select_input_modal("select_input_modal", session),
+    #select.input = create_select_input_modal("select_input_modal", session),
+    select.modal = select_modal(ns("select_modal"), session),
     file.import = create_file_import_modal("file_import_modal", session)
   )
 
@@ -278,13 +278,6 @@ slates_editServer <- function(input, output, session,
       #add_data_slate(blueprints[[ value ]], ask.title = FALSE)
     })
   })
-
-
-
-
-
-
-
 
 
   # outputOptions(output, "output_global", suspendWhenHidden = FALSE)
@@ -384,23 +377,33 @@ slates_editServer <- function(input, output, session,
     #   })
     # }
     #
+
     insertUI(selector = "#slates_end",
              where = "beforeBegin",
-             ui = slateUI(ns(id), blueprint, input.container = "collapse"))
+             ui = slateUI(ns(id),
+                          blueprint,
+                          input.container = options()$rslates.input.container))
 
-    slates[[ id ]] <- callModule(slateServer, id, blueprint,
-                                 global.envir = global.envir,
-                                 global.options = global.options,
-                                 open.settings = open.settings)
+    slates[[ id ]] <- callModule(slateServer, id,
+                                 blueprint,
+                                 slate.options = list(
+                                   envir = global.envir,
+                                   open.settings = open.settings
+                                 ),
+                                 global.options = global.options)
   }
 
   # observe add slate button
   observeEvent(input$btn_add_slate, {
     blueprints <- session.data$blueprints
 
-    modals$select.input$show("Select blueprint", names(blueprints), function(value) {
-      addSlate(blueprints[[ value ]], input.values = NULL, open.settings = TRUE)
-    })
+    #modals$select.input$show("Select blueprint", names(blueprints), function(value) {
+    modals$select.modal$show(
+      label = "Select Blueprint:",
+      choices = names(blueprints),
+      callback = function(value) {
+        addSlate(blueprints[[ value ]], input.values = NULL, open.settings = TRUE)
+      })
   })
 
 
