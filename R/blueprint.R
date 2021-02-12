@@ -79,7 +79,7 @@ inputLayout <- function(pages = list(), main.page = NULL) {
 }
 
 
-inputPage <- function(..., name="untitled", description="", groups = NULL) {
+inputPage <- function(name, ..., description="", groups = NULL) {
   if (is.null(groups))
     groups <- list(...)
 
@@ -93,14 +93,14 @@ inputPage <- function(..., name="untitled", description="", groups = NULL) {
 }
 
 
-inputGroup <- function(..., name = "Group", layout = "flow-2", condition = "", inputs = NULL) {
+inputGroup <- function(name, ..., layout = "flow-2", condition = "", inputs = NULL) {
   if (is.null(inputs))
     inputs <- list(...)
 
   names(inputs) <- sapply(inputs, "[[", "name")
 
   return(list(name = name,
-              id = seq.uid("group"),
+              #id = seq.uid("group"),
               condition = condition,
               type = "group",
               layout = layout,
@@ -108,7 +108,7 @@ inputGroup <- function(..., name = "Group", layout = "flow-2", condition = "", i
 }
 
 
-slateOutput <- function(name, type, source="") { #source=list(generate=function(...) return(""))) {
+slateOutput <- function(name, type, source="") {
   output.data <- list(
     name = name,
     type = type,
@@ -228,6 +228,40 @@ blueprintFromJSON <- function(filename=NULL, text=NULL) {
 
 
 
+#
+# Blueprint utilities
+#
+
+flattenInputLayout <- function(layout) {
+  items <- lapply(layout$pages, function(p) {
+    lapply(p$groups, function(g) {
+      g$inputs
+    }) %>%
+      unlist(recursive = FALSE) %>%
+      append(p$groups)
+  }) %>%
+    unlist(recursive = FALSE) %>%
+    append(layout$pages) %>%
+    set_names(sapply(., "[[", "name"))
+}
+
+
+traverseInputLayout <- function(layout, callback = identity, flatten = FALSE) {
+  layout$pages <- lapply(layout$pages, function(p) {
+    p$groups <- lapply(p$groups, function(g) {
+      g$inputs <- lapply(g$inputs, function(i) {
+        callback(i)
+      }) %>% set_names(sapply(., "[[", "name"))
+      callback(g)
+    }) %>% set_names(sapply(., "[[", "name"))
+    callback(p)
+  }) %>% set_names(sapply(., "[[", "name"))
+
+  if (flatten == TRUE)
+    layout <- flattenInputLayout(layout)
+
+  return(layout)
+}
 
 
 getInputs <- function(blueprint) {
