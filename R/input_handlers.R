@@ -98,6 +98,18 @@ input.handlers <- list(
       updateSelectInput(session, inputId = id, ...)
     }
   ),
+  numeric4 = input_handler(
+    create.ui = function(id, label, value, options) {
+      slatesNumeric4Input(id, label = label, value = value, wizards = options$wizards)
+    },
+    update.ui = function(session, id, ...) {
+      #updateNumericInput(session, inputId = id, ...)
+    }
+  )
+)
+
+
+dataset.handlers <- list(
   file = input_handler(
     get.value = function(input, session, ...) {
       if (!is.null(input$data)) {
@@ -113,14 +125,16 @@ input.handlers <- list(
 )
 
 
-createInput <- function(input, ns = function(x) x) {
+
+
+createInput <- function(input, ns = identity) {
   input.handlers[[ input$input.type ]]$create.ui(
     ns(input$id), input$name, input$value, input
   )
 }
 
 
-createInputGroup <- function(group, id = NULL, ns = function(x) x) {
+createInputGroup <- function(group, id = NULL, ns = identity) {
   ui.elements <- unname(lapply(group$inputs, function(x) {
     createInput(x, ns = ns)
   }))
@@ -140,7 +154,7 @@ createInputGroup <- function(group, id = NULL, ns = function(x) x) {
 }
 
 
-createInputPage <- function(page, id = NULL, ns = function(x) x, layout = "flow") {
+createInputPage <- function(page, id = NULL, ns = identity, layout = "flow") {
   if (length(page$groups) == 0)
     return(tagList())
 
@@ -160,7 +174,7 @@ createInputPage <- function(page, id = NULL, ns = function(x) x, layout = "flow"
 
 
 createInputLayout <- function(pages,
-                              ns = function(x) x,
+                              ns = identity,
                               container = c("tabset", "collapse")) {
   container <- match.arg(container)
 
