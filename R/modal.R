@@ -103,7 +103,7 @@ new_input_modal <- function(id, session) {
       selectInput(ns(ID("type_input")), label = "Input Type",
                   selectize = TRUE,
                   choices = c("Select input type"="",
-                              "numeric", "logical", "character", "expression", "choices"),
+                              names(input.handlers)),
                   selected = "")
 
     )
@@ -133,6 +133,8 @@ new_input_modal <- function(id, session) {
     observers = list(accept.observer)
   )
 }
+
+
 
 
 
