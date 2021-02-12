@@ -115,7 +115,7 @@ slateServer <- function(input, output, session,
     if (length(blueprint$imports) > 0) {
       imports <- lapply(blueprint$imports, function(x) {
         x$data <- import.data[[ x$name ]]$data
-        x$value <- input.handlers[[ x$type ]]$get.value(x, session)
+        x$value <- dataset.handlers[[ x$type ]]$get.value(x, session)
         return(x)
       })
 
