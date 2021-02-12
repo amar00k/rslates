@@ -1,10 +1,12 @@
 
-#
-# test_that("seq.uid works", {
-#   expect_equal(seq.uid(), "__1")
-#   expect_equal(seq.uid(), "__2")
-#   expect_equal(seq.uid("A"), "A_1")
-#   expect_equal(seq.uid("B"), "B_1")
-#   expect_equal(seq.uid(), "__3")
-#   expect_equal(seq.uid("A"), "A_2")
-# })
+
+test_that("sequenceGenerator works", {
+  expect_equal(sequenceGenerator()(), "seq_1")
+
+  test <- sequenceGenerator("test")
+
+  expect_equal(test(), "test_1")
+  expect_equal(test(), "test_2")
+  expect_equal(test(), "test_3")
+})
+
