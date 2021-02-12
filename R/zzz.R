@@ -85,5 +85,20 @@ seq.uid <- function(prefix = "_") {
 
 
 
+sequenceGenerator <- function(prefix = "seq") {
+  count <- 0
+
+  function() {
+    count <<- count + 1
+    paste0(prefix, "_", count)
+  }
+}
+
+
+
+
+
+
+
 
 
