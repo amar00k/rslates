@@ -119,6 +119,9 @@ srcParse <- function(str) {
 
 
 srcBuild <- function(src, inputs) {
+  if (is.null(names(inputs)))
+    names(inputs) <- sapply(inputs, "[[", "name")
+
   paste(lapply(src, function(x) {
     if (class(x) == "character")
       return(x)
@@ -137,9 +140,6 @@ srcBuild <- function(src, inputs) {
         return(NULL)
 
       value.text <- if (val.null) "NULL" else input$value
-
-      # escape escapes...
-      # value.text <- gsub("\\", "\\\\", value.text, fixed = TRUE)
 
       # q: single quote
       if (!val.null && ("q" %in% v$opts))
