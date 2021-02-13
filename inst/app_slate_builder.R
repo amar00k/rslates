@@ -5,40 +5,25 @@
 # Conversion utilities
 #
 
-# parseChoices <- function(choices.expression) {
-#   if (is.null(choices.expression))
-#     return(NULL)
-#
-#   tryCatch({
-#     eval(parse(text = choices.expression))
-#   },
-#   error = function(e) {
-#     return(NULL)
-#   })
-# }
 
 
 # flat layout to st tree structure
 layoutToTree <- function(layout, selected = "") {
   tree <- lapply(layout$pages, function(p) {
-    p$groups <- lapply(p$groups, function(g) {
-      g$name <- as.character(tags$i(seq.uid("group")))
-      g
-    })
-
     groups <- lapply(p$groups, function(g) {
       inputs <- lapply(g$inputs, function(i) {
         structure("", sttype = i$type, stclass = "input",
-                  stinfo = i)
+                  stinfo = i, stselected = i$id == selected)
       }) %>% set_names(sapply(g$inputs, "[[", "name"))
       structure(inputs, sttype = "group", stclass = "group", stopened = TRUE,
-                stinfo = g[ !(names(g) == "inputs") ])
+                stinfo = g[ !(names(g) == "inputs") ], stselected = g$id == selected)
     }) %>% set_names(sapply(p$groups, "[[", "name"))
     structure(groups, sttype = "page", stclass = "page", stopened = TRUE,
-              stinfo = p[ !(names(p) == "groups") ])
+              stinfo = p[ !(names(p) == "groups") ], stselected = p$id == selected)
   }) %>% set_names(sapply(layout$pages, "[[", "name"))
 
-  attr(tree[[1]], "stselected") <- TRUE
+  if (selected == "")
+    attr(tree[[1]], "stselected") <- TRUE
 
   return(tree)
 }
@@ -137,6 +122,8 @@ addItemToTree <- function(tree, item, path = character(0), after=NULL, name=NULL
 }
 
 
+
+
 updateTreeItem <- function(tree, item, path) {
   attr(tree[[ path ]], "stinfo") <- item
 
@@ -148,6 +135,51 @@ updateTreeItem <- function(tree, item, path) {
     names(tree) <- sapply(tree, function(x) attr(x, "stinfo")$name)
 
   return(tree)
+}
+
+
+# modals
+newInputModal <- function(id, session) {
+  ID <- function(x) paste0(id, "_", x)
+  ns <- session$ns
+  input <- session$input
+
+  ui.fun <- function(...) {
+    tagList(
+      textInput(ns(ID("name_input")), label = "Input Name", value = ""),
+      selectInput(ns(ID("type_input")), label = "Input Type",
+                  selectize = TRUE,
+                  choices = c("Select input type"="",
+                              names(input.handlers)),
+                  selected = "")
+
+    )
+  }
+
+  submit.fun <- function() {
+    list(name = input[[ ID("name_input") ]],
+         type = input[[ ID("type_input") ]])
+  }
+
+  accept.observer <- observe({
+    name <- input[[ ID("name_input") ]]
+    type <- input[[ ID("type_input") ]]
+
+    shinyjs::disable(ID("btn_ok"))
+
+    req(name, type)
+
+    if (name != "" && type != "")
+      shinyjs::enable(ID("btn_ok"))
+  })
+
+  slatesModal(
+    id, session,
+    submit.fun = submit.fun,
+    ui.fun = ui.fun,
+    observers = list(accept.observer),
+    focus = ID("name_input")
+  )
 }
 
 
@@ -169,7 +201,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
   builderUI <- function(id = NULL) {
     if (is.null(id))
-      ns <- function(x) x
+      ns <- identity
     else
       ns <- NS(id)
 
@@ -273,7 +305,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
               class = "slates-flow-3",
               selectInput(ns("input_type"), label = "Type",
                           selectize = TRUE,
-                          choices = c("Select input type"="", "numeric", "logical", "character", "expression", "choices")),
+                          choices = names(input.handlers)),
               selectizeInput(
                 ns("input_choices"), label = "Choices", choices = character(0),
                 multiple = TRUE,
@@ -387,6 +419,13 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     ui <- fluidPage(
       shinyjs::useShinyjs(),
+      shinyjs::extendShinyjs(
+        functions = "focus",
+        text = "
+          shinyjs.focus = function(e_id) {
+            document.getElementById(e_id).focus();
+          }"
+      ),
       shiny::bootstrapLib(bslib::bs_theme(bootswatch = default.theme, version = "4")),
       shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
       thematic::thematic_shiny(),
@@ -408,7 +447,6 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         ),
         mainPanel = mainPanel(
           width = 10,
-          #slateUI("slate_preview", blueprint, input.container),
           fileInput(ns("load_blueprint"), label = "Load Blueprint"),
           tags$div(
             class = "card",
@@ -445,9 +483,12 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
   builderServer <- function(input, output, session) {
     global.options <- reactiveValues(ace.theme = default.ace.theme)
+    global.options$group.name.generator <- sequenceGenerator("group")
 
-    modal.text <- create_text_input_modal("modal_text", session)
-    modal.new.input <- new_input_modal("modal_new_input", session)
+    modal.text <- slatesTextModal("modal_text", session)
+    modal.new.input <- newInputModal("modal_new_input", session)
+
+    blueprint.ini <- reactiveVal(blueprint.ini)
 
     #
     # Themeing
@@ -471,17 +512,27 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     #
     # Blueprint data
     #
-
     blueprint.inputs <- reactiveVal()
     blueprint.outputs <- reactiveVal()
     blueprint.datasets <- reactiveVal()
     blueprint.imports <- reactiveVal()
 
+    flat.input.layout <- reactive({
+      flat <- flattenInputLayout(blueprint.inputs())
+      names(flat) <- paste0(sapply(flat, "[[", "type"), "_", sapply(flat, "[[", "name"))
+      return(flat)
+    })
+
     blueprint <- reactive({
       req(input$layout_tree)
 
+      req(blueprint.inputs(),
+          blueprint.outputs(),
+          blueprint.datasets(),
+          blueprint.imports())
+
       slateBlueprint(title = input$blueprint_title,
-                     input.layout = treeToLayout(input$layout_tree),
+                     input.layout = blueprint.inputs(),
                      outputs = blueprint.outputs(),
                      datasets = blueprint.datasets(),
                      imports = blueprint.imports())
@@ -492,35 +543,50 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     # Load/ Save
     #
 
-    loadBlueprint <- function(bp) {
+    # load blueprint in blueprint.ini
+    observeEvent(blueprint.ini(), {
+      req(bprint <- blueprint.ini())
+
       print("loading")
 
-      blueprint.imports(bp$imports)
-      blueprint.inputs(bp$input.layout)
-      blueprint.datasets(bp$datasets)
-      blueprint.outputs(bp$outputs)
+      # setup a sequence generator and rename groups
+      # to ensure all groups have unique names
+      global.options$group.name.generator <- sequenceGenerator("group")
 
-      if (length(bp$outputs) == 0)
+      input.layout <- traverseInputLayout(bprint$input.layout, function(x) {
+        if (x$type == "group")
+          x$name <- global.options$group.name.generator()
+
+        return(x)
+      })
+
+      blueprint.inputs(input.layout)
+      blueprint.imports(bprint$imports)
+      blueprint.datasets(bprint$datasets)
+      blueprint.outputs(bprint$outputs)
+
+      if (length(bprint$outputs) == 0)
         updateSelectInput(session, "select_output", choices = list())
       else
         updateSelectInput(session, "select_output",
-                          choices = names(bp$outputs),
-                          selected = names(bp$outputs)[1])
+                          choices = names(bprint$outputs),
+                          selected = names(bprint$outputs)[1])
 
-      if (length(bp$datasets) == 0)
+      if (length(bprint$datasets) == 0)
         updateSelectInput(session, "select_dataset", choices = list())
       else
         updateSelectInput(session, "select_dataset",
-                          choices = names(bp$datasets),
-                          selected = names(bp$datasets)[1])
+                          choices = names(bprint$datasets),
+                          selected = names(bprint$datasets)[1])
 
-      if (length(bp$imports) == 0)
+      if (length(bprint$imports) == 0)
         updateSelectInput(session, "select_import", choices = list())
       else
         updateSelectInput(session, "select_import",
-                          choices = names(bp$imports),
-                          selected = names(bp$imports)[1])
-    }
+                          choices = names(bprint$imports),
+                          selected = names(bprint$imports)[1])
+    })
+
 
     # download button
     output$save_blueprint <- downloadHandler(
@@ -538,9 +604,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     # upload blueprint
     observeEvent(input$load_blueprint, {
-      data <- restoreBlueprint(blueprintFromJSON(input$load_blueprint$datapath))
-
-      loadBlueprint(data)
+      blueprint.ini(restoreBlueprint(blueprintFromJSON(input$load_blueprint$datapath)))
     })
 
 
@@ -655,7 +719,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     observeEvent(input$add_import, {
       modal.text$show(
-        query = "Import Name:",
+        label = "Import Name:",
         placeholder = "",
         callback = function(name) {
           imports <- blueprint.imports()
@@ -710,45 +774,36 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     # Inputs tree output
     output$layout_tree <- shinyTree::renderTree({
-      # we only call this once; tree is updated with updateTree.
+      req(isolate(blueprint.inputs()))
+
       print("redraw")
-      #isolate(layoutToTree(blueprint.ini$input.layout))
-      tree <- layoutToTree(blueprint.inputs())
+
+      tree <- layoutToTree(blueprint.inputs(), selected = isolate(active.item.id()$id))
     })
     outputOptions(output, "layout_tree", suspendWhenHidden = FALSE)
 
 
     # when tree changes
     observeEvent(input$layout_tree, {
-      print("layout_tree: update active item")
+      req(sel <- shinyTree::get_selected(input$layout_tree)[[1]])
+      req(classid <- shinyTree::get_selected(input$layout_tree, format = "classid")[[1]])
+      isolate(current.id <- active.item.id()$id)
 
-      classid <- isolate(shinyTree::get_selected(input$layout_tree, format = "classid")[[1]])
-      sel <- isolate(shinyTree::get_selected(input$layout_tree))
+      print("update active item")
 
-      isolate(
-        current.id <- isolate(active.item.id()$id)
-      )
-
-      if (attr(classid, "id") != current.id) {
+      # update active item
+      if (sel != current.id) {
         active.item.id(list(
           time = Sys.time(),
-          id = attr(classid, "id")
+          id = as.character(sel)
         ))
       }
 
-      if (length(sel) < 1)
-        return(NULL)
-
-      sel <- sel[[1]]
-
-      pprint("active_item:", attr(classid, "id"), as.character(sel))
+      item <- flat.input.layout()[[ paste0(attr(classid, "stclass"), "_", sel) ]]
 
       active.item(list(
-        name = as.character(sel),
-        id = attr(classid, "id"),
-        type = attr(classid, "class"),
         ancestry = attr(sel, "ancestry"),
-        item = attr(sel, "stinfo")
+        item = item
       ))
     })
 
@@ -764,7 +819,9 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       } else {
         shinyjs::show("layout_add_group")
         shinyjs::toggle("layout_add_input", condition = (item$type %in% c("group", "input")))
-        shinyjs::toggleState("layout_rename", condition = (item$type != "group"))
+        shinyjs::toggleState(
+          "layout_rename",
+          condition = (item$type != "group") && !(item$type == "page" && item$name == "Main"))
         shinyjs::toggleState("layout_remove", condition = !(item$type == "page" && item$name == "Main"))
       }
     })
@@ -774,60 +831,47 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     observeEvent(input$layout_add_page, {
       modal.text$show(
         title = "New Input Page",
-        query = "Page Title",
+        label = "Page Title",
         placeholder = "",
         callback = function(title) {
-          active <- active.item()
-          tree <- input$layout_tree
-
           new.item <- inputPage(name = title)
 
-          tree <- addItemToTree(tree, new.item)
-
-          shinyTree::updateTree(session, "layout_tree", fixTree(tree))
+          blueprint.inputs(updateInputLayoutItem(blueprint.inputs(), new.item))
         })
     })
 
 
     # handle the add group button
     observeEvent(input$layout_add_group, {
-      active <- active.item()
-      item <- active$item
-      tree <- input$layout_tree
+      req(active <- active.item())
 
-      if (item$type != "page")
+      if (active$item$type != "page")
         path <- active$ancestry[1]
       else
-        path <- active$name
+        path <- active$item$name
 
-      new.item <- inputGroup()
+      new.item <- inputGroup(name = global.options$group.name.generator())
 
-      name <- as.character(tags$i(seq.uid("group")))
-      tree <- addItemToTree(tree, new.item, path = path, name = name)
+      blueprint.inputs(updateInputLayoutItem(blueprint.inputs(), new.item, path))
 
-      shinyTree::updateTree(session, "layout_tree", fixTree(tree))
       shinyjs::click("layout_add") # closes the dropdown menu
     })
 
 
     # handle the add input button
     observeEvent(input$layout_add_input, {
+      req(active <- active.item())
+
       modal.new.input$show(
         callback = function(name, type) {
-          active <- active.item()
-          item <- active$item
-          tree <- input$layout_tree
-
-          if (item$type == "input")
+          if (active$item$type == "input")
             path <- active$ancestry
           else
-            path <- c(active$ancestry, active$name)
+            path <- c(active$ancestry, active$item$name)
 
           new.item <- slateInput(name = name, input.type = type, default = "")
 
-          tree <- addItemToTree(tree, new.item, path = path)
-
-          shinyTree::updateTree(session, "layout_tree", fixTree(tree))
+          blueprint.inputs(updateInputLayoutItem(blueprint.inputs(), new.item, path))
         })
     })
 
@@ -837,38 +881,31 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
       modal.text$show(
         title = "Rename Input",
-        query = "Input Name",
+        label = "Input Name",
         value = active$item$name,
         placeholder = "",
         callback = function(name) {
-          active <- active.item()
-          tree <- input$layout_tree
-          path <- c(active$ancestry, active$name)
+          path <- active$ancestry
 
           new.item <- active$item
           new.item$name <- name
 
-          tree <- updateTreeItem(tree, new.item, path)
-          shinyTree::updateTree(session, "layout_tree", fixTree(tree))
+          blueprint.inputs(
+            updateInputLayoutItem(blueprint.inputs(), new.item, path, active$item$name)
+          )
         })
     })
 
 
     # handle remove item button
     observeEvent(input$layout_remove, {
-      req(item <- active.item())
+      req(active <- active.item())
 
-      tree <- input$layout_tree
-      branch <- if (length(item$ancestry) > 0) tree[[ item$ancestry ]] else tree
-      ids <- sapply(branch, "attr", "id")
-      branch[[ which(ids == item$id) ]] <- NULL
+      path <- active$ancestry
 
-      if (length(item$ancestry) > 0)
-        tree[[ item$ancestry ]] <- branch
-      else
-        tree <- branch
-
-      shinyTree::updateTree(session, "layout_tree", fixTree(tree))
+      blueprint.inputs(
+        updateInputLayoutItem(blueprint.inputs(), NULL, path, active$item$name)
+      )
     })
 
 
@@ -925,7 +962,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     updateInputVariable <- function(var.name, input.name,
                                     null.value = "",
-                                    transform.fun = function(x) x) {
+                                    transform.fun = identity) {
       req(active <- active.item())
       req(!is.null(active) && input$input_id == active$id)
       req(!identical(active$item[[ var.name ]], input[[ input.name ]]))
@@ -933,7 +970,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
       new.val <- if (is.null(input[[ input.name ]])) null.value else input[[ input.name ]]
 
-      pprint("Update input", active$item$name, ":", var.name, "=", new.val)
+      pprint("Update input", active$item$name, ":", var.name, "=", paste(new.val, collapse=", "))
 
       active$item[[ var.name ]] <- transform.fun(new.val)
 
@@ -1132,8 +1169,8 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     })
 
 
-    # initialize
-    loadBlueprint(blueprint.ini)
+    # # initialize
+    # loadBlueprint(blueprint.ini)
   }
 
   if (options()$rslates.run.themer == TRUE)
