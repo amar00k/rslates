@@ -25,7 +25,8 @@
 slatesModal <- function(id, session,
                   submit.fun,
                   ui.fun,
-                  observers=list()) {
+                  observers=list(),
+                  focus.on.show = NULL) {
   ID <- function(x) paste0(id, "_", x)
   ns <- session$ns
   input <- session$input
@@ -47,19 +48,45 @@ slatesModal <- function(id, session,
 
     .callback <<- callback
 
-    showModal(
-      modalDialog(
-        title = title,
-        easyClose = TRUE,
-        ui.fun(...),
-        footer = tagList(
-          modalButton("Cancel"),
-          actionButton(ns(ID("btn_ok")), "OK")
-        ),
-        ...
+    md <- modalDialog(
+      title = title,
+      easyClose = TRUE,
+      ui.fun(...),
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton(ns(ID("btn_ok")), "OK")
       ),
-      session
+      ...
     )
+    # md$children[[1]]$children[[1]]$attribs$id <- "modal-content"
+    # md$children[[1]]$children[[1]]$children[[2]]$attribs$id <- "modal-body"
+
+    showModal(md, session)
+
+    # i <- 0
+    # if (!is.null(focus.on.show)) {
+    #   o <- observe({
+    #     #input[[ focus.on.show ]], {
+    #     req(!is.null(input[[ focus.on.show ]]))
+    #
+    #     pprint("focus", focus.on.show, input[[ focus.on.show ]])
+    #
+    #     # shinyjs::js$focus("modal-content")
+    #     # shinyjs::js$focus("modal-body")
+    #     shinyjs::js$focus(focus.on.show)
+    #
+    #     i <<- i + 1
+    #     print(i)
+    #     if (i == 2) {
+    #       o$destroy()
+    #     } else {
+    #       invalidateLater(200)
+    #     }
+    #
+    #
+    #     #o$destroy()
+    #   })
+    # }
 
     # TODO: set focus on show
   }
@@ -71,7 +98,7 @@ slatesModal <- function(id, session,
 }
 
 
-select_modal <- function(id, session) {
+slatesSelectModal <- function(id, session) {
   ID <- function(x) paste0(id, "_", x)
   ns <- session$ns
 
@@ -83,170 +110,28 @@ select_modal <- function(id, session) {
     list(session$input[[ ID("select_input") ]])
   }
 
-  slatesModal(
-    id, session,
-    ui.fun = ui.fun,
-    submit.fun = submit.fun
-  )
+  slatesModal(id, session, ui.fun = ui.fun, submit.fun = submit.fun)
 }
 
 
-
-new_input_modal <- function(id, session) {
+slatesTextModal <- function(id, session) {
   ID <- function(x) paste0(id, "_", x)
   ns <- session$ns
-  input <- session$input
 
-  ui.fun <- function(...) {
-    tagList(
-      textInput(ns(ID("name_input")), label = "Input Name", value = ""),
-      selectInput(ns(ID("type_input")), label = "Input Type",
-                  selectize = TRUE,
-                  choices = c("Select input type"="",
-                              names(input.handlers)),
-                  selected = "")
-
-    )
+  ui.fun <- function(label, placeholder = NULL, value = "") {
+    textInput(ns(ID("text_input")), label = label, value = value, placeholder = placeholder)
   }
 
   submit.fun <- function() {
-    list(name = input[[ ID("name_input") ]],
-         type = input[[ ID("type_input") ]])
+    list(session$input[[ ID("text_input") ]])
   }
 
-  accept.observer <- observe({
-    name <- input[[ ID("name_input") ]]
-    type <- input[[ ID("type_input") ]]
-
-    shinyjs::disable(ID("btn_ok"))
-
-    req(name, type)
-
-    if (name != "" && type != "")
-      shinyjs::enable(ID("btn_ok"))
-  })
-
-  slatesModal(
-    id, session,
-    submit.fun = submit.fun,
-    ui.fun = ui.fun,
-    observers = list(accept.observer)
-  )
+  slatesModal(id, session, ui.fun = ui.fun, submit.fun = submit.fun)
 }
 
 
 
 
-
-
-
-
-
-
-#' Create a modal with a single text input
-#'
-#' @param id
-#' @param session
-#'
-#' @return
-#' @export
-#'
-#' @examples
-create_text_input_modal <- function(id, session) {
-  ID <- function(x) paste0(id, "_", x)
-
-  ns <- session$ns
-  input <- session$input
-
-  .callback <- NULL
-
-  observeEvent(input[[ ID("btn_ok") ]], {
-    removeModal(session)
-
-    if (!is.null(.callback)) {
-      .callback(input[[ ID("text_input") ]])
-    }
-  })
-
-  observeEvent(input[[ ID("text_input") ]], {
-    txt <- input[[ ID("text_input") ]]
-
-    if (is.null(txt) || nchar(txt) == 0)
-      shinyjs::disable(ID("btn_ok"))
-    else
-      shinyjs::enable(ID("btn_ok"))
-  })
-
-  show <- function(query, callback, value = "", placeholder = "", title = NULL, ...) {
-    ns <- session$ns
-
-    .callback <<- callback
-
-    showModal(
-      modalDialog(
-        title = title,
-        easyClose = TRUE,
-        textInput(ns(ID("text_input")), label = query, value = value, placeholder = placeholder),
-        footer = tagList(
-          modalButton("Cancel"),
-          actionButton(ns(ID("btn_ok")), "OK")
-        ),
-        ...
-      ),
-      session
-    )
-
-    # TODO: set focus on show
-  }
-
-  list(
-    id = id,
-    show = show
-  )
-}
-
-
-
-create_select_input_modal <- function(id, session) {
-  ID <- function(x) paste0(id, "_", x)
-
-  ns <- session$ns
-  input <- session$input
-
-  .callback <- NULL
-
-  observeEvent(input[[ ID("btn_ok") ]], {
-    removeModal()
-
-    if (!is.null(.callback)) {
-      .callback(input[[ ID("select_input") ]])
-    }
-  })
-
-  show <- function(query, choices, callback, selected = NULL) {
-    ns <- session$ns
-
-    .callback <<- callback
-
-    showModal(
-      modalDialog(
-        selectInput(ns(ID("select_input")),
-                    label = query,
-                    choices = choices,
-                    selected = selected),
-        footer = tagList(
-          modalButton("Cancel"),
-          actionButton(ns(ID("btn_ok")), "OK")
-        )
-      )
-    )
-  }
-
-  list(
-    id = id,
-    show = show
-  )
-}
 
 
 #' Create the new project modal

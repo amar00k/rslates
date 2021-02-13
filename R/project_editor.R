@@ -205,7 +205,7 @@ slates_editServer <- function(input, output, session,
 
   modals <- list(
     #select.input = create_select_input_modal("select_input_modal", session),
-    select.modal = select_modal(ns("select_modal"), session),
+    select.modal = slatesSelectModal(ns("select_modal"), session),
     file.import = create_file_import_modal("file_import_modal", session)
   )
 
