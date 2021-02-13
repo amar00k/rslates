@@ -423,3 +423,10 @@ runProjectEditorApp <- function(project = NULL, input.container = "collapse", ru
     runApp(system.file("app_project_editor.R", package = "rslates"))
 }
 
+runSlatesWidgetGalleryApp <- function(run.themer = FALSE) {
+    options(rslates.run.themer = run.themer)
+
+    runApp(system.file("app_slates_widget_gallery.R", package = "rslates"))
+}
+
+
