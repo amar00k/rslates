@@ -169,7 +169,7 @@
 .expression-input > input {
   font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
   border-radius: 0;
-  border-bottom-width: 3px;
+  border-bottom-width: 0.25em;
 }
 
 .numeric-input > input {
