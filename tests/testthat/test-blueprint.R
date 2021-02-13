@@ -22,7 +22,7 @@ test_that("traverseInputLayout works", {
 
   expect_equal(layout, traverseInputLayout(layout))
 
-  test.layout <- traverseInputLayout(layout, function(x) { x$name <- "test"; x }, flatten = TRUE)
+  test.layout <- traverseInputLayout(layout, function(x, ...) { x$name <- "test"; x }, flatten = TRUE)
   expect_true(all(sapply(test.layout, "[[", "name") == "test"))
 })
 

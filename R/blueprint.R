@@ -257,7 +257,7 @@ flattenInputLayout <- function(layout) {
 }
 
 
-traverseInputLayout <- function(layout, callback = identity, flatten = FALSE) {
+traverseInputLayout <- function(layout, callback = function(x, d) x, flatten = FALSE) {
   layout$pages <- lapply(layout$pages, function(p) {
     p <- callback(p, 1)
     p$groups <- lapply(p$groups, function(g) {
