@@ -53,7 +53,8 @@ projectEditorApp <- function(project = NULL) {
   server <- function(input, output, session) {
     global.options <- reactiveValues(ace.theme = default.ace.theme)
     session.data <- reactiveValues(
-      blueprints = options()$rslates.blueprints
+      blueprints = options()$rslates.blueprints,
+      data.blueprints = options()$rslates.data.blueprints
     )
 
     #
@@ -76,12 +77,16 @@ projectEditorApp <- function(project = NULL) {
     #
     # Editor module
     #
-    editor <- callModule(module = slates_editServer, id = "editor",
+    editor <- callModule(module = slates_editServer,
+                         id = "editor",
                          project, session.data, global.options)
 
   }
 
-  shiny::shinyApp(ui, server)
+  if (options()$rslates.run.themer == TRUE)
+    bslib::run_with_themer(shiny::shinyApp(ui, server))
+  else
+    shiny::shinyApp(ui, server)
 }
 
 project <- getOption("rslates.editor.project")
