@@ -4,7 +4,14 @@
 \alias{slatesModal}
 \title{Create a Modal Dialog}
 \usage{
-slatesModal(id, session, submit.fun, ui.fun, observers = list())
+slatesModal(
+  id,
+  session,
+  submit.fun,
+  ui.fun,
+  observers = list(),
+  focus.on.show = NULL
+)
 }
 \arguments{
 \item{id}{id of the modal dialog.}
