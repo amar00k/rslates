@@ -49,7 +49,6 @@ slateInput <- function(name, input.type,
   default = if (is.null(default)) "" else default
 
   input <- list(
-    id = paste0("arg_", name),
     name = name,
     type = "input",
     long.name = long.name,
@@ -100,7 +99,6 @@ inputGroup <- function(name, ..., layout = "flow-2", condition = "", inputs = NU
   names(inputs) <- sapply(inputs, "[[", "name")
 
   return(list(name = name,
-              #id = seq.uid("group"),
               condition = condition,
               type = "group",
               layout = layout,
@@ -262,6 +260,29 @@ traverseInputLayout <- function(layout, callback = identity, flatten = FALSE) {
 
   return(layout)
 }
+
+updateInputLayoutItem <- function(layout, item, ancestry = c(), name = NULL) {
+  if (is.null(name))
+    path <- c(ancestry, item$name)
+  else
+    path <- c(ancestry, name)
+
+  if (length(path) == 1) {
+    layout$pages[[ path ]] <- item
+    names(layout$pages) <- sapply(layout$pages, "[[", "name")
+  } else if (length(path) == 2) {
+    layout$pages[[ path[1] ]]$groups[[ path[2] ]] <- item
+    names(layout$pages[[ path[1] ]]$groups) <-
+      sapply(layout$pages[[ path[1] ]]$groups, "[[", "name")
+  } else {
+    layout$pages[[ path[1] ]]$groups[[ path[2] ]]$inputs[[ path[3] ]] <- item
+    names(layout$pages[[ path[1] ]]$groups[[ path[2] ]]$inputs) <-
+      sapply(layout$pages[[ path[1] ]]$groups[[ path[2] ]]$inputs, "[[", "name")
+  }
+
+  return(layout)
+}
+
 
 
 getInputs <- function(blueprint) {
