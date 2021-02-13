@@ -50,6 +50,7 @@ slateInput <- function(name, input.type,
 
   input <- list(
     name = name,
+    id = paste0("input_", name),
     type = "input",
     long.name = long.name,
     description = description,
@@ -86,6 +87,7 @@ inputPage <- function(name, ..., description="", groups = NULL) {
     names(groups) <- sapply(groups, "[[", "name")
 
   return(list(name = name,
+              id = paste0("page_", name),
               description = description,
               type = "page",
               groups = groups))
@@ -99,6 +101,7 @@ inputGroup <- function(name, ..., layout = "flow-2", condition = "", inputs = NU
   names(inputs) <- sapply(inputs, "[[", "name")
 
   return(list(name = name,
+              id = paste0("group_", name),
               condition = condition,
               type = "group",
               layout = layout,
@@ -230,6 +233,16 @@ blueprintFromJSON <- function(filename=NULL, text=NULL) {
 # Blueprint utilities
 #
 
+printInputLayout <- function(layout) {
+  indent <- list("", "  ", "    ")
+
+  invisible(traverseInputLayout(layout, function(x, depth) {
+    print(paste0(indent[[ depth ]], x$type, ": ", x$name))
+    x
+  }))
+}
+
+
 flattenInputLayout <- function(layout) {
   items <- lapply(layout$pages, function(p) {
     lapply(p$groups, function(g) {
@@ -240,19 +253,21 @@ flattenInputLayout <- function(layout) {
   }) %>%
     unlist(recursive = FALSE) %>%
     append(layout$pages) %>%
-    set_names(sapply(., "[[", "name"))
+    set_names(sapply(., "[[", "id"))
 }
 
 
 traverseInputLayout <- function(layout, callback = identity, flatten = FALSE) {
   layout$pages <- lapply(layout$pages, function(p) {
+    p <- callback(p, 1)
     p$groups <- lapply(p$groups, function(g) {
+      g <- callback(g, 2)
       g$inputs <- lapply(g$inputs, function(i) {
-        callback(i)
+        callback(i, 3)
       }) %>% set_names(sapply(., "[[", "name"))
-      callback(g)
+      g
     }) %>% set_names(sapply(., "[[", "name"))
-    callback(p)
+    p
   }) %>% set_names(sapply(., "[[", "name"))
 
   if (flatten == TRUE)
