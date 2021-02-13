@@ -43,7 +43,6 @@ slateInput <- function(name, input.type,
                        value = default,
                        long.name = "",
                        description = "",
-                       choices = list(),
                        wizards = list(),
                        ...) {
   default = if (is.null(default)) "" else default
@@ -57,13 +56,12 @@ slateInput <- function(name, input.type,
     input.type = input.type,
     default = default,
     value = value,
-    choices = choices,
     wizards = wizards
   )
 
-  # args <- list(...)
-  # for (n in names(args))
-  #   input[[ n ]] <- args[[ n ]]
+  args <- list(...)
+  for (n in names(args))
+    input[[ n ]] <- args[[ n ]]
 
   return (input)
 }
@@ -172,7 +170,6 @@ input.defaults <- list(
   default = "",
   long.name = "",
   description = "",
-  choices = list(),
   wizards = list()
 )
 
@@ -195,6 +192,7 @@ simplifyBlueprint <- function(blueprint) {
   return(blueprint)
 }
 
+
 restoreBlueprint <- function(blueprint) {
   blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
     p$groups <- lapply(p$groups, function(g) {
@@ -209,9 +207,11 @@ restoreBlueprint <- function(blueprint) {
   return(blueprint)
 }
 
+
 blueprintToJSON <- function(blueprint, pretty = FALSE) {
   jsonlite::toJSON(blueprint, pretty = pretty)
 }
+
 
 blueprintFromJSON <- function(filename=NULL, text=NULL) {
   if (!is.null(filename) && !is.null(text))
@@ -276,6 +276,7 @@ traverseInputLayout <- function(layout, callback = function(x, d) x, flatten = F
   return(layout)
 }
 
+
 updateInputLayoutItem <- function(layout, item, ancestry = c(), name = NULL) {
   if (is.null(name))
     path <- c(ancestry, item$name)
@@ -297,7 +298,6 @@ updateInputLayoutItem <- function(layout, item, ancestry = c(), name = NULL) {
 
   return(layout)
 }
-
 
 
 getInputs <- function(blueprint) {
