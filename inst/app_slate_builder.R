@@ -13,13 +13,13 @@ layoutToTree <- function(layout, selected = "") {
     groups <- lapply(p$groups, function(g) {
       inputs <- lapply(g$inputs, function(i) {
         structure("", sttype = i$type, stclass = "input",
-                  stinfo = i, stselected = i$id == selected)
+                  stinfo = i$id, stselected = i$id == selected)
       }) %>% set_names(sapply(g$inputs, "[[", "name"))
       structure(inputs, sttype = "group", stclass = "group", stopened = TRUE,
-                stinfo = g[ !(names(g) == "inputs") ], stselected = g$id == selected)
+                stinfo = g$id, stselected = g$id == selected)
     }) %>% set_names(sapply(p$groups, "[[", "name"))
     structure(groups, sttype = "page", stclass = "page", stopened = TRUE,
-              stinfo = p[ !(names(p) == "groups") ], stselected = p$id == selected)
+              stinfo = p$id, stselected = p$id == selected)
   }) %>% set_names(sapply(layout$pages, "[[", "name"))
 
   if (selected == "")
@@ -29,112 +29,47 @@ layoutToTree <- function(layout, selected = "") {
 }
 
 
-#' Convert jstree to blueprint layout
-#'
-#' @description
-#' Must be carefull with JS transformations. Character vectors are converted
-#' to lists... :(
-#' In the future it might be a good idea to store node data separately from the tree.
-#'
-#' @param tree
-#'
-#' @return
-#' @export
-#'
-#' @examples
-treeToLayout <- function(tree) {
-  pages <- lapply(tree, function(p) {
-    page <- attr(p, "stinfo")
+treeToLayout <- function(tree, flat.layout) {
+  layout <- inputLayout()
+
+  layout$pages <- lapply(tree, function(p) {
+    page <- flat.layout[[ attr(p, "stinfo") ]]
 
     if (length(names(p)) == 0)
-      p$groups <- list()
+      page$groups <- list()
     else
       page$groups <- lapply(p, function(g) {
-        group <- attr(g, "stinfo")
-        group$name <- ""
+        group <- flat.layout[[ attr(g, "stinfo") ]]
 
         if (length(names(g)) == 0)
           group$inputs <- list()
         else
           group$inputs <- lapply(g, function(i) {
-            item <- attr(i, "stinfo")
-            #item$choices <- as.character(item$choices)
-            item$wizards <- as.character(item$wizards)
-            item
+            flat.layout[[ attr(i, "stinfo") ]]
           }) %>% set_names(sapply(., "[[", "name"))
 
         return(group)
-      }) %>% set_names(paste0("group_", 1:length(.)))
+      }) %>% set_names(sapply(., "[[", "name"))
 
     return(page)
   }) %>% set_names(sapply(., "[[", "name"))
 
-  return(list(pages = pages))
+  return(layout)
 }
 
 
-fixTree <- function(tree) {
-  tree <- lapply(tree, function(x) {
-    ax <- attributes(x)
-
-    if (length(names(x)) > 0)
-      x <- fixTree(x)
-
-    attributes(x) <- ax
-    attr(x, "sttype") <- attr(x, "stclass")
-
-    return(x)
-  }) %>% set_names(names(tree))
-
-  return(tree)
-}
-
-
-addItemToTree <- function(tree, item, path = character(0), after=NULL, name=NULL) {
-  node <- structure("", sttype = item$type, stclass = item$type,
-                    stselected = FALSE, stopened = TRUE,
-                    stinfo = item)
-
-  if (is.null(name)) {
-    name <- item$name
-  }
-
-  if (is.null(after)) {
-    after <- if (length(path) > 0) length(names(tree[[ path ]])) else length(names(tree))
-  }
-
-  if (length(path) > 0) {
-    atts <- attributes(tree[[ path ]])
-
-    if (length(names(tree[[ path ]])) > 0)
-      tree[[ path ]] <- append(tree[[ path ]], list(node), after)
-    else
-      tree[[ path ]] <- list(node)
-
-    attributes(tree[[ path ]]) <- atts
-    names(tree[[ path ]])[ after + 1 ] <- name
-  } else {
-    tree <- append(tree, list(node))
-    names(tree)[ after + 1 ] <- name
-  }
-
-  return(tree)
-}
-
-
-
-
-updateTreeItem <- function(tree, item, path) {
-  attr(tree[[ path ]], "stinfo") <- item
-
-  ancestry <- path[ 0:(length(path) - 1) ]
-
-  if (length(ancestry) > 0)
-    names(tree[[ ancestry ]]) <- sapply(tree[[ ancestry ]], function(x) attr(x, "stinfo")$name)
-  else
-    names(tree) <- sapply(tree, function(x) attr(x, "stinfo")$name)
-
-  return(tree)
+printTree <- function(tree) {
+  invisible(lapply(tree, function(p) {
+    print(attr(p, "stinfo"))
+    if (length(names(p)) > 0)
+      lapply(p, function(g) {
+        print(paste0("  ", attr(g, "stinfo")))
+        if (length(names(g)) > 0)
+          lapply(g, function(i) {
+            print(paste0("    ", attr(i, "stinfo")))
+          })
+      })
+  }))
 }
 
 
@@ -553,7 +488,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       # to ensure all groups have unique names
       global.options$group.name.generator <- sequenceGenerator("group")
 
-      input.layout <- traverseInputLayout(bprint$input.layout, function(x) {
+      input.layout <- traverseInputLayout(bprint$input.layout, function(x, ...) {
         if (x$type == "group")
           x$name <- global.options$group.name.generator()
 
@@ -774,11 +709,18 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     # Inputs tree output
     output$layout_tree <- shinyTree::renderTree({
-      req(isolate(blueprint.inputs()))
+      req(blueprint.inputs())
 
-      print("redraw")
+      print("redraw tree")
 
-      tree <- layoutToTree(blueprint.inputs(), selected = isolate(active.item.id()$id))
+      isolate(active <- active.item())
+
+      if(!is.null(active))
+        selected <- active$item$id
+      else
+        selected <- ""
+
+      tree <- layoutToTree(blueprint.inputs(), selected = selected)
     })
     outputOptions(output, "layout_tree", suspendWhenHidden = FALSE)
 
@@ -789,28 +731,40 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       req(classid <- shinyTree::get_selected(input$layout_tree, format = "classid")[[1]])
       isolate(current.id <- active.item.id()$id)
 
-      print("update active item")
-
       # update active item
       if (sel != current.id) {
         active.item.id(list(
           time = Sys.time(),
           id = as.character(sel)
         ))
+
+        item <- flat.input.layout()[[ paste0(attr(classid, "stclass"), "_", sel) ]]
+
+        active.item(list(
+          ancestry = attr(sel, "ancestry"),
+          item = item
+        ))
+
+        pprint("update active item:", active.item()$item$name)
       }
 
-      item <- flat.input.layout()[[ paste0(attr(classid, "stclass"), "_", sel) ]]
+      # handle drag drag-and-drop reordering
+      layout <- blueprint.inputs()
+      flat <- flat.input.layout()
+      tree <- input$layout_tree
 
-      active.item(list(
-        ancestry = attr(sel, "ancestry"),
-        item = item
-      ))
+      # compute layout from tree
+      layout <- treeToLayout(tree, flat)
+
+      if (!identical(layout, blueprint.inputs())) {
+        blueprint.inputs(layout)
+      }
     })
 
 
     # observe selected item, and enable or disable buttons elements
     observe({
-      print("active item: update buttons")
+      print("update buttons")
       req(item <- active.item()$item)
 
       if (is.null(item)) {
@@ -874,6 +828,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
           blueprint.inputs(updateInputLayoutItem(blueprint.inputs(), new.item, path))
         })
     })
+
 
     # handle rename item button
     observeEvent(input$layout_rename, {
@@ -943,6 +898,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       }
     })
 
+
     observe({
       input$input_id
 
@@ -950,6 +906,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       shinyjs::toggle("input_default", condition = (input$input_type != "logical"))
       shinyjs::toggle("input_default_logical", condition = input$input_type == "logical")
     })
+
 
     choices.to.list <- function(choices) {
       if (all(grepl("=", choices))) {
@@ -960,13 +917,12 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       }
     }
 
+
     updateInputVariable <- function(var.name, input.name,
                                     null.value = "",
                                     transform.fun = identity) {
       req(active <- active.item())
-      req(!is.null(active) && input$input_id == active$id)
-      req(!identical(active$item[[ var.name ]], input[[ input.name ]]))
-      req(tree <- input$layout_tree)
+      req(!identical(active$item[[ var.name ]], transform.fun(input[[ input.name ]])))
 
       new.val <- if (is.null(input[[ input.name ]])) null.value else input[[ input.name ]]
 
@@ -975,8 +931,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       active$item[[ var.name ]] <- transform.fun(new.val)
 
       path <- c(active$ancestry, active$item$name)
-      tree <- fixTree(updateTreeItem(tree, active$item, path))
-      shinyTree::updateTree(session, "layout_tree", tree)
+      blueprint.inputs(updateInputLayoutItem(blueprint.inputs(), active$item, path))
     }
 
     observeEvent(input$page_description, updateInputVariable("description", "page_description"))
@@ -1010,6 +965,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
                         selected = active$type)
       updateTextInput(session, "output_id", value = input$select_output)
     })
+
 
     updateOutputVariable <- function(var.name, input.name) {
       req(sel <- input$select_output)
