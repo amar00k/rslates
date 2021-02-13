@@ -100,7 +100,6 @@ slateServer <- function(input, output, session,
     )
   }
 
-
   # extract inputs from layout and update values
   input.list <- reactive({
     inputs <- lapply(blueprint$input.layout$pages, function(p) {
@@ -178,18 +177,14 @@ slateServer <- function(input, output, session,
     global.options$ace.theme
 
     for (x in blueprint$output) {
-      obs <- output.handlers[[ x$type ]]$observer(x$name, session, blueprint, input.list, slate.envir, global.options)
+      output.handlers[[ x$type ]]$observer(x$name, session, blueprint, input.list, slate.envir, global.options)
     }
   })
 
 
   # initialize input observers
-  for (i in getInputs(blueprint)) {
-    obs <- input.handlers[[ i$input.type ]]$create.observers(session, i$id)
-
-    if (length(obs) > 0) {
-      observers <- append(observers, obs)
-    }
+  for (x in getInputs(blueprint)) {
+    observers[[ x$id ]] <- input.handlers[[ i$input.type ]]$create.observer(session, i$id)
   }
 
 
