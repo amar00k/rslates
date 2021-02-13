@@ -3,7 +3,6 @@
 
 <!-- badges: start -->
 [![Travis build status](https://travis-ci.com/amar00k/rslates.svg?branch=master)](https://travis-ci.com/amar00k/rslates)
-
 [![codecov](https://codecov.io/gh/amar00k/rslates/branch/master/graph/badge.svg?token=ZMGTRQLZJD)](https://codecov.io/gh/amar00k/rslates)
 <!-- badges: end -->
 
