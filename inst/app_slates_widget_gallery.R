@@ -17,7 +17,12 @@ slatesWidgetGalleryApp <- function() {
     slateInput("true_or_false", "logical", default = TRUE,
                description = "A logical input."),
     slateInput("letter", "choices", choices = c(LETTERS), default = "S",
-               description = "A single-choice choices input.")
+               description = "A single-choice select input."),
+    slateInput("letters", "choices", choices = c(LETTERS), default = c("S", "L", "A", "T", "E", "S"),
+               multiple = TRUE, description = "A multiple-choice select input."),
+    slateInput("anything", "free-choices", choices = c("write", "something", "or choose this", "or this"),
+               default = c("write", "something"),
+               multiple = TRUE, description = "A multiple-choice select input that allows arbitrary entries.")
   ) %>% set_names(sapply(., "[[", "name"))
 
   widgetGalleryUI <- function(id = NULL) {

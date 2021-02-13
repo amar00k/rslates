@@ -42,7 +42,7 @@ input.handlers <- list(
   logical = input_handler(
     create.ui = function(id, x) {
       # checkboxInput(id, label = label, value = as.logical(value))
-      slatesSelectInput(id, label = x$label,
+      slatesSelectInput(id, label = x$name,
                   choices = c(TRUE, FALSE), selected = x$value,
                   wizards = x$wizards)
     },
@@ -53,7 +53,7 @@ input.handlers <- list(
   ),
   character = input_handler(
     create.ui = function(id, x) {
-      slatesTextInput(id, label = x$label, value = x$value, wizards = x$wizards)
+      slatesTextInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       updateTextInput(session, inputId = id, ...)
@@ -61,7 +61,7 @@ input.handlers <- list(
   ),
   numeric = input_handler(
     create.ui = function(id, x) {
-      slatesNumericInput(id, label = x$label, value = x$value, wizards = x$wizards)
+      slatesNumericInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       updateNumericInput(session, inputId = id, ...)
@@ -69,7 +69,7 @@ input.handlers <- list(
   ),
   expression = input_handler(
     create.ui = function(id, x) {
-      slatesExpressionInput(id, label = x$label, value = x$value, wizards = x$wizards)
+      slatesExpressionInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       updateTextInput(session, inputId = id, ...)
@@ -89,12 +89,31 @@ input.handlers <- list(
   ),
   choices = input_handler(
     create.ui = function(id, x) {
-      slatesSelectInput(id, label = x$label, selected = x$value,
-                        choices = x$choices, multiple = FALSE,
+      multiple <- if (is.null(x$multiple)) FALSE else x$multiple
+
+      slatesSelectInput(id, label = x$name, selected = x$value,
+                        choices = x$choices, multiple = multiple,
                         wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       updateSelectInput(session, inputId = id, ...)
+    }
+  ),
+  `free-choices` = input_handler(
+    create.ui = function(id, x) {
+      multiple <- if (is.null(x$multiple)) FALSE else x$multiple
+
+      selectizeInput(
+        id, label = x$name, choices = x$choices,
+        selected = x$value, multiple = multiple,
+        options = list(
+          delimiter = '',
+          create = "function(input) { return { value: input, text: input } }"
+        )
+      )
+    },
+    update.ui = function(session, id, ...) {
+      # updateSelectInput(session, inputId = id, ...)
     }
   ),
   numeric4 = input_handler(
