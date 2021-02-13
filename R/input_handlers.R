@@ -28,22 +28,23 @@ isValidExpression <- function(expr) {
 input_handler <- function(create.ui = function(...) { tagList() },
                           update.ui = function(...) {},
                           get.value = function(input, session, ...) { session$input[[ input$id ]] },
-                          create.observers = function(...) {}) {
+                          create.observer = function(...) {}) {
   list(
     create.ui = create.ui,
     update.ui = update.ui,
     get.value = get.value,
-    create.observers = create.observers
+    create.observer = create.observer
   )
 }
 
 
 input.handlers <- list(
   logical = input_handler(
-    create.ui = function(id, label, value, options) {
+    create.ui = function(id, x) {
       # checkboxInput(id, label = label, value = as.logical(value))
-      slatesSelectInput(id, label = label,
-                  choices = c(TRUE, FALSE), selected = value, wizards = options$wizards)
+      slatesSelectInput(id, label = x$label,
+                  choices = c(TRUE, FALSE), selected = x$value,
+                  wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       #updateCheckboxInput(session, inputId = id, ...)
@@ -51,32 +52,32 @@ input.handlers <- list(
     }
   ),
   character = input_handler(
-    create.ui = function(id, label, value, options) {
-      slatesTextInput(id, label = label, value = value, wizards = options$wizards)
+    create.ui = function(id, x) {
+      slatesTextInput(id, label = x$label, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       updateTextInput(session, inputId = id, ...)
     }
   ),
   numeric = input_handler(
-    create.ui = function(id, label, value, options) {
-      slatesNumericInput(id, label = label, value = value, wizards = options$wizards)
+    create.ui = function(id, x) {
+      slatesNumericInput(id, label = x$label, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       updateNumericInput(session, inputId = id, ...)
     }
   ),
   expression = input_handler(
-    create.ui = function(id, label, value, options) {
-      slatesExpressionInput(id, label = label, value = value, wizards = options$wizards)
+    create.ui = function(id, x) {
+      slatesExpressionInput(id, label = x$label, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       updateTextInput(session, inputId = id, ...)
     },
-    create.observers = function(session, id) {
+    create.observer = function(session, id) {
       my_id <- id
 
-      obs <- observe({
+      observe({
         shinyjs::removeClass(my_id, "invalid-expression")
 
         req(expr <- session$input[[ my_id ]])
@@ -84,23 +85,21 @@ input.handlers <- list(
         if (!isValidExpression(expr))
           shinyjs::addClass(my_id, "invalid-expression")
       })
-
-      return(list(obs))
     }
   ),
   choices = input_handler(
-    create.ui = function(id, label, value, options) {
-      slatesSelectInput(id, label = label, selected = value,
-                        choices = options$choices, multiple = FALSE,
-                        wizards = options$wizards)
+    create.ui = function(id, x) {
+      slatesSelectInput(id, label = x$label, selected = x$value,
+                        choices = x$choices, multiple = FALSE,
+                        wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       updateSelectInput(session, inputId = id, ...)
     }
   ),
   numeric4 = input_handler(
-    create.ui = function(id, label, value, options) {
-      slatesNumeric4Input(id, label = label, value = value, wizards = options$wizards)
+    create.ui = function(id, x) {
+      slatesNumeric4Input(id, label = x$label, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       #updateNumericInput(session, inputId = id, ...)
@@ -128,9 +127,7 @@ dataset.handlers <- list(
 
 
 createInput <- function(input, ns = identity) {
-  input.handlers[[ input$input.type ]]$create.ui(
-    ns(input$id), input$name, input$value, input
-  )
+  input.handlers[[ input$input.type ]]$create.ui(ns(input$id), input)
 }
 
 
