@@ -14,6 +14,8 @@ slatesWidgetGalleryApp <- function() {
                               Try entering an invalid expression."),
     slateInput("number", "numeric", default = "42",
                description = "A simple numeric input. Can be identified by its rounded borders."),
+    slateInput("vector4", "numeric4", default = c(0,1,2,3),
+               description = "A numeric input that requires four values."),
     slateInput("true_or_false", "logical", default = TRUE,
                description = "A logical input."),
     slateInput("letter", "choices", choices = c(LETTERS), default = "S",

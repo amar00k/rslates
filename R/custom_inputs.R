@@ -124,11 +124,20 @@ slatesNumeric4Input <- function(id, label, value = c(0,0,0,0), ..., wizards = NU
       label
     ),
     tags$div(
-      class = "slates-flow-4",
-      tags$input(id = paste0(id, "-1"), type = "number", class = "form-control", value = value[1]),
-      tags$input(id = paste0(id, "-2"), type = "number", class = "form-control", value = value[2]),
-      tags$input(id = paste0(id, "-3"), type = "number", class = "form-control", value = value[3]),
-      tags$input(id = paste0(id, "-4"), type = "number", class = "form-control", value = value[4])
+      class = "numeric-input",
+      style = "position: relative;",
+      tags$input(type = "text", class = "form-control", style = "position: absolute; z-index: -1;"),
+      tags$div(
+        #class = "slates-flow-4",
+        style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
+        tags$input(id = paste0(id, "-1"), type = "number", class = "form-control numeric4-input", value = value[1]),
+        tags$span(","),
+        tags$input(id = paste0(id, "-2"), type = "number", class = "form-control numeric4-input", value = value[2]),
+        tags$span(","),
+        tags$input(id = paste0(id, "-3"), type = "number", class = "form-control numeric4-input", value = value[3]),
+        tags$span(","),
+        tags$input(id = paste0(id, "-4"), type = "number", class = "form-control numeric4-input", value = value[4])
+      )
     )
   )
 

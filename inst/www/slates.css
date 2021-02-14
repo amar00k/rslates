@@ -172,8 +172,27 @@
   border-bottom-width: 0.25em;
 }
 
-.numeric-input > input {
+.numeric-input  input {
   border-radius: 1.5em;
+}
+
+
+input.numeric4-input::-webkit-outer-spin-button,
+input.numeric4-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number].numeric4-input {
+  -moz-appearance: textfield;
+}
+
+input.numeric4-input {
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+  padding: 0;
+  margin: 4px;
+  height: fit-content;
 }
 
 .invalid-expression, .invalid-expression:focus {
