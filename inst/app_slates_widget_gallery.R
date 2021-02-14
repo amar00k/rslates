@@ -6,7 +6,7 @@ slatesWidgetGalleryApp <- function() {
   default.theme <- "solar"
   default.ace.theme <- "twilight"
 
-  inputs <- list(
+  input.list <- list(
     slateInput("text", "character", default = "Some text",
                description = "A simple text input."),
     slateInput("expr", "expression", default = "rep(1:10, 2)",
@@ -29,51 +29,36 @@ slatesWidgetGalleryApp <- function() {
                multiple = TRUE, description = "A multiple-choice select input that allows arbitrary entries.")
   ) %>% set_names(sapply(., "[[", "name"))
 
-  widgetGalleryUI <- function(id = NULL) {
-    if (is.null(id))
-      ns <- identity
-    else
-      ns <- NS(id)
 
-    inputs.ui <- tagList(
-      createInputGroup(inputGroup(name = "inputs", layout = "flow-3", inputs = inputs, ns = ns))
-    )
-
-    outputs.ui <- tagList()
-
-    fluidPage(
-      shinyjs::useShinyjs(),
-      shiny::bootstrapLib(bslib::bs_theme(bootswatch = default.theme, version = "4")),
-      shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
-      thematic::thematic_shiny(),
-      title = "Slates Widget Gallery",
-      titlePanel("Slates Widget Gallery"),
-      sidebarLayout(
-        sidebarPanel = sidebarPanel(
-          width = 2,
-          tagList(
-            selectInput(ns("select_theme"),
-                        label = "Theme",
-                        choices = bslib::bootswatch_themes(),
-                        selected = default.theme),
-            selectInput(ns("select_ace_theme"),
-                        label = "Ace Editor Theme",
-                        choices = shinyAce::getAceThemes(),
-                        selected = default.ace.theme)
-          )
-        ),
-        mainPanel = mainPanel(
-          tabsetPanel(
-            tabPanel(title = "Inputs", tags$div(class = "container p-3", inputs.ui)),
-            tabPanel(title = "Outputs", tags$div(class = "container p-3", outputs.ui))
-          )
+  ui <- fluidPage(
+    shinyjs::useShinyjs(),
+    shiny::bootstrapLib(bslib::bs_theme(bootswatch = default.theme, version = "4")),
+    shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
+    thematic::thematic_shiny(),
+    title = "Slates Widget Gallery",
+    titlePanel("Slates Widget Gallery"),
+    sidebarLayout(
+      sidebarPanel = sidebarPanel(
+        width = 2,
+        tagList(
+          selectInput("select_theme",
+                      label = "Theme",
+                      choices = bslib::bootswatch_themes(),
+                      selected = default.theme),
+          selectInput("select_ace_theme",
+                      label = "Ace Editor Theme",
+                      choices = shinyAce::getAceThemes(),
+                      selected = default.ace.theme)
         )
+      ),
+      mainPanel = mainPanel(
+        widgetGalleryUI(id = "gallery", input.list = input.list)
       )
     )
-  }
+  )
 
 
-  widgetGalleryServer <- function(input, output, session) {
+  server <- function(input, output, session) {
     global.options <- reactiveValues(ace.theme = default.ace.theme)
     global.options$group.name.generator <- sequenceGenerator("group")
 
@@ -96,22 +81,13 @@ slatesWidgetGalleryApp <- function() {
       }
     })
 
-    #
-    # Handlers
-    #
-
-    # initialize input observers
-    for (x in inputs) {
-      input.handlers[[ x$input.type ]]$create.observer(session, x$id)
-    }
-
-
+    mod <- callModule(widgetGalleryServer, id = "gallery", input.list, global.options)
   }
 
   if (options()$rslates.run.themer == TRUE)
-    bslib::run_with_themer(shiny::shinyApp(widgetGalleryUI(), widgetGalleryServer))
+    bslib::run_with_themer(shiny::shinyApp(ui, server))
   else
-    shiny::shinyApp(widgetGalleryUI(), widgetGalleryServer)
+    shiny::shinyApp(ui, server)
 }
 
 slatesWidgetGalleryApp()
