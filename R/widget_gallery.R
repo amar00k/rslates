@@ -18,19 +18,18 @@ widgetGalleryUI <- function(id, input.list) {
 }
 
 
+widgetGalleryServer <- function(id, input.list, global.options = NULL) {
+  moduleServer(id, function(input, output, session) {
+    # initialize input observers
+    for (x in input.list) {
+      input.handlers[[ x$input.type ]]$create.observer(session, x$id)
+    }
 
-widgetGalleryServer <- function(input, output, session, input.list, global.options) {
-
-  # initialize input observers
-  for (x in input.list) {
-    input.handlers[[ x$input.type ]]$create.observer(session, x$id)
+    observeEvent(input$input_expr, {
+      print("hi there")
+    })
   }
-
-  observeEvent(input$input_expr, {
-    print("hi there")
-  })
-
-
+  )
 }
 
 

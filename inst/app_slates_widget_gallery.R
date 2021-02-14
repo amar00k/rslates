@@ -81,7 +81,7 @@ slatesWidgetGalleryApp <- function() {
       }
     })
 
-    mod <- callModule(widgetGalleryServer, id = "gallery", input.list, global.options)
+    widgetGalleryServer("gallery", input.list, global.options)
   }
 
   if (options()$rslates.run.themer == TRUE)
