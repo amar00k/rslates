@@ -95,8 +95,18 @@ sequenceGenerator <- function(prefix = "seq") {
 }
 
 
+captureSessionInfo <- function(width = 80) {
+  # set console width
+  opt.width <- options()$width
+  options(width = width)
 
+  res <- capture.output(sessionInfo())
 
+  # restore console width
+  options(width = opt.width)
+
+  return(res)
+}
 
 
 

@@ -1,18 +1,5 @@
 
 
-capture.session.info <- function(width = 80) {
-  # set console width
-  opt.width <- options()$width
-  options(width = width)
-
-  res <- capture.output(sessionInfo())
-
-  # restore console width
-  options(width = opt.width)
-
-  return(res)
-}
-
 
 #' Editor Panel UI Function
 #'
@@ -185,7 +172,7 @@ slates_editUI <- function(id, project.data) {
         tags$div(class="editor-section-sep"),
         tags$div(
           class="editor-section-contents",
-          HTML(paste(capture.session.info(320), collapse="<br>"))
+          HTML(paste(captureSessionInfo(320), collapse="<br>"))
         )
       )
     )

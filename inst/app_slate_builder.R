@@ -410,7 +410,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
             uiOutput(ns("slate_ui")),
           ),
           tags$h3("Session Info"),
-          HTML(paste(capture.session.info(320), collapse="<br>"))
+          HTML(paste(captureSessionInfo(320), collapse="<br>"))
         )
       )
     )
