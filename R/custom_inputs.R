@@ -114,6 +114,33 @@ slatesNumericInput <- function(id, ..., wizards = NULL) {
 }
 
 
+slatesNumeric2Input <- function(id, label, value = c(0,0), ..., wizards = NULL) {
+  input <- tags$div(
+    class = "form-group shiny-input-container",
+    tags$label(
+      class = "control-label",
+      id = paste0(id, "-label"),
+      `for` = id,
+      label
+    ),
+    tags$div(
+      class = "numeric-input",
+      style = "position: relative;",
+      tags$input(type = "text", class = "form-control", style = "position: absolute; z-index: -1;"),
+      tags$div(
+        #class = "slates-flow-4",
+        style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
+        tags$input(id = paste0(id, "-1"), type = "number", class = "form-control numeric4-input", value = value[1]),
+        tags$span(","),
+        tags$input(id = paste0(id, "-2"), type = "number", class = "form-control numeric4-input", value = value[2]),
+      )
+    )
+  )
+
+  return(input)
+}
+
+
 slatesNumeric4Input <- function(id, label, value = c(0,0,0,0), ..., wizards = NULL) {
   input <- tags$div(
     class = "form-group shiny-input-container",

@@ -116,6 +116,14 @@ input.handlers <- list(
       # updateSelectInput(session, inputId = id, ...)
     }
   ),
+  numeric2 = input_handler(
+    create.ui = function(id, x) {
+      slatesNumeric2Input(id, label = x$name, value = x$value, wizards = x$wizards)
+    },
+    update.ui = function(session, id, ...) {
+      #updateNumericInput(session, inputId = id, ...)
+    }
+  ),
   numeric4 = input_handler(
     create.ui = function(id, x) {
       slatesNumeric4Input(id, label = x$name, value = x$value, wizards = x$wizards)
