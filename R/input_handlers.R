@@ -77,12 +77,10 @@ input.handlers <- list(
     create.observer = function(session, id) {
       my_id <- id
 
-      observe({
+      observeEvent(session$input[[ my_id ]], {
         shinyjs::removeClass(my_id, "invalid-expression")
 
-        req(expr <- session$input[[ my_id ]])
-
-        if (!isValidExpression(expr))
+        if (!isValidExpression(session$input[[ my_id ]]))
           shinyjs::addClass(my_id, "invalid-expression")
       })
     }
