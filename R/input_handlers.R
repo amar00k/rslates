@@ -36,7 +36,8 @@ inputHandler <- function(create.ui = function(...) { tagList() },
                          get.value = function(x, session = NULL, value = NULL) {
                            if (is.null(value))
                              value <- session$input[[ x$id ]]
-                           return (value)
+
+                           return (as.character(value))
                          },
                          create.observer = function(...) {}) {
   list(
@@ -162,7 +163,10 @@ input.handlers <- list(
         })
       }
 
-      paste0("c(", paste(value, collapse = ", "), ")")
+      if (length(value) < 2)
+        value <- c(value, rep(NA, 2 - length(value)))
+
+      paste0("c(", paste(as.numeric(value), collapse = ", "), ")")
     }
   ),
   numeric4 = inputHandler(
@@ -179,7 +183,10 @@ input.handlers <- list(
         })
       }
 
-      paste0("c(", paste(value, collapse = ", "), ")")
+      if (length(value) < 4)
+        value <- c(value, rep(NA, 4 - length(value)))
+
+      paste0("c(", paste(as.numeric(value), collapse = ", "), ")")
     }
   )
 )
