@@ -21,6 +21,13 @@ quote.input <- function(x) {
 
 #' Define behaviour of an input type
 #'
+#' @description This function prepares a structure that defines all aspects of an
+#'   input type: UI creation, UI updating, observer function and string representation
+#'   of the input value.
+#'
+#' @param params.list list of parameters used by the input type. Each element of the list
+#'   describes a parameter and has the following members: name (pretty name of the parameter),
+#'   choices (vector of allowed values), default (default value when not specified).
 #' @param create.ui function used to create the input UI.
 #' @param update.ui function used to update the input UI.
 #' @param get.value function that transforms the current value of the input
@@ -31,7 +38,8 @@ quote.input <- function(x) {
 #' @export
 #'
 #' @examples
-inputHandler <- function(create.ui = function(...) { tagList() },
+inputHandler <- function(params.list = list(),
+                         create.ui = function(...) { tagList() },
                          update.ui = function(...) {},
                          get.value = function(x, session = NULL, value = NULL) {
                            if (is.null(value))
@@ -41,6 +49,7 @@ inputHandler <- function(create.ui = function(...) { tagList() },
                          },
                          create.observer = function(...) {}) {
   list(
+    params.list = params.list,
     create.ui = create.ui,
     update.ui = update.ui,
     get.value = get.value,
@@ -51,6 +60,10 @@ inputHandler <- function(create.ui = function(...) { tagList() },
 
 input.handlers <- list(
   logical = inputHandler(
+    params.list = list(
+      display.type = list(label = "Display Type", type = "choices",
+                          choices = c("select", "toggle"), default = "toggle")
+    ),
     create.ui = function(id, x) {
       # checkboxInput(id, label = label, value = as.logical(value))
       slatesSelectInput(id, label = x$name,
@@ -63,6 +76,8 @@ input.handlers <- list(
     }
   ),
   character = inputHandler(
+    params.list = list(
+    ),
     create.ui = function(id, x) {
       slatesTextInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
@@ -77,6 +92,8 @@ input.handlers <- list(
     }
   ),
   numeric = inputHandler(
+    params.list = list(
+    ),
     create.ui = function(id, x) {
       slatesNumericInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
@@ -85,6 +102,9 @@ input.handlers <- list(
     }
   ),
   expression = inputHandler(
+    params.list = list(
+      check.valid = list(label = "Check Valid Expression", type = "logical", default = TRUE)
+    ),
     create.ui = function(id, x) {
       slatesExpressionInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
@@ -103,12 +123,29 @@ input.handlers <- list(
     }
   ),
   choices = inputHandler(
+    params.list = list(
+      choices = list(label = "Choices", type = "list", default = ""),
+      multiple = list(label = "Allow Multiple Values", type = "logical", default = FALSE),
+      custom = list(label = "Allow Custom Value(s)", type = "logical", default = FALSE)
+    ),
     create.ui = function(id, x) {
       multiple <- if (is.null(x$multiple)) FALSE else x$multiple
+      custom <- if (is.null(x$custom)) FALSE else x$custom
 
-      slatesSelectInput(id, label = x$name, selected = x$value,
-                        choices = x$choices, multiple = multiple,
-                        wizards = x$wizards)
+      if (!custom) {
+        slatesSelectInput(id, label = x$name, selected = x$value,
+                          choices = x$choices, multiple = multiple,
+                          wizards = x$wizards)
+      } else {
+        selectizeInput(
+          id, label = x$name, selected = x$value,
+          choices = x$choices, multiple = multiple,
+          options = list(
+            delimiter = '',
+            create = "function(input) { return { value: input, text: input } }"
+          )
+        )
+      }
     },
     update.ui = function(session, id, ...) {
       updateSelectInput(session, inputId = id, ...)
@@ -123,33 +160,9 @@ input.handlers <- list(
         paste0('"', value, '"')
     }
   ),
-  `free-choices` = inputHandler(
-    create.ui = function(id, x) {
-      multiple <- if (is.null(x$multiple)) FALSE else x$multiple
-
-      selectizeInput(
-        id, label = x$name, choices = x$choices,
-        selected = x$value, multiple = multiple,
-        options = list(
-          delimiter = '',
-          create = "function(input) { return { value: input, text: input } }"
-        )
-      )
-    },
-    update.ui = function(session, id, ...) {
-      # updateSelectInput(session, inputId = id, ...)
-    },
-    get.value = function(x, session = NULL, value = NULL) {
-      if (is.null(value))
-        value <- session$input[[ x$id ]]
-
-      if (length(value) > 1)
-        paste0("c(", paste0('"', value, '"', collapse = ", "), ")")
-      else
-        paste0('"', value, '"')
-    }
-  ),
   numeric2 = inputHandler(
+    params.list = list(
+    ),
     create.ui = function(id, x) {
       slatesNumeric2Input(id, label = x$name, value = x$value, wizards = x$wizards)
     },
@@ -170,6 +183,8 @@ input.handlers <- list(
     }
   ),
   numeric4 = inputHandler(
+    params.list = list(
+    ),
     create.ui = function(id, x) {
       slatesNumeric4Input(id, label = x$name, value = x$value, wizards = x$wizards)
     },
