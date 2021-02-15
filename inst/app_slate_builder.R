@@ -158,6 +158,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         )
       ),
       column(
+        style = "height: 400px; overflow-y: auto;",
         width = 8,
         #shinyjs::hidden(textInput(ns("output_id"), label = "")),
         #tags$h4(paste0(active$name)),
@@ -175,7 +176,6 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       column(
         width = 4,
         wellPanel(
-          style="overflow: auto;",
           shinyTree::shinyTree("layout_tree",
                                stripes = FALSE,
                                multiple = FALSE,
@@ -209,6 +209,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         )
       ),
       column(
+        style = "height: 400px; overflow-y: auto;",
         width = 8,
         shinyjs::hidden(textInput(ns("input_id"), label = "")),
         tabsetPanel(
@@ -280,6 +281,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         )
       ),
       column(
+        style = "height: 400px; overflow-y: auto;",
         width = 8,
         shinyjs::hidden(textInput(ns("output_id"), label = "")),
         #tags$h4(paste0(active$name)),
@@ -321,6 +323,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         )
       ),
       column(
+        style = "height: 400px; overflow-y: auto;",
         width = 8,
         shinyjs::hidden(textInput(ns("dataset_id"), label = "")),
         #tags$h4(paste0(active$name)),
@@ -385,7 +388,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
           fileInput(ns("load_blueprint"), label = "Load Blueprint"),
           tags$div(
             class = "card",
-            style = "height: 620px;",
+            #style = "height: 620px;",
             tags$div(
               class = "card-body",
               tags$div(
