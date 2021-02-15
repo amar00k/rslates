@@ -193,6 +193,7 @@ input.numeric4-input {
   padding: 0;
   margin: 4px;
   height: fit-content;
+  z-index: 1;
 }
 
 .invalid-expression, .invalid-expression:focus {
