@@ -62,6 +62,16 @@ widgetGalleryServer <- function(id, input.list, global.options = NULL) {
     }
 
 
+    inputs.table <- reactive({
+      inputs <- inputs()
+
+      data.frame(
+        Name = sapply(inputs, "[[", "name"),
+        Type = sapply(inputs, "[[", "input.type"),
+        Value = sapply(inputs, function(x) objectSummary(x$value))
+      )
+    })
+
     # output$input_table <- reactable::renderReactable({
     #   inputs <- inputs()
     #
@@ -79,15 +89,10 @@ widgetGalleryServer <- function(id, input.list, global.options = NULL) {
     #   )
     # })
 
-    output$input_table <- renderTable({
-      inputs <- inputs()
 
-      data.frame(
-        Name = sapply(inputs, "[[", "name"),
-        Id = sapply(inputs, "[[", "id"),
-        Type = sapply(inputs, "[[", "input.type"),
-        Value = sapply(inputs, function(x) objectSummary(x$value))
-      )
+
+    output$input_table <- renderTable({
+      inputs.table()
     })
 
 
