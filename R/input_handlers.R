@@ -27,7 +27,7 @@ isValidExpression <- function(expr) {
 #' @examples
 input_handler <- function(create.ui = function(...) { tagList() },
                           update.ui = function(...) {},
-                          get.value = function(x, session, ...) { session$input[[ x$id ]] },
+                          get.value = function(x, session) { session$input[[ x$id ]] },
                           create.observer = function(...) {}) {
   list(
     create.ui = create.ui,
@@ -57,7 +57,8 @@ input.handlers <- list(
     },
     update.ui = function(session, id, ...) {
       updateTextInput(session, inputId = id, ...)
-    }
+    },
+    get.value = function(x, session) { paste0('"', session$input[[ x$id ]], '"') }
   ),
   numeric = input_handler(
     create.ui = function(id, x) {
@@ -83,19 +84,6 @@ input.handlers <- list(
         if (!isValidExpression(session$input[[ my_id ]]))
           shinyjs::addClass(my_id, "invalid-expression")
       })
-    },
-    get.value = function(x, session, ...) {
-      is.valid <- isValidExpression(session$input[[ x$id ]])
-      late.eval <- if (is.null(x$late.eval)) FALSE else x$late.eval
-
-      if (!is.valid)
-        return(NULL)
-
-      if (late.eval == FALSE) {
-        eval(parse(text = session$input[[ x$id ]]), env = new.env())
-      } else {
-        parse(text = session$input[[ x$id ]])
-      }
     }
   ),
   choices = input_handler(
@@ -108,6 +96,14 @@ input.handlers <- list(
     },
     update.ui = function(session, id, ...) {
       updateSelectInput(session, inputId = id, ...)
+    },
+    get.value = function(x, session) {
+      vals <- session$input[[ x$id ]]
+
+      if (length(vals) > 1)
+        paste0("c(", paste0('"', vals, '"', collapse = ", "), ")")
+      else
+        paste0('"', vals, '"')
     }
   ),
   `free-choices` = input_handler(
@@ -125,6 +121,14 @@ input.handlers <- list(
     },
     update.ui = function(session, id, ...) {
       # updateSelectInput(session, inputId = id, ...)
+    },
+    get.value = function(x, session) {
+      vals <- session$input[[ x$id ]]
+
+      if (length(vals) > 1)
+        paste0("c(", paste0('"', vals, '"', collapse = ", "), ")")
+      else
+        paste0('"', vals, '"')
     }
   ),
   numeric2 = input_handler(
@@ -134,10 +138,12 @@ input.handlers <- list(
     update.ui = function(session, id, ...) {
       #updateNumericInput(session, inputId = id, ...)
     },
-    get.value = function(x, session, ...) {
-      sapply(1:2, function(i) {
+    get.value = function(x, session) {
+      vals <- sapply(1:2, function(i) {
         session$input[[ paste0(x$id, "_", i) ]]
       })
+
+      paste0("c(", paste(vals, collapse = ", "), ")")
     }
   ),
   numeric4 = input_handler(
@@ -147,10 +153,12 @@ input.handlers <- list(
     update.ui = function(session, id, ...) {
       #updateNumericInput(session, inputId = id, ...)
     },
-    get.value = function(x, session, ...) {
-      sapply(1:4, function(i) {
+    get.value = function(x, session) {
+      vals <- sapply(1:4, function(i) {
         session$input[[ paste0(x$id, "_", i) ]]
       })
+
+      paste0("c(", paste(vals, collapse = ", "), ")")
     }
   )
 )
