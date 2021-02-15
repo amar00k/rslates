@@ -238,22 +238,24 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
             #tags$h4(paste0(item$name, " (Input)")),
             tags$hr(),
             tags$div(
-              class = "slates-flow-3",
+              class = "slates-flow-2",
               selectInput(ns("input_type"), label = "Type",
                           selectize = TRUE,
                           choices = names(input.handlers)),
-              selectizeInput(
-                ns("input_choices"), label = "Choices", choices = character(0),
-                multiple = TRUE,
-                options = list(
-                  delimiter = '',
-                  create = "function(input) { return { value: input, text: input } }"
-                )
-              ),
-              textInput(ns("input_default"), label = "Default Value"),
-              selectInput(ns("input_default_logical"), label = "Default Value",
-                          choices = c(TRUE, FALSE)),
+              uiOutput(ns("input_default_ui"))
+              # selectizeInput(
+              #   ns("input_choices"), label = "Choices", choices = character(0),
+              #   multiple = TRUE,
+              #   options = list(
+              #     delimiter = '',
+              #     create = "function(input) { return { value: input, text: input } }"
+              #   )
             ),
+              #textInput(ns("input_default"), label = "Default Value"),
+              #selectInput(ns("input_default_logical"), label = "Default Value",
+              #            choices = c(TRUE, FALSE)),
+
+            uiOutput(ns("input_specific_options")),
             selectizeInput(
               ns("input_wizards"), label = "Wizards",
               choices = names(wizard.list), multiple = TRUE
@@ -899,6 +901,54 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         updateSelectizeInput(session, "input_wizards", selected = item$wizards)
         updateTextAreaInput(session, "input_description", value = item$description)
       }
+    })
+
+    # the dynamic default value widget depends on input type
+    output$input_default_ui <- renderUI({
+      item <- active.item()$item
+      ns <- session$ns
+
+      item$name <- "Default Value"
+      item$value <- item$default
+      input.handlers[[ input$input_type ]]$create.ui(ns("input_default_test"), item)
+    })
+
+
+    # the dynamic input options depend on input type
+    output$input_specific_options <- renderUI({
+      item <- active.item()$item
+      ns <- session$ns
+
+      params <- input.handlers[[ input$input_type ]]$params.list
+
+      tags <- lapply(names(params), function(n) {
+        x <- params[[ n ]]
+        id <- paste0("input_", n)
+
+        switch(
+          x$type,
+          "list" = selectizeInput(
+            ns(id), label = x$label, choices = character(0),
+            multiple = TRUE,
+            options = list(
+              delimiter = '',
+              create = "function(input) { return { value: input, text: input } }"
+            )
+          ),
+          "choices" = selectInput(
+            ns(id), label = x$label,
+            choices = x$choices, selected = x$default
+          ),
+          "logical" = checkboxInput(
+            ns(id), label = x$label, value = x$default
+          )
+        )
+      })
+
+      div(
+        class = "slates-flow-3",
+        tags
+      )
     })
 
 
