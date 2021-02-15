@@ -184,7 +184,7 @@ slateServer <- function(input, output, session,
 
   # initialize input observers
   for (x in getInputs(blueprint)) {
-    observers[[ x$id ]] <- input.handlers[[ i$input.type ]]$create.observer(session, i$id)
+    observers[[ x$id ]] <- input.handlers[[ x$input.type ]]$create.observer(session, x$id)
   }
 
 
