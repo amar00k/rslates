@@ -52,14 +52,19 @@ slatesWidgetGalleryApp <- function() {
         )
       ),
       mainPanel = mainPanel(
-        widgetGalleryUI(id = "gallery", input.list = input.list)
+        widgetGalleryUI(id = "gallery", input.list = input.list),
+        tags$h3("Session Info"),
+        HTML(paste(captureSessionInfo(320), collapse="<br>"))
       )
     )
   )
 
 
   server <- function(input, output, session) {
-    global.options <- reactiveValues(ace.theme = default.ace.theme)
+    global.options <- reactiveValues(
+      ace.theme = default.ace.theme,
+      bslib.theme = getCurrentTheme()
+    )
     global.options$group.name.generator <- sequenceGenerator("group")
 
     #
@@ -78,6 +83,8 @@ slatesWidgetGalleryApp <- function() {
       if (!is.null(theme) && bslib::theme_bootswatch(theme) != input$select_theme) {
         theme <- bslib::bs_theme_update(theme, bootswatch = input$select_theme, version = "4")
         session$setCurrentTheme(theme)
+
+        global.options$bslib.theme <- theme
       }
     })
 
