@@ -14,21 +14,31 @@ isValidExpression <- function(expr) {
 }
 
 
+quote.input <- function(x) {
+  paste0('"', x, '"')
+}
+
 
 #' Define behaviour of an input type
 #'
 #' @param create.ui function used to create the input UI.
 #' @param update.ui function used to update the input UI.
-#' @param get.value function to get the current value of the input.
+#' @param get.value function that transforms the current value of the input
+#'   to the appropriate output string value. If value is provided, then
+#'   this value is used instead of the input element value.
 #'
 #' @return a list of functions to handle the the input type.
 #' @export
 #'
 #' @examples
-input_handler <- function(create.ui = function(...) { tagList() },
-                          update.ui = function(...) {},
-                          get.value = function(x, session) { session$input[[ x$id ]] },
-                          create.observer = function(...) {}) {
+inputHandler <- function(create.ui = function(...) { tagList() },
+                         update.ui = function(...) {},
+                         get.value = function(x, session = NULL, value = NULL) {
+                           if (is.null(value))
+                             value <- session$input[[ x$id ]]
+                           return (value)
+                         },
+                         create.observer = function(...) {}) {
   list(
     create.ui = create.ui,
     update.ui = update.ui,
@@ -39,7 +49,7 @@ input_handler <- function(create.ui = function(...) { tagList() },
 
 
 input.handlers <- list(
-  logical = input_handler(
+  logical = inputHandler(
     create.ui = function(id, x) {
       # checkboxInput(id, label = label, value = as.logical(value))
       slatesSelectInput(id, label = x$name,
@@ -51,16 +61,21 @@ input.handlers <- list(
       updateSelectInput(session, inputId = id, ...)
     }
   ),
-  character = input_handler(
+  character = inputHandler(
     create.ui = function(id, x) {
       slatesTextInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       updateTextInput(session, inputId = id, ...)
     },
-    get.value = function(x, session) { paste0('"', session$input[[ x$id ]], '"') }
+    get.value = function(x, session = NULL, value = NULL) {
+      if (is.null(value))
+        value <- session$input[[ x$id ]]
+
+      paste0('"', value, '"')
+    }
   ),
-  numeric = input_handler(
+  numeric = inputHandler(
     create.ui = function(id, x) {
       slatesNumericInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
@@ -68,7 +83,7 @@ input.handlers <- list(
       updateNumericInput(session, inputId = id, ...)
     }
   ),
-  expression = input_handler(
+  expression = inputHandler(
     create.ui = function(id, x) {
       slatesExpressionInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
@@ -86,7 +101,7 @@ input.handlers <- list(
       })
     }
   ),
-  choices = input_handler(
+  choices = inputHandler(
     create.ui = function(id, x) {
       multiple <- if (is.null(x$multiple)) FALSE else x$multiple
 
@@ -97,16 +112,17 @@ input.handlers <- list(
     update.ui = function(session, id, ...) {
       updateSelectInput(session, inputId = id, ...)
     },
-    get.value = function(x, session) {
-      vals <- session$input[[ x$id ]]
+    get.value = function(x, session = NULL, value = NULL) {
+      if (is.null(value))
+        value <- session$input[[ x$id ]]
 
-      if (length(vals) > 1)
-        paste0("c(", paste0('"', vals, '"', collapse = ", "), ")")
+      if (length(value) > 1)
+        paste0("c(", paste0('"', value, '"', collapse = ", "), ")")
       else
-        paste0('"', vals, '"')
+        paste0('"', value, '"')
     }
   ),
-  `free-choices` = input_handler(
+  `free-choices` = inputHandler(
     create.ui = function(id, x) {
       multiple <- if (is.null(x$multiple)) FALSE else x$multiple
 
@@ -122,51 +138,56 @@ input.handlers <- list(
     update.ui = function(session, id, ...) {
       # updateSelectInput(session, inputId = id, ...)
     },
-    get.value = function(x, session) {
-      vals <- session$input[[ x$id ]]
+    get.value = function(x, session = NULL, value = NULL) {
+      if (is.null(value))
+        value <- session$input[[ x$id ]]
 
-      if (length(vals) > 1)
-        paste0("c(", paste0('"', vals, '"', collapse = ", "), ")")
+      if (length(value) > 1)
+        paste0("c(", paste0('"', value, '"', collapse = ", "), ")")
       else
-        paste0('"', vals, '"')
+        paste0('"', value, '"')
     }
   ),
-  numeric2 = input_handler(
+  numeric2 = inputHandler(
     create.ui = function(id, x) {
       slatesNumeric2Input(id, label = x$name, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       #updateNumericInput(session, inputId = id, ...)
     },
-    get.value = function(x, session) {
-      vals <- sapply(1:2, function(i) {
-        session$input[[ paste0(x$id, "_", i) ]]
-      })
+    get.value = function(x, session = NULL, value = NULL) {
+      if (is.null(value)) {
+        value <- sapply(1:2, function(i) {
+          session$input[[ paste0(x$id, "_", i) ]]
+        })
+      }
 
-      paste0("c(", paste(vals, collapse = ", "), ")")
+      paste0("c(", paste(value, collapse = ", "), ")")
     }
   ),
-  numeric4 = input_handler(
+  numeric4 = inputHandler(
     create.ui = function(id, x) {
       slatesNumeric4Input(id, label = x$name, value = x$value, wizards = x$wizards)
     },
     update.ui = function(session, id, ...) {
       #updateNumericInput(session, inputId = id, ...)
     },
-    get.value = function(x, session) {
-      vals <- sapply(1:4, function(i) {
-        session$input[[ paste0(x$id, "_", i) ]]
-      })
+    get.value = function(x, session = NULL, value = NULL) {
+      if (is.null(value)) {
+        value <- sapply(1:4, function(i) {
+          session$input[[ paste0(x$id, "_", i) ]]
+        })
+      }
 
-      paste0("c(", paste(vals, collapse = ", "), ")")
+      paste0("c(", paste(value, collapse = ", "), ")")
     }
   )
 )
 
 
 dataset.handlers <- list(
-  file = input_handler(
-    get.value = function(s, session, ...) {
+  file = inputHandler(
+    get.value = function(s, session = NULL, value = NULL) {
       if (!is.null(s$data)) {
         gsub("\\\\", "/", s$data$datapath)
       } else {
@@ -174,8 +195,8 @@ dataset.handlers <- list(
       }
     }
   ),
-  standalone = input_handler(
-    get.value = function(s, session, ...) { NULL }
+  standalone = inputHandler(
+    get.value = function(s, session = NULL, value = NULL) { NULL }
   )
 )
 
