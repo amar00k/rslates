@@ -27,7 +27,7 @@ isValidExpression <- function(expr) {
 #' @examples
 input_handler <- function(create.ui = function(...) { tagList() },
                           update.ui = function(...) {},
-                          get.value = function(input, session, ...) { session$input[[ input$id ]] },
+                          get.value = function(x, session, ...) { session$input[[ x$id ]] },
                           create.observer = function(...) {}) {
   list(
     create.ui = create.ui,
@@ -83,6 +83,19 @@ input.handlers <- list(
         if (!isValidExpression(session$input[[ my_id ]]))
           shinyjs::addClass(my_id, "invalid-expression")
       })
+    },
+    get.value = function(x, session, ...) {
+      is.valid <- isValidExpression(session$input[[ x$id ]])
+      late.eval <- if (is.null(x$late.eval)) FALSE else x$late.eval
+
+      if (!is.valid)
+        return(NULL)
+
+      if (late.eval == FALSE) {
+        eval(parse(text = session$input[[ x$id ]]), env = new.env())
+      } else {
+        parse(text = session$input[[ x$id ]])
+      }
     }
   ),
   choices = input_handler(
@@ -120,6 +133,11 @@ input.handlers <- list(
     },
     update.ui = function(session, id, ...) {
       #updateNumericInput(session, inputId = id, ...)
+    },
+    get.value = function(x, session, ...) {
+      sapply(1:2, function(i) {
+        session$input[[ paste0(x$id, "_", i) ]]
+      })
     }
   ),
   numeric4 = input_handler(
@@ -128,6 +146,11 @@ input.handlers <- list(
     },
     update.ui = function(session, id, ...) {
       #updateNumericInput(session, inputId = id, ...)
+    },
+    get.value = function(x, session, ...) {
+      sapply(1:4, function(i) {
+        session$input[[ paste0(x$id, "_", i) ]]
+      })
     }
   )
 )
@@ -135,16 +158,16 @@ input.handlers <- list(
 
 dataset.handlers <- list(
   file = input_handler(
-    get.value = function(input, session, ...) {
-      if (!is.null(input$data)) {
-        gsub("\\\\", "/", input$data$datapath)
+    get.value = function(s, session, ...) {
+      if (!is.null(s$data)) {
+        gsub("\\\\", "/", s$data$datapath)
       } else {
         NULL
       }
     }
   ),
   standalone = input_handler(
-    get.value = function(input, session, ...) { NULL }
+    get.value = function(s, session, ...) { NULL }
   )
 )
 

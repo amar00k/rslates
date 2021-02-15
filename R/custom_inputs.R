@@ -130,9 +130,9 @@ slatesNumeric2Input <- function(id, label, value = c(0,0), ..., wizards = NULL) 
       tags$div(
         #class = "slates-flow-4",
         style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
-        tags$input(id = paste0(id, "-1"), type = "number", class = "form-control numeric4-input", value = value[1]),
+        tags$input(id = paste0(id, "_1"), type = "number", class = "form-control numeric4-input", value = value[1]),
         tags$span(","),
-        tags$input(id = paste0(id, "-2"), type = "number", class = "form-control numeric4-input", value = value[2]),
+        tags$input(id = paste0(id, "_2"), type = "number", class = "form-control numeric4-input", value = value[2]),
       )
     )
   )
@@ -157,13 +157,13 @@ slatesNumeric4Input <- function(id, label, value = c(0,0,0,0), ..., wizards = NU
       tags$div(
         #class = "slates-flow-4",
         style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
-        tags$input(id = paste0(id, "-1"), type = "number", class = "form-control numeric4-input", value = value[1]),
+        tags$input(id = paste0(id, "_1"), type = "number", class = "form-control numeric4-input", value = value[1]),
         tags$span(","),
-        tags$input(id = paste0(id, "-2"), type = "number", class = "form-control numeric4-input", value = value[2]),
+        tags$input(id = paste0(id, "_2"), type = "number", class = "form-control numeric4-input", value = value[2]),
         tags$span(","),
-        tags$input(id = paste0(id, "-3"), type = "number", class = "form-control numeric4-input", value = value[3]),
+        tags$input(id = paste0(id, "_3"), type = "number", class = "form-control numeric4-input", value = value[3]),
         tags$span(","),
-        tags$input(id = paste0(id, "-4"), type = "number", class = "form-control numeric4-input", value = value[4])
+        tags$input(id = paste0(id, "_4"), type = "number", class = "form-control numeric4-input", value = value[4])
       )
     )
   )
