@@ -49,7 +49,6 @@ slateInput <- function(name, input.type,
 
   input <- list(
     name = name,
-    id = paste0("input_", name),
     type = "input",
     long.name = long.name,
     description = description,
@@ -61,13 +60,18 @@ slateInput <- function(name, input.type,
 
   # add additional input parameters specified
   input <- c(input, list(...))
-  #args <- list(...)
-  #for (n in names(args))
-  #  input[[ n ]] <- args[[ n ]]
 
   # include type-specific default values that were not specified
   param.defaults <- sapply(input.handlers[[ input$input.type ]]$params.list, "[[", "default")
-  input <- c(input, param.defaults[ sapply(param.defaults, function(x) is.null(i[[ x ]])) ])
+
+  if (length(param.defaults) > 0) {
+    param.names <- names(param.defaults)
+    w <- sapply(param.names, function(x) is.null(input[[ x ]]))
+    input <- c(input, param.defaults[ w ])
+  }
+
+  # make sure the id is set
+  input$id <- paste0("input_", name)
 
   return (input)
 }
@@ -228,7 +232,7 @@ restoreBlueprint <- function(blueprint) {
   blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
     p$groups <- lapply(p$groups, function(g) {
       g$inputs <- lapply(g$inputs, function(i) {
-        i <- do.call(slateInput, i)
+        do.call(slateInput, i)
       })
       do.call(inputGroup, g)
     })

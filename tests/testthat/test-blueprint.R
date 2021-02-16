@@ -1,7 +1,5 @@
 
-
 blueprint <- blueprintFromJSON(system.file("blueprints/Scatterplot.json", package="rslates"))
-
 
 test_that("flattenInputLayout works", {
   layout <- blueprint$input.layout
