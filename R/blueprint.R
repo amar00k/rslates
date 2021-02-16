@@ -62,7 +62,7 @@ slateInput <- function(name, input.type,
   input <- c(input, list(...))
 
   # include type-specific default values that were not specified
-  param.defaults <- sapply(input.handlers[[ input$input.type ]]$params.list, "[[", "default")
+  param.defaults <- lapply(input.handlers[[ input$input.type ]]$params.list, "[[", "default")
 
   if (length(param.defaults) > 0) {
     param.names <- names(param.defaults)
