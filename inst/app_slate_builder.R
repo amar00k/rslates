@@ -887,17 +887,18 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       } else if (item$type == "input") {
         updateSelectInput(session, "input_type", selected = item$input.type)
 
-        if (!is.null(names(item$choices)))
-          choices.strings <- paste(names(item$choices), item$choices, sep = "=")
-        else
-          choices.strings <- item$choices
+        # if (!is.null(names(item$choices)))
+        #   choices.strings <- paste(names(item$choices), item$choices, sep = "=")
+        # else
+        #   choices.strings <- item$choices
+        #
+        # updateSelectInput(session, "input_choices",
+        #                   choices = choices.strings,
+        #                   selected = choices.strings)
 
-        updateSelectInput(session, "input_choices",
-                          choices = choices.strings,
-                          selected = choices.strings)
+        # updateTextInput(session, "input_default", value = item$default)
+        # updateSelectInput(session, "input_default_logical", selected = item$default)
 
-        updateTextInput(session, "input_default", value = item$default)
-        updateSelectInput(session, "input_default_logical", selected = item$default)
         updateSelectizeInput(session, "input_wizards", selected = item$wizards)
         updateTextAreaInput(session, "input_description", value = item$description)
       }
@@ -910,7 +911,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
       item$name <- "Default Value"
       item$value <- item$default
-      input.handlers[[ input$input_type ]]$create.ui(ns("input_default_test"), item)
+      input.handlers[[ input$input_type ]]$create.ui(ns("input_default"), item)
     })
 
 
@@ -919,16 +920,26 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       item <- active.item()$item
       ns <- session$ns
 
+      choicesToInput <- function(choices) {
+        if (!is.null(names(choices))) {
+          paste(names(item$choices), item$choices, sep = "=")
+        } else {
+          choices
+        }
+      }
+
       params <- input.handlers[[ input$input_type ]]$params.list
 
-      tags <- lapply(names(params), function(n) {
-        x <- params[[ n ]]
-        id <- paste0("input_", n)
+      tags <- lapply(names(params), function(name) {
+        par <- params[[ name ]]
+        id <- paste0("input_", name)
 
         switch(
-          x$type,
+          par$type,
           "list" = selectizeInput(
-            ns(id), label = x$label, choices = character(0),
+            ns(id), label = par$label,
+            choices = choicesToInput(item[[ name ]]),
+            selected = choicesToInput(item[[ name ]]),
             multiple = TRUE,
             options = list(
               delimiter = '',
@@ -936,11 +947,11 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
             )
           ),
           "choices" = selectInput(
-            ns(id), label = x$label,
-            choices = x$choices, selected = x$default
+            ns(id), label = par$label,
+            choices = par$choices, selected = item[[ name ]]
           ),
           "logical" = checkboxInput(
-            ns(id), label = x$label, value = x$default
+            ns(id), label = par$label, value = item[[ name ]]
           )
         )
       })
@@ -952,13 +963,13 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     })
 
 
-    observe({
-      input$input_id
-
-      shinyjs::toggle("input_choices", condition = (input$input_type == "choices"))
-      shinyjs::toggle("input_default", condition = (input$input_type != "logical"))
-      shinyjs::toggle("input_default_logical", condition = input$input_type == "logical")
-    })
+    # observe({
+    #   input$input_id
+    #
+    #   shinyjs::toggle("input_choices", condition = (input$input_type == "choices"))
+    #   shinyjs::toggle("input_default", condition = (input$input_type != "logical"))
+    #   shinyjs::toggle("input_default_logical", condition = input$input_type == "logical")
+    # })
 
 
     choices.to.list <- function(choices) {
@@ -992,17 +1003,19 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     observeEvent(input$group_condition, updateInputVariable("condition", "group_condition"))
     observeEvent(input$input_type, updateInputVariable("input.type", "input_type"))
     observeEvent(input$input_description, updateInputVariable("description", "input_description"))
-    observeEvent(input$input_choices, updateInputVariable("choices", "input_choices",
-                                                          transform.fun = choices.to.list))
-    observeEvent(input$input_default_logical, {
-      if (input$input_type == "logical")
-        updateInputVariable("default", "input_default_logical")
-    })
-    observeEvent(input$input_default, {
-      if (input$input_type != "logical")
-        updateInputVariable("default", "input_default")
-    })
     observeEvent(input$input_wizards, updateInputVariable("wizards", "input_wizards", list()))
+
+
+    # observeEvent(input$input_choices, updateInputVariable("choices", "input_choices",
+    #                                                       transform.fun = choices.to.list))
+    # observeEvent(input$input_default_logical, {
+    #   if (input$input_type == "logical")
+    #     updateInputVariable("default", "input_default_logical")
+    # })
+    # observeEvent(input$input_default, {
+    #   if (input$input_type != "logical")
+    #     updateInputVariable("default", "input_default")
+    # })
 
 
     #
