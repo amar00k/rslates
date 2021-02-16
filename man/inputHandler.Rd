@@ -5,14 +5,19 @@
 \title{Define behaviour of an input type}
 \usage{
 inputHandler(
+  params.list = list(),
   create.ui = function(...) {     tagList() },
   update.ui = function(...) { },
   get.value = function(x, session = NULL, value = NULL) {     if (is.null(value))      
-       value <- session$input[[x$id]]     return(value) },
+       value <- session$input[[x$id]]     return(as.character(value)) },
   create.observer = function(...) { }
 )
 }
 \arguments{
+\item{params.list}{list of parameters used by the input type. Each element of the list
+describes a parameter and has the following members: name (pretty name of the parameter),
+choices (vector of allowed values), default (default value when not specified).}
+
 \item{create.ui}{function used to create the input UI.}
 
 \item{update.ui}{function used to update the input UI.}
@@ -25,5 +30,7 @@ this value is used instead of the input element value.}
 a list of functions to handle the the input type.
 }
 \description{
-Define behaviour of an input type
+This function prepares a structure that defines all aspects of an
+  input type: UI creation, UI updating, observer function and string representation
+  of the input value.
 }
