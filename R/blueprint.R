@@ -59,9 +59,15 @@ slateInput <- function(name, input.type,
     wizards = wizards
   )
 
-  args <- list(...)
-  for (n in names(args))
-    input[[ n ]] <- args[[ n ]]
+  # add additional input parameters specified
+  input <- c(input, list(...))
+  #args <- list(...)
+  #for (n in names(args))
+  #  input[[ n ]] <- args[[ n ]]
+
+  # include type-specific default values that were not specified
+  param.defaults <- sapply(input.handlers[[ input$input.type ]]$params.list, "[[", "default")
+  input <- c(input, param.defaults[ sapply(param.defaults, function(x) is.null(i[[ x ]])) ])
 
   return (input)
 }
@@ -178,12 +184,27 @@ clearDefaults <- function(x, defaults) {
   x[ !is.default ]
 }
 
+#' Simplify a blueprint by removing default values
+#'
+#' @param blueprint the blueprint to simplify.
+#'
+#' @return The simplified blueprint. This blueprint is ideal for export in JSON format or other format.
+#' @export
+#'
+#' @seealso [restoreBlueprint()] to restore a simplified blueprint to its initial state.
+#'
+#' @examples
 simplifyBlueprint <- function(blueprint) {
   blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
     p <- clearDefaults(p, page.defaults)
     p$groups <- lapply(p$groups, function(g) {
       g <- clearDefaults(g, group.defaults)
-      g$inputs <- lapply(g$inputs, clearDefaults, input.defaults)
+      g$inputs <- lapply(g$inputs, function(i) {
+        input.defaults <- c(input.defaults,
+                            sapply(input.handlers[[ i$input.type ]]$params.list, "[[", "default"))
+
+        clearDefaults(i, input.defaults)
+      })
       g
     })
     p
@@ -193,11 +214,21 @@ simplifyBlueprint <- function(blueprint) {
 }
 
 
+#' Restore a blueprint by filling-in default values
+#'
+#' @param blueprint the blueprint to be restored.
+#'
+#' @return the restored blueprint containing all fields, including those with default values.
+#' @export
+#'
+#' @seealso [simplifyBlueprint()] to remove default values from a blueprint.
+#'
+#' @examples
 restoreBlueprint <- function(blueprint) {
   blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
     p$groups <- lapply(p$groups, function(g) {
       g$inputs <- lapply(g$inputs, function(i) {
-        do.call(slateInput, i)
+        i <- do.call(slateInput, i)
       })
       do.call(inputGroup, g)
     })
