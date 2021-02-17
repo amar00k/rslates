@@ -404,9 +404,12 @@ runSlatePreviewApp <- function(blueprint = NULL, input.container = "collapse") {
 }
 
 
-runSlateBuilderApp <- function(blueprint = NULL, input.container = "collapse", run.themer = FALSE) {
+runSlateBuilderApp <- function(blueprint = NULL, input.container = "collapse",
+                               theme = "solar (soft light)", run.themer = FALSE) {
     options(rslates.builder.blueprint = blueprint)
     options(rslates.input.container = input.container)
+    options(rslates.default.theme = theme)
+    options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
 
     runApp(system.file("app_slate_builder.R", package = "rslates"))

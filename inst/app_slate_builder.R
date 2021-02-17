@@ -366,9 +366,10 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
             document.getElementById(e_id).focus();
           }"
       ),
-      shiny::bootstrapLib(bslib::bs_theme(bootswatch = default.theme, version = "4")),
+      shiny::bootstrapLib(),
       shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
       thematic::thematic_shiny(),
+      theme = loadTheme(getOption("rslates.default.theme")),
       title = "Slate Builder",
       titlePanel("Slate Builder"),
       sidebarLayout(
@@ -377,8 +378,8 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
           tagList(
             selectInput(ns("select_theme"),
                         label = "Theme",
-                        choices = bslib::bootswatch_themes(),
-                        selected = default.theme),
+                        choices = getOption("rslates.themes"),
+                        selected = getOption("rslates.default.theme")),
             selectInput(ns("select_ace_theme"),
                         label = "Ace Editor Theme",
                         choices = shinyAce::getAceThemes(),
@@ -441,12 +442,8 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     observeEvent(input$select_theme, {
       print("select_theme")
 
-      theme <- getCurrentTheme()
-
-      if (!is.null(theme) && bslib::theme_bootswatch(theme) != input$select_theme) {
-        theme <- bslib::bs_theme_update(theme, bootswatch = input$select_theme, version = "4")
-        session$setCurrentTheme(theme)
-      }
+      theme <- loadTheme(input$select_theme)
+      session$setCurrentTheme(theme)
     })
 
     #
