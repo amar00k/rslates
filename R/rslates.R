@@ -405,7 +405,7 @@ runSlatePreviewApp <- function(blueprint = NULL, input.container = "collapse") {
 
 
 runSlateBuilderApp <- function(blueprint = NULL, input.container = "collapse",
-                               theme = "solar (soft light)", run.themer = FALSE) {
+                               theme = "Natural (soft light)", run.themer = FALSE) {
     options(rslates.builder.blueprint = blueprint)
     options(rslates.input.container = input.container)
     options(rslates.default.theme = theme)
@@ -426,7 +426,9 @@ runProjectEditorApp <- function(project = NULL, input.container = "collapse", ru
     runApp(system.file("app_project_editor.R", package = "rslates"))
 }
 
-runSlatesWidgetGalleryApp <- function(run.themer = FALSE) {
+runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer = FALSE) {
+    options(rslates.default.theme = theme)
+    options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
 
     runApp(system.file("app_slates_widget_gallery.R", package = "rslates"))
