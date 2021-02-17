@@ -212,57 +212,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         style = "height: 400px; overflow-y: auto;",
         width = 8,
         shinyjs::hidden(textInput(ns("input_id"), label = "")),
-        tabsetPanel(
-          id = ns("layout_tabs"),
-          type = "hidden",
-          tabPanel(
-            title = "page",
-            #tags$h4(paste0(item$name, " (Page)")),
-            tags$hr(),
-            textInput(ns("page_name"), label = "Name"),
-            textAreaInput(ns("page_description"), label = "Description")
-          ),
-          tabPanel(
-            title = "group",
-            tags$h4("Group"),
-            tags$hr(),
-            selectInput(ns("group_layout"), label = "Layout",
-                        choices = c("flow-2",
-                                    "flow-3",
-                                    "flow-4",
-                                    "vertical")),
-            textInput(ns("group_condition"), label = "Condition")
-          ),
-          tabPanel(
-            title = "input",
-            #tags$h4(paste0(item$name, " (Input)")),
-            tags$hr(),
-            tags$div(
-              class = "slates-flow-2",
-              selectInput(ns("input_type"), label = "Type",
-                          selectize = TRUE,
-                          choices = names(input.handlers)),
-              uiOutput(ns("input_default_ui"))
-              # selectizeInput(
-              #   ns("input_choices"), label = "Choices", choices = character(0),
-              #   multiple = TRUE,
-              #   options = list(
-              #     delimiter = '',
-              #     create = "function(input) { return { value: input, text: input } }"
-              #   )
-            ),
-              #textInput(ns("input_default"), label = "Default Value"),
-              #selectInput(ns("input_default_logical"), label = "Default Value",
-              #            choices = c(TRUE, FALSE)),
-
-            uiOutput(ns("input_specific_options")),
-            selectizeInput(
-              ns("input_wizards"), label = "Wizards",
-              choices = names(wizard.list), multiple = TRUE
-            ),
-            textAreaInput(ns("input_description"), label = "Description")
-          )
-        )
+        uiOutput(ns("layout_item_ui"))
       )
     )
 
@@ -461,12 +411,18 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     })
 
     blueprint <- reactive({
-      req(input$layout_tree)
+      req(
+        input$layout_tree,
+        blueprint.inputs(),
+        blueprint.outputs(),
+        blueprint.datasets(),
+        blueprint.imports()
+      )
 
-      req(blueprint.inputs(),
-          blueprint.outputs(),
-          blueprint.datasets(),
-          blueprint.imports())
+      input.layout <- traverseInputLayout(blueprint.inputs(), callback = function(x, a) {
+        x$ancestry <- NULL
+        return(x)
+      })
 
       slateBlueprint(title = input$blueprint_title,
                      input.layout = blueprint.inputs(),
@@ -482,7 +438,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     # load blueprint in blueprint.ini
     observeEvent(blueprint.ini(), {
-      req(bprint <- blueprint.ini())
+      req(blueprint <- blueprint.ini())
 
       print("loading")
 
@@ -490,7 +446,9 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       # to ensure all groups have unique names
       global.options$group.name.generator <- sequenceGenerator("group")
 
-      input.layout <- traverseInputLayout(bprint$input.layout, function(x, ...) {
+      input.layout <- traverseInputLayout(blueprint$input.layout, function(x, ancestry) {
+        x$ancestry <- ancestry
+
         if (x$type == "group")
           x$name <- global.options$group.name.generator()
 
@@ -498,30 +456,30 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       })
 
       blueprint.inputs(input.layout)
-      blueprint.imports(bprint$imports)
-      blueprint.datasets(bprint$datasets)
-      blueprint.outputs(bprint$outputs)
+      blueprint.imports(blueprint$imports)
+      blueprint.datasets(blueprint$datasets)
+      blueprint.outputs(blueprint$outputs)
 
-      if (length(bprint$outputs) == 0)
+      if (length(blueprint$outputs) == 0)
         updateSelectInput(session, "select_output", choices = list())
       else
         updateSelectInput(session, "select_output",
-                          choices = names(bprint$outputs),
-                          selected = names(bprint$outputs)[1])
+                          choices = names(blueprint$outputs),
+                          selected = names(blueprint$outputs)[1])
 
-      if (length(bprint$datasets) == 0)
+      if (length(blueprint$datasets) == 0)
         updateSelectInput(session, "select_dataset", choices = list())
       else
         updateSelectInput(session, "select_dataset",
-                          choices = names(bprint$datasets),
-                          selected = names(bprint$datasets)[1])
+                          choices = names(blueprint$datasets),
+                          selected = names(blueprint$datasets)[1])
 
-      if (length(bprint$imports) == 0)
+      if (length(blueprint$imports) == 0)
         updateSelectInput(session, "select_import", choices = list())
       else
         updateSelectInput(session, "select_import",
-                          choices = names(bprint$imports),
-                          selected = names(bprint$imports)[1])
+                          choices = names(blueprint$imports),
+                          selected = names(blueprint$imports)[1])
     })
 
 
@@ -701,11 +659,11 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     })
 
     #
-    # Input tab behaviour
+    # Input tab
     #
 
     # id of active in reactiveVal, to be set manually
-    active.item.id <- reactiveVal(list(id = ""))
+    active.item.id <- reactiveVal("")
     active.item <- reactiveVal(NULL)
 
 
@@ -715,12 +673,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
       print("redraw tree")
 
-      isolate(active <- active.item())
-
-      if(!is.null(active))
-        selected <- active$item$id
-      else
-        selected <- ""
+      isolate(selected <- active.item.id())
 
       tree <- layoutToTree(blueprint.inputs(), selected = selected)
     })
@@ -731,24 +684,23 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     observeEvent(input$layout_tree, {
       req(sel <- shinyTree::get_selected(input$layout_tree)[[1]])
       req(classid <- shinyTree::get_selected(input$layout_tree, format = "classid")[[1]])
-      isolate(current.id <- active.item.id()$id)
+      isolate(current.id <- active.item.id())
 
       # update active item
-      if (sel != current.id) {
-        active.item.id(list(
-          time = Sys.time(),
-          id = as.character(sel)
-        ))
+      if (attr(sel, "stinfo") != current.id) {
+        pprint("set active item id:", attr(sel, "stinfo"))
 
-        item <- flat.input.layout()[[ paste0(attr(classid, "stclass"), "_", sel) ]]
-
-        active.item(list(
-          ancestry = attr(sel, "ancestry"),
-          item = item
-        ))
-
-        pprint("update active item:", active.item()$item$name)
+        active.item.id(attr(sel, "stinfo"))
       }
+
+      item <- flat.input.layout()[[ active.item.id() ]]
+
+      if (!identical(item, isolate(active.item()))) {
+        pprint("reset active item:", item$id, "(", item$type, ")")
+
+        active.item(item)
+      }
+
 
       # handle drag drag-and-drop reordering
       layout <- blueprint.inputs()
@@ -764,10 +716,78 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     })
 
 
+    # list of builderItemServer
+    layout.item.servers <- reactiveValues()
+
+    # observe active.item.id and switch to the corresponding
+    # properties page. Create the page if necessary and add to
+    # layout.item.servers.
+    observeEvent(active.item.id(), {
+      req(
+        active.id <- active.item.id(),
+        item <- isolate(active.item())
+      )
+
+      server <- layout.item.servers[[ active.id ]]
+
+      if (is.null(server)) {
+        server <- builderItemServer(session$ns(paste0("builder_", item$id)),
+                                    item, global.options)
+
+        layout.item.servers[[ active.id ]] <- server
+      }
+    })
+
+    # render the active item's properties page.
+    # also listen to changes in input.type and update the ui.
+    output$layout_item_ui <- renderUI({
+      req(
+        active.id <- active.item.id(),
+        server <- layout.item.servers[[ active.id ]]
+      )
+
+      server$type.changed() # listen to changes
+
+      server$createUI()
+    })
+
+
+    # observe changes in layout.item.servers items and
+    # update blueprint.inputs reactiveVal if any items have changes
+    observe({
+      flat <- isolate(flat.input.layout())
+      layout <- isolate(blueprint.inputs())
+
+      itemsIdentical <- function(item1, item2) {
+        item1[ which(names(item1) %in% c("groups", "inputs")) ] <- NULL
+        item2[ which(names(item2) %in% c("groups", "inputs")) ] <- NULL
+
+        identical(item1, item2)
+      }
+
+      changed <- c()
+      for (name in names(layout.item.servers)) {
+        item <- layout.item.servers[[ name ]]$item()
+
+        # this comparison assumes item has the ancestry property
+        if (!itemsIdentical(item, flat[[ item$id ]])) {
+          layout <- updateInputLayoutItem(layout, item, item$ancestry)
+
+          changed <- c(changed, item$id)
+        }
+      }
+
+      if (length(changed) > 0) {
+        pprint("Items changed:", paste(changed, collapse=", "))
+
+        blueprint.inputs(layout)
+      }
+    })
+
+
     # observe selected item, and enable or disable buttons elements
     observe({
-      print("update buttons")
-      req(item <- active.item()$item)
+      req(item <- active.item())
 
       if (is.null(item)) {
         shinyjs::hide("layout_add_input")
@@ -799,12 +819,12 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     # handle the add group button
     observeEvent(input$layout_add_group, {
-      req(active <- active.item())
+      req(item <- active.item())
 
-      if (active$item$type != "page")
-        path <- active$ancestry[1]
+      if (item$type != "page")
+        path <- item$ancestry[1]
       else
-        path <- active$item$name
+        path <- item$name
 
       new.item <- inputGroup(name = global.options$group.name.generator())
 
@@ -816,14 +836,14 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     # handle the add input button
     observeEvent(input$layout_add_input, {
-      req(active <- active.item())
+      req(item <- active.item())
 
       modal.new.input$show(
         callback = function(name, type) {
-          if (active$item$type == "input")
-            path <- active$ancestry
+          if (item$type == "input")
+            path <- item$ancestry
           else
-            path <- c(active$ancestry, active$item$name)
+            path <- c(item$ancestry, item$name)
 
           new.item <- slateInput(name = name, input.type = type, default = "")
 
@@ -834,7 +854,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     # handle rename item button
     observeEvent(input$layout_rename, {
-      req(active <- active.item())
+      req(item <- active.item())
 
       modal.text$show(
         title = "Rename Input",
@@ -842,13 +862,11 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         value = active$item$name,
         placeholder = "",
         callback = function(name) {
-          path <- active$ancestry
-
-          new.item <- active$item
+          new.item <- item
           new.item$name <- name
 
           blueprint.inputs(
-            updateInputLayoutItem(blueprint.inputs(), new.item, path, active$item$name)
+            updateInputLayoutItem(blueprint.inputs(), new.item, item$ancestry, item$name)
           )
         })
     })
@@ -856,163 +874,12 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     # handle remove item button
     observeEvent(input$layout_remove, {
-      req(active <- active.item())
-
-      path <- active$ancestry
+      req(item <- active.item())
 
       blueprint.inputs(
-        updateInputLayoutItem(blueprint.inputs(), NULL, path, active$item$name)
+        updateInputLayoutItem(blueprint.inputs(), NULL, item$ancestry, item$name)
       )
     })
-
-
-    observeEvent(active.item.id(), {
-      req(active.id <- active.item.id()$id)
-      active <- active.item()
-      item <- active$item
-
-      updateTabsetPanel(session, "layout_tabs", selected = item$type)
-
-      updateTextInput(session, "input_id", value = active$id)
-
-      if (item$type == "page") {
-        updateTextInput(session, "page_name", value = item$name)
-        updateTextAreaInput(session, "page_description", value = item$description)
-      } else if (item$type == "group") {
-        updateSelectInput(session, "group_layout", selected = item$layout)
-        updateTextInput(session, "group_condition", value = item$condition)
-      } else if (item$type == "input") {
-        updateSelectInput(session, "input_type", selected = item$input.type)
-
-        # if (!is.null(names(item$choices)))
-        #   choices.strings <- paste(names(item$choices), item$choices, sep = "=")
-        # else
-        #   choices.strings <- item$choices
-        #
-        # updateSelectInput(session, "input_choices",
-        #                   choices = choices.strings,
-        #                   selected = choices.strings)
-
-        # updateTextInput(session, "input_default", value = item$default)
-        # updateSelectInput(session, "input_default_logical", selected = item$default)
-
-        updateSelectizeInput(session, "input_wizards", selected = item$wizards)
-        updateTextAreaInput(session, "input_description", value = item$description)
-      }
-    })
-
-    # the dynamic default value widget depends on input type
-    output$input_default_ui <- renderUI({
-      item <- active.item()$item
-      ns <- session$ns
-
-      item$name <- "Default Value"
-      item$value <- item$default
-      input.handlers[[ input$input_type ]]$create.ui(ns("input_default"), item)
-    })
-
-
-    # the dynamic input options depend on input type
-    output$input_specific_options <- renderUI({
-      item <- active.item()$item
-      ns <- session$ns
-
-      choicesToInput <- function(choices) {
-        if (!is.null(names(choices))) {
-          paste(names(item$choices), item$choices, sep = "=")
-        } else {
-          choices
-        }
-      }
-
-      params <- input.handlers[[ input$input_type ]]$params.list
-
-      tags <- lapply(names(params), function(name) {
-        par <- params[[ name ]]
-        id <- paste0("input_", name)
-
-        switch(
-          par$type,
-          "list" = selectizeInput(
-            ns(id), label = par$label,
-            choices = choicesToInput(item[[ name ]]),
-            selected = choicesToInput(item[[ name ]]),
-            multiple = TRUE,
-            options = list(
-              delimiter = '',
-              create = "function(input) { return { value: input, text: input } }"
-            )
-          ),
-          "choices" = selectInput(
-            ns(id), label = par$label,
-            choices = par$choices, selected = item[[ name ]]
-          ),
-          "logical" = checkboxInput(
-            ns(id), label = par$label, value = item[[ name ]]
-          )
-        )
-      })
-
-      div(
-        class = "slates-flow-3",
-        tags
-      )
-    })
-
-
-    # observe({
-    #   input$input_id
-    #
-    #   shinyjs::toggle("input_choices", condition = (input$input_type == "choices"))
-    #   shinyjs::toggle("input_default", condition = (input$input_type != "logical"))
-    #   shinyjs::toggle("input_default_logical", condition = input$input_type == "logical")
-    # })
-
-
-    choices.to.list <- function(choices) {
-      if (all(grepl("=", choices))) {
-        strsplit(choices, split="=") %>%
-          { setNames(lapply(., "[[", 2), sapply(., "[[", 1)) }
-      } else {
-        as.list(choices) %>% unname
-      }
-    }
-
-
-    updateInputVariable <- function(var.name, input.name,
-                                    null.value = "",
-                                    transform.fun = identity) {
-      req(active <- active.item())
-      req(!identical(active$item[[ var.name ]], transform.fun(input[[ input.name ]])))
-
-      new.val <- if (is.null(input[[ input.name ]])) null.value else input[[ input.name ]]
-
-      pprint("Update input", active$item$name, ":", var.name, "=", paste(new.val, collapse=", "))
-
-      active$item[[ var.name ]] <- transform.fun(new.val)
-
-      path <- c(active$ancestry, active$item$name)
-      blueprint.inputs(updateInputLayoutItem(blueprint.inputs(), active$item, path))
-    }
-
-    observeEvent(input$page_description, updateInputVariable("description", "page_description"))
-    observeEvent(input$group_layout, updateInputVariable("layout", "group_layout"))
-    observeEvent(input$group_condition, updateInputVariable("condition", "group_condition"))
-    observeEvent(input$input_type, updateInputVariable("input.type", "input_type"))
-    observeEvent(input$input_description, updateInputVariable("description", "input_description"))
-    observeEvent(input$input_wizards, updateInputVariable("wizards", "input_wizards", list()))
-
-
-    # observeEvent(input$input_choices, updateInputVariable("choices", "input_choices",
-    #                                                       transform.fun = choices.to.list))
-    # observeEvent(input$input_default_logical, {
-    #   if (input$input_type == "logical")
-    #     updateInputVariable("default", "input_default_logical")
-    # })
-    # observeEvent(input$input_default, {
-    #   if (input$input_type != "logical")
-    #     updateInputVariable("default", "input_default")
-    # })
 
 
     #
