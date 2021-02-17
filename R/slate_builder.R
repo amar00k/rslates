@@ -87,7 +87,7 @@ createItemPropertiesUI <- function(id, item) {
                     selectize = TRUE,
                     choices = names(input.handlers),
                     selected = item$input.type),
-      createInputDefaultUI(ns, item)
+        uiOutput(ns("input_default_ui"))
       ),
       createTypeSpecificUI(ns, item),
       selectizeInput(
@@ -106,7 +106,7 @@ createItemPropertiesUI <- function(id, item) {
 builderItemServer <- function(id, item.ini, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     item <- reactiveVal(item.ini)
-    type.changed <- reactiveVal("")
+    redraw <- reactiveVal("")
 
 
     createUI <- function() {
@@ -116,18 +116,35 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
     }
 
 
+    output$input_default_ui <- renderUI({
+      input$input_input.type
+      input$input_display.type
+
+      createInputDefaultUI(session$ns, item())
+    })
+
+
     observe({
       req(item <- item())
 
-      # check for a change in input.type and set type.changed so that the
-      # renderUI function of the parent server can detect it
+      # check for a change in input.type. If changed:
+      # 1. set redraw to a new value to redraw the UI
+      # 2. re-initialize the input to fill in missing type-specific variables
+      # 3. restore the item's ancestry
       if (item$type == "input" &&
           !is.null(input$input_input.type) &&
-          item$input.type != input$input_input.type)
-        type.changed(input$input_input.type)
+          item$input.type != input$input_input.type) {
+        redraw(runif(1))
+
+        ancestry <- item$ancestry
+        item <- slateInput(name = item$name, input.type = input$input_input.type,
+                           long.name = item$long.name, description = item$description,
+                           wizards = item$wizards)
+        item$ancestry <- ancestry
+      }
 
       # check for changes in general item properties
-      variables <- c("description", "layout", "condition", "description", "wizards", "input.type")
+      variables <- c("description", "layout", "condition", "description", "wizards")
       for (var in variables) {
         input.id <- paste0(item$type, "_", var)
 
@@ -172,7 +189,7 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
     list(
       item = item,
       createUI = createUI,
-      type.changed = type.changed
+      redraw = redraw
     )
   })
 }
