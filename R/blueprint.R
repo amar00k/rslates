@@ -204,8 +204,9 @@ simplifyBlueprint <- function(blueprint) {
     p$groups <- lapply(p$groups, function(g) {
       g <- clearDefaults(g, group.defaults)
       g$inputs <- lapply(g$inputs, function(i) {
-        input.defaults <- c(input.defaults,
-                            sapply(input.handlers[[ i$input.type ]]$params.list, "[[", "default"))
+        input.defaults <-
+          c(input.defaults,
+            sapply(input.handlers[[ i$input.type ]]$params.list, "[[", "default"))
 
         clearDefaults(i, input.defaults)
       })
@@ -271,20 +272,26 @@ blueprintFromJSON <- function(filename=NULL, text=NULL) {
 printInputLayout <- function(layout) {
   indent <- list("", "  ", "    ")
 
-  invisible(traverseInputLayout(layout, function(x, depth) {
-    print(paste0(indent[[ depth ]], x$type, ": ", x$name))
+  invisible(traverseInputLayout(layout, function(x, ancestry) {
+    print(paste0(indent[[ length(ancestry) + 1 ]], x$type, ": ", x$name))
     x
   }))
 }
 
 
 flattenInputLayout <- function(layout) {
-  items <- lapply(layout$pages, function(p) {
+  lapply(layout$pages, function(p) {
     lapply(p$groups, function(g) {
-      g$inputs
+      lapply(g$inputs, function(i) {
+        i$ancestry <- c(p$name, g$name)
+        i
+      })
     }) %>%
       unlist(recursive = FALSE) %>%
-      append(p$groups)
+      append(lapply(p$groups, function(g) {
+        g$ancestry <- p$name
+        g
+      }))
   }) %>%
     unlist(recursive = FALSE) %>%
     append(layout$pages) %>%
@@ -292,13 +299,14 @@ flattenInputLayout <- function(layout) {
 }
 
 
-traverseInputLayout <- function(layout, callback = function(x, d) x, flatten = FALSE) {
+
+traverseInputLayout <- function(layout, callback = function(x, ancestry) x, flatten = FALSE) {
   layout$pages <- lapply(layout$pages, function(p) {
-    p <- callback(p, 1)
+    p <- callback(p, NULL)
     p$groups <- lapply(p$groups, function(g) {
-      g <- callback(g, 2)
+      g <- callback(g, p$name)
       g$inputs <- lapply(g$inputs, function(i) {
-        callback(i, 3)
+        callback(i, c(p$name, g$name))
       }) %>% set_names(sapply(., "[[", "name"))
       g
     }) %>% set_names(sapply(., "[[", "name"))
