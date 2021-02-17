@@ -17,7 +17,6 @@ Imports:
     jsonlite,
     bslib,
     shinyTree,
-    shinyFiles,
     magrittr,
     digest,
     rlang,
