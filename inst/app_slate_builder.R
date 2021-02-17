@@ -404,13 +404,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     })
 
     blueprint <- reactive({
-      pprint(is.null(blueprint.inputs()),
-             is.null(blueprint.outputs()),
-             is.null(blueprint.datasets()),
-             is.null(blueprint.imports()))
-
       req(
-        #isolate(input$layout_tree),
         blueprint.inputs(),
         blueprint.outputs(),
         blueprint.datasets(),
@@ -748,7 +742,10 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         server <- layout.item.servers[[ active.id ]]
       )
 
-      server$redraw() # listen to changes
+      print("redraw item properties")
+
+      server$need.redraw()          # listen to changes
+      server$need.default(runif(1)) # send signal
 
       server$createUI()
     })

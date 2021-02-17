@@ -48,14 +48,6 @@ createTypeSpecificUI <- function(ns, item) {
 }
 
 
-createInputDefaultUI <- function(ns, item) {
-  item$name <- "Default Value"
-  item$value <- item$default
-  item$wizards <- NULL
-  input.handlers[[ item$input.type ]]$create.ui(ns("input_default"), item)
-}
-
-
 createItemPropertiesUI <- function(id, item) {
   ns <- NS(id)
 
@@ -106,7 +98,8 @@ createItemPropertiesUI <- function(id, item) {
 builderItemServer <- function(id, item.ini, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     item <- reactiveVal(item.ini)
-    redraw <- reactiveVal("")
+    need.redraw <- reactiveVal("")  # change when we need to redraw this whole page
+    need.default <- reactiveVal("") # change to update default input (on entering page)
 
 
     createUI <- function() {
@@ -117,10 +110,18 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
 
 
     output$input_default_ui <- renderUI({
-      input$input_input.type
-      input$input_display.type
+      req(isolate(item <- item()))
 
-      createInputDefaultUI(session$ns, item())
+      print("slate_builder.R: redraw default")
+
+      # listen to these events
+      need.default()
+      input$input_input.type
+
+      item$name <- "Default Value"
+      item$value <- item$default
+      item$wizards <- NULL
+      input.handlers[[ item$input.type ]]$create.ui(session$ns("input_default"), item)
     })
 
 
@@ -128,13 +129,13 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
       req(item <- item())
 
       # check for a change in input.type. If changed:
-      # 1. set redraw to a new value to redraw the UI
+      # 1. set need.redraw to a new value to redraw the UI
       # 2. re-initialize the input to fill in missing type-specific variables
       # 3. restore the item's ancestry
       if (item$type == "input" &&
           !is.null(input$input_input.type) &&
           item$input.type != input$input_input.type) {
-        redraw(runif(1))
+        need.redraw(runif(1))
 
         ancestry <- item$ancestry
         item <- slateInput(name = item$name, input.type = input$input_input.type,
@@ -178,8 +179,33 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
         }
       }
 
+      # if any type-specific parameters changed, redraw default input
+      if (item$type == "input") {
+        params <- input.handlers[[ item$input.type ]]$params.list
+        if (!all(sapply(names(params), function(var) identical(item[[ var ]], item()$var))))
+          need.default(runif(1))
+      }
+
       if (!identical(item, item())) {
         pprint("slate_builder.R: update item (", item$name, ")")
+
+        item(item)
+      }
+    })
+
+
+    observeEvent(input$input_default, {
+      req(
+        default <- input$input_default,
+        item <- item()
+      )
+
+      value <- input.handlers[[ item$input.type ]]$get.value(item, value = default)
+
+      if (!identical(item$default, value)) {
+        pprint("updating input default value:", item$name, " default =", value)
+
+        item$default <- value
 
         item(item)
       }
@@ -189,7 +215,8 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
     list(
       item = item,
       createUI = createUI,
-      redraw = redraw
+      need.redraw = need.redraw,
+      need.default = need.default
     )
   })
 }
