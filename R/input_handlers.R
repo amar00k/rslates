@@ -38,7 +38,8 @@ quote.input <- function(x) {
 #' @export
 #'
 #' @examples
-inputHandler <- function(params.list = list(),
+inputHandler <- function(default.value,
+                         params.list = list(),
                          create.ui = function(...) { tagList() },
                          update.ui = function(...) {},
                          get.value = function(x, session = NULL, value = NULL) {
@@ -49,6 +50,7 @@ inputHandler <- function(params.list = list(),
                          },
                          create.observer = function(...) {}) {
   list(
+    default.value = default.value,
     params.list = params.list,
     create.ui = create.ui,
     update.ui = update.ui,
@@ -60,15 +62,30 @@ inputHandler <- function(params.list = list(),
 
 input.handlers <- list(
   logical = inputHandler(
+    default.value = FALSE,
     params.list = list(
       display.type = list(label = "Display Type", type = "choices",
-                          choices = c("select", "checkbox", "toggle"), default = "toggle")
+                          choices = c("select", "checkbox", "switch"), default = "select")
     ),
     create.ui = function(id, x) {
-      # checkboxInput(id, label = label, value = as.logical(value))
-      slatesSelectInput(id, label = x$name,
-                  choices = c(TRUE, FALSE), selected = x$value,
-                  wizards = x$wizards)
+      switch(
+        x$display.type,
+        "select" = slatesSelectInput(
+          id, label = x$name,
+          choices = c(TRUE, FALSE),
+          selected = as.logical(x$value),
+          wizards = x$wizards
+        ),
+        "checkbox" = checkboxInput(
+          id, label = x$name,
+          value = as.logical(x$value)
+        ),
+        "switch" = slatesSwitchInput(
+          id, label = x$name,
+          value = as.logical(x$value),
+          on.off.labels = c("True", "False")
+        )
+      )
     },
     update.ui = function(session, id, ...) {
       #updateCheckboxInput(session, inputId = id, ...)
@@ -76,6 +93,7 @@ input.handlers <- list(
     }
   ),
   character = inputHandler(
+    default.value = "",
     params.list = list(
     ),
     create.ui = function(id, x) {
@@ -92,6 +110,7 @@ input.handlers <- list(
     }
   ),
   numeric = inputHandler(
+    default.value = 0,
     params.list = list(
     ),
     create.ui = function(id, x) {
@@ -102,6 +121,7 @@ input.handlers <- list(
     }
   ),
   expression = inputHandler(
+    default.value = "",
     params.list = list(
       check.valid = list(label = "Check Valid Expression", type = "logical", default = TRUE)
     ),
@@ -123,6 +143,7 @@ input.handlers <- list(
     }
   ),
   choices = inputHandler(
+    default.value = list(),
     params.list = list(
       choices = list(label = "Choices", type = "list", default = ""),
       multiple = list(label = "Allow Multiple Values", type = "logical", default = FALSE),
@@ -161,6 +182,7 @@ input.handlers <- list(
     }
   ),
   numeric2 = inputHandler(
+    default.value = c(0, 0),
     params.list = list(
     ),
     create.ui = function(id, x) {
@@ -183,6 +205,7 @@ input.handlers <- list(
     }
   ),
   numeric4 = inputHandler(
+    default.value = c(0, 0, 0, 0),
     params.list = list(
     ),
     create.ui = function(id, x) {
@@ -209,6 +232,7 @@ input.handlers <- list(
 
 dataset.handlers <- list(
   file = inputHandler(
+    default.value = "",
     get.value = function(s, session = NULL, value = NULL) {
       if (!is.null(s$data)) {
         gsub("\\\\", "/", s$data$datapath)
@@ -218,6 +242,7 @@ dataset.handlers <- list(
     }
   ),
   standalone = inputHandler(
+    default.value = "",
     get.value = function(s, session = NULL, value = NULL) { NULL }
   )
 )

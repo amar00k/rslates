@@ -39,13 +39,14 @@ slateBlueprint <- function(title,
 
 
 slateInput <- function(name, input.type,
-                       default = "",
+                       default = NULL,
                        value = default,
                        long.name = "",
                        description = "",
                        wizards = list(),
                        ...) {
-  default = if (is.null(default)) "" else default
+  if (is.null(default))
+    default <- input.handlers[[ input.type ]]$default.value
 
   input <- list(
     name = name,

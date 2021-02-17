@@ -180,6 +180,24 @@ slatesNumeric4Input <- function(id, label, value = c(0,0,0,0), ..., wizards = NU
 }
 
 
+slatesSwitchInput <- function(id, label, value = FALSE, on.off.labels = c("True", "False"), wizards = NULL) {
+  input <- tags$div(
+    class = "form-group shiny-input-container",
+    tags$label(
+      class = "control-label",
+      id = paste0(id, "-label"),
+      `for` = id,
+      label
+    ),
+    shinyWidgets::switchInput(
+      id, label = "",
+      value = value,
+      onLabel = on.off.labels[1], offLabel = on.off.labels[2],
+      width = "auto"
+    )
+  )
+}
+
 
 
 #' File Upload Control
