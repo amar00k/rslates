@@ -62,7 +62,7 @@ input.handlers <- list(
   logical = inputHandler(
     params.list = list(
       display.type = list(label = "Display Type", type = "choices",
-                          choices = c("select", "toggle"), default = "toggle")
+                          choices = c("select", "checkbox", "toggle"), default = "toggle")
     ),
     create.ui = function(id, x) {
       # checkboxInput(id, label = label, value = as.logical(value))
