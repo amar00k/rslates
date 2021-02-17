@@ -48,6 +48,9 @@ inputHandler <- function(default.value,
 
                            return (as.character(value))
                          },
+                         get.source = function(x, session = NULL, value = NULL) {
+                           input.handlers[[ x$input.type ]]$get.value(x, session, value)
+                         },
                          create.observer = function(...) {}) {
   list(
     default.value = default.value,
@@ -55,6 +58,7 @@ inputHandler <- function(default.value,
     create.ui = create.ui,
     update.ui = update.ui,
     get.value = get.value,
+    get.source = get.source,
     create.observer = create.observer
   )
 }
@@ -106,6 +110,11 @@ input.handlers <- list(
       if (is.null(value))
         value <- session$input[[ x$id ]]
 
+      return(value)
+    },
+    get.source = function(x, session = NULL, value = NULL) {
+      value <- input.handlers$character$get.value(x, session, value)
+
       paste0('"', value, '"')
     }
   ),
@@ -140,6 +149,21 @@ input.handlers <- list(
         if (!isValidExpression(session$input[[ my_id ]]))
           shinyjs::addClass(my_id, "invalid-expression")
       })
+    },
+    get.value = function(x, session = NULL, value = NULL) {
+      if (is.null(value))
+        value <- session$input[[ x$id ]]
+
+      if (isValidExpression(value))
+        eval(parse(text = value), envir = new.env())
+      else
+        NULL
+    },
+    get.source = function(x, session = NULL, value = NULL) {
+      if (is.null(value))
+        value <- session$input[[ x$id ]]
+
+      return(value)
     }
   ),
   choices = inputHandler(
@@ -175,6 +199,11 @@ input.handlers <- list(
       if (is.null(value))
         value <- session$input[[ x$id ]]
 
+      return(value)
+    },
+    get.source = function(x, session = NULL, value = NULL) {
+      value <- input.handlers$choices$get.value(x, session, value)
+
       if (length(value) > 1)
         paste0("c(", paste0('"', value, '"', collapse = ", "), ")")
       else
@@ -201,6 +230,11 @@ input.handlers <- list(
       if (length(value) < 2)
         value <- c(value, rep(NA, 2 - length(value)))
 
+      return(value)
+    },
+    get.source = function(x, session = NULL, value = NULL) {
+      value <- input.handlers$numeric2$get.value(x, session, value)
+
       paste0("c(", paste(as.numeric(value), collapse = ", "), ")")
     }
   ),
@@ -223,6 +257,11 @@ input.handlers <- list(
 
       if (length(value) < 4)
         value <- c(value, rep(NA, 4 - length(value)))
+
+      return(value)
+    },
+    get.source = function(x, session = NULL, value = NULL) {
+      value <- input.handlers$numeric2$get.value(x, session, value)
 
       paste0("c(", paste(as.numeric(value), collapse = ", "), ")")
     }
