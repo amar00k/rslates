@@ -263,7 +263,7 @@ input.handlers <- list(
       return(value)
     },
     get.source = function(x, session = NULL, value = NULL) {
-      value <- input.handlers$numeric2$get.value(x, session, value)
+      value <- input.handlers$numeric4$get.value(x, session, value)
 
       paste0("c(", paste(as.numeric(value), collapse = ", "), ")")
     }

@@ -16,30 +16,30 @@ input.list <- list(
 
 test_that("inputs return the right values", {
   x <- input.list[[ "character" ]]
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = "Some text"), '"Some text"')
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = ""), '""')
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = "Some text"), '"Some text"')
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = ""), '""')
 
   x <- input.list[[ "expression" ]]
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = "rep(1:10, 2)"), "rep(1:10, 2)")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = ""), "")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = "rep(1:10, 2)"), "rep(1:10, 2)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = ""), "")
 
   x <- input.list[[ "numeric" ]]
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = 42), "42")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = "42"), "42")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = ""), "")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = 42), "42")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = "42"), "42")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = ""), "")
 
   x <- input.list[[ "numeric2" ]]
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = c(3, 7)), "c(3, 7)")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = c("3", "7")), "c(3, 7)")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = 3), "c(3, NA)")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = NA), "c(NA, NA)")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = ""), "c(NA, NA)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = c(3, 7)), "c(3, 7)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = c("3", "7")), "c(3, 7)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = 3), "c(3, NA)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = NA), "c(NA, NA)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = ""), "c(NA, NA)")
 
   x <- input.list[[ "numeric4" ]]
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = c(1, 2, 3, 4)), "c(1, 2, 3, 4)")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = c("1", 2, "3", 4)), "c(1, 2, 3, 4)")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = c(1, 2)), "c(1, 2, NA, NA)")
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = NA), "c(NA, NA, NA, NA)") # Batman
-  expect_equal(input.handlers[[ x$input.type ]]$get.value(x, value = ""), "c(NA, NA, NA, NA)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = c(1, 2, 3, 4)), "c(1, 2, 3, 4)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = c("1", 2, "3", 4)), "c(1, 2, 3, 4)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = c(1, 2)), "c(1, 2, NA, NA)")
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = NA), "c(NA, NA, NA, NA)") # Batman
+  expect_equal(input.handlers[[ x$input.type ]]$get.source(x, value = ""), "c(NA, NA, NA, NA)")
 
 })
