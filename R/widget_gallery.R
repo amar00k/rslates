@@ -68,7 +68,8 @@ widgetGalleryServer <- function(id, input.list, global.options = NULL) {
       data.frame(
         Name = sapply(inputs, "[[", "name"),
         Type = sapply(inputs, "[[", "input.type"),
-        Value = sapply(inputs, function(x) objectSummary(x$value))
+        Value = sapply(inputs, function(x) objectSummary(x$value)),
+        Source = sapply(inputs, function(x) input.handlers[[ x$input.type ]]$get.source(x, session))
       )
     })
 
