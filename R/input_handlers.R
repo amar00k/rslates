@@ -154,10 +154,12 @@ input.handlers <- list(
       if (is.null(value))
         value <- session$input[[ x$id ]]
 
-      if (isValidExpression(value))
-        eval(parse(text = value), envir = new.env())
-      else
-        NULL
+      return(value)
+      # if (!is.null(value) && value != "" && isValidExpression(value))
+      #   eval(parse(text = value), envir = new.env())
+      #
+      # else
+      #   NULL
     },
     get.source = function(x, session = NULL, value = NULL) {
       if (is.null(value))
