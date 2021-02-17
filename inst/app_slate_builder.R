@@ -309,13 +309,6 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     ui <- fluidPage(
       shinyjs::useShinyjs(),
-      shinyjs::extendShinyjs(
-        functions = "focus",
-        text = "
-          shinyjs.focus = function(e_id) {
-            document.getElementById(e_id).focus();
-          }"
-      ),
       shiny::bootstrapLib(),
       shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
       thematic::thematic_shiny(),
@@ -411,24 +404,33 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     })
 
     blueprint <- reactive({
+      pprint(is.null(blueprint.inputs()),
+             is.null(blueprint.outputs()),
+             is.null(blueprint.datasets()),
+             is.null(blueprint.imports()))
+
       req(
-        input$layout_tree,
+        #isolate(input$layout_tree),
         blueprint.inputs(),
         blueprint.outputs(),
         blueprint.datasets(),
         blueprint.imports()
       )
 
+      print("create blueprint structure for export")
+
       input.layout <- traverseInputLayout(blueprint.inputs(), callback = function(x, a) {
         x$ancestry <- NULL
         return(x)
       })
 
-      slateBlueprint(title = input$blueprint_title,
-                     input.layout = blueprint.inputs(),
-                     outputs = blueprint.outputs(),
-                     datasets = blueprint.datasets(),
-                     imports = blueprint.imports())
+      blueprint <- slateBlueprint(title = input$blueprint_title,
+                                  input.layout = input.layout,
+                                  outputs = blueprint.outputs(),
+                                  datasets = blueprint.datasets(),
+                                  imports = blueprint.imports())
+
+      restoreBlueprint(blueprint)
     })
 
 
@@ -513,45 +515,45 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     slate.data <- reactiveValues()
 
-    output$slate_imports <- renderUI({
-      req(bprint <- blueprint())
-      req(slate.data$module)
-
-      print("slate_imports")
-
-      inputs <- list()
-      for (x in bprint$imports) {
-        input.id <- paste0("slate_import_", x$name)
-
-        if (x$description != "")
-          label <- paste0(x$name, ": ", x$description)
-        else
-          label <- x$name
-
-        if (x$type == "file") {
-          inputs[[ x$name ]] <- fileInput(session$ns(input.id), label = label)
-        } else if (x$type == "built-in") {
-          datasets <- as.data.frame(data()$results)
-          inputs[[ x$name ]] <- shinyWidgets::pickerInput(
-            inputId = session$ns(input.id),
-            label = label,
-            choices = datasets$Item,
-            choicesOpt = list(
-              subtext = datasets$Title
-            )
-          )
-        }
-
-        name <- x$name
-        observeEvent(input[[ input.id ]], {
-          data <- input[[ input.id ]]
-
-          slate.data$module$import.data[[ name ]]$data <- data
-        })
-      }
-
-      do.call(flowLayout, unname(inputs))
-    })
+    # output$slate_imports <- renderUI({
+    #   req(bprint <- blueprint())
+    #   req(slate.data$module)
+    #
+    #   print("slate_imports")
+    #
+    #   inputs <- list()
+    #   for (x in bprint$imports) {
+    #     input.id <- paste0("slate_import_", x$name)
+    #
+    #     if (x$description != "")
+    #       label <- paste0(x$name, ": ", x$description)
+    #     else
+    #       label <- x$name
+    #
+    #     if (x$type == "file") {
+    #       inputs[[ x$name ]] <- fileInput(session$ns(input.id), label = label)
+    #     } else if (x$type == "built-in") {
+    #       datasets <- as.data.frame(data()$results)
+    #       inputs[[ x$name ]] <- shinyWidgets::pickerInput(
+    #         inputId = session$ns(input.id),
+    #         label = label,
+    #         choices = datasets$Item,
+    #         choicesOpt = list(
+    #           subtext = datasets$Title
+    #         )
+    #       )
+    #     }
+    #
+    #     name <- x$name
+    #     observeEvent(input[[ input.id ]], {
+    #       data <- input[[ input.id ]]
+    #
+    #       slate.data$module$import.data[[ name ]]$data <- data
+    #     })
+    #   }
+    #
+    #   do.call(flowLayout, unname(inputs))
+    # })
 
     output$slate_ui <- renderUI({
       req(blueprint())
@@ -746,7 +748,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         server <- layout.item.servers[[ active.id ]]
       )
 
-      server$type.changed() # listen to changes
+      server$redraw() # listen to changes
 
       server$createUI()
     })
