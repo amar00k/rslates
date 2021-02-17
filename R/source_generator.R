@@ -128,6 +128,7 @@ srcBuild <- function(src, inputs) {
 
     vars <- lapply(x, function(v) {
       input <- inputs[[ v$input.name ]]
+
       val.null <- (is.null(input$value) || input$value == "")
       val.default <- (input$value == input.handlers[[ input$input.type ]]$get.value(input, NULL, value = input$default))
 
