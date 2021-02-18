@@ -5,12 +5,16 @@
 \title{Define behaviour of an input type}
 \usage{
 inputHandler(
+  default.value,
   params.list = list(),
   create.ui = function(...) {     tagList() },
   update.ui = function(...) { },
+  get.inputs = function(x, session) {     session$input[[x$id]] },
   get.value = function(x, session = NULL, value = NULL) {     if (is.null(value))      
        value <- session$input[[x$id]]     return(as.character(value)) },
-  create.observer = function(...) { }
+  get.source = function(x, session = NULL, value = NULL) {    
+    input.handlers[[x$input.type]]$get.value(x, session, value) },
+  observer = function(x, session) { }
 )
 }
 \arguments{
