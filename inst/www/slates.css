@@ -132,7 +132,7 @@
 
 .slate-inputs-container {
   display: flex;
-  padding-right: 0;
+  /* padding-right: 0; */
 }
 
 
@@ -189,6 +189,7 @@ input[type=number].numeric4-input {
 input.numeric4-input {
   border: 0;
   border-radius: 0;
+  box-shadow: none;
   text-align: center;
   padding: 0;
   margin: 4px;
