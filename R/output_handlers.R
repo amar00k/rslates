@@ -3,7 +3,7 @@
 # Outputs
 #
 
-output_handler <- function(create.ui = function(...) { tagList() },
+outputHandler <- function(create.ui = function(...) { tagList() },
                            create.output = function(...) {},
                            observer = function(...) {}) {
   list(
@@ -15,7 +15,7 @@ output_handler <- function(create.ui = function(...) { tagList() },
 
 
 output.handlers <- list(
-  plot = output_handler(
+  plot = outputHandler(
     create.ui = function(id, title) {
       plotOutput(id)
     },
@@ -30,7 +30,7 @@ output.handlers <- list(
       })
     }
   ),
-  table = output_handler(
+  table = outputHandler(
     create.ui = function(id, title) {
       tags$div(
         style="overflow: auto; max-height: 400px;",
@@ -47,7 +47,7 @@ output.handlers <- list(
       })
     }
   ),
-  reactable = output_handler(
+  reactable = outputHandler(
     create.ui = function(id, title) {
       reactable::reactableOutput(id)
     },
@@ -72,7 +72,7 @@ output.handlers <- list(
       })
     }
   ),
-  print = output_handler(
+  print = outputHandler(
     create.ui = function(id, title) {
       tags$div(
         style="overflow: auto; max-height: 400px;",
@@ -89,7 +89,7 @@ output.handlers <- list(
       })
     }
   ),
-  source = output_handler(
+  source = outputHandler(
     create.ui = function(id, title) {
       shinyAce::aceEditor(id,
                           mode = "r",
@@ -122,7 +122,7 @@ output.handlers <- list(
       shinyAce::updateAceEditor(session, editorId = id, value = src, theme = global.options$ace.theme)
     }
   )
-  # debug = output_handler(
+  # debug = outputHandler(
   #   create.ui = function(id, title) {
   #     tabPanel(title,
   #              tagList(
