@@ -11,6 +11,14 @@ addTagAttribs <- function(tag, class="", style="") {
   return(tag)
 }
 
+# removeTagClass <- function(tag, class) {
+#   tag.classes <- trimws(strsplit(tag$attribs$class, split = " ")[[1]])
+#   tag$attribs$class <- paste(tag.classes[ tag.classes != class ], collapse = " ")
+#
+#   return(tag)
+# }
+
+
 #
 # Inputs with wizard
 #
@@ -200,9 +208,9 @@ slatesSwitchInput <- function(id, label, value = FALSE, on.off.labels = c("True"
 
 
 
-#' File Upload Control
+#' Shiny File Upload Control
 #'
-#' @description Fixes an issue where the page jumps to top when clicking the Browse... button.
+#' @description Fixes an issue where the page jumps to top when clicking the "Browse..." button.
 #'
 #' @param id
 #' @param label
@@ -219,6 +227,98 @@ fileInput <- function(id, label, ...) {
 }
 
 
+
+
+
+
+
+slatesNavbarPage <- function(title, tabs,
+                             theme = getOption("rslates.default.theme"),
+                             ace.theme = getOption("rslates.default.ace.theme"),
+                             session.info = TRUE,
+                             ns = identity) {
+
+  settings <- shinyWidgets::dropdownButton(
+    inputId = paste(ns("app_settings")),
+    label = "",
+    icon = icon("cog"),
+    circle = FALSE,
+    inline = TRUE,
+    right = TRUE,
+    selectInput("select_theme",
+                label = "Theme",
+                choices = getOption("rslates.themes"),
+                selected = theme),
+    selectInput("select_ace_theme",
+                label = "Ace Editor Theme",
+                choices = shinyAce::getAceThemes(),
+                selected = ace.theme)
+  )
+
+  tabset <- do.call(tabsetPanel, append(list(id = ns("header_tabset")), tabs))
+
+  links <- tabset$children[[1]]
+  classes <- trimws(strsplit(links$attribs$class, split = " ")[[1]])
+  links$attribs$class <- paste(
+    classes[ !classes %in% c("shiny-tab-input", "shiny-bound-input") ],
+    collapse = " "
+  )
+  links$attribs$class <- gsub("nav-tabs", "navbar-nav", links$attribs$class)
+
+  navpanel <- tags$nav(
+    id = "title-navbar",
+    class = "navbar navbar-dark navbar-static-top bg-title",
+    role = "navigation",
+    tags$div(
+      class = "container-fluid",
+      tags$div(
+        class = "navbar-header",
+        tags$span(class = "navbar-brand", "Slates Widget Gallery"),
+      ),
+      links,
+      settings
+    )
+  )
+
+  if (session.info == TRUE) {
+    footer <- tags$div(
+      class = "container",
+      tags$h3("Session Info"),
+      tags$div(HTML(paste(captureSessionInfo(320), collapse="<br>")))
+    )
+  } else {
+    footer <- tagList()
+  }
+
+  bootstrapPage(
+    shinyjs::useShinyjs(),
+    shiny::bootstrapLib(),
+    shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
+    thematic::thematic_shiny(),
+    title = title,
+    theme = loadTheme(theme),
+    navpanel,
+    tabset$children[[2]],
+    tags$br(),
+    footer,
+    tags$br(),
+    tags$div(
+      class = "bg-title text-muted p-2",
+      tags$div(class = "container",
+      tags$span("Copyright (c) 2021 Daniel Neves"),
+      tags$span(class = "float-right", paste("rlates", packageVersion("rslates")))
+      )
+    )
+  )
+
+}
+
+
+slatesNavbarPageHandler <- function(session) {
+
+
+
+}
 
 
 
