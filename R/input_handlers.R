@@ -5,7 +5,11 @@
 
 isValidExpression <- function(expr) {
   tryCatch({
-    parse(text = expr)
+    if (expr == "")
+      return(TRUE)
+    else
+      parse(text = expr)
+
     return(TRUE)
   },
   error = function(e) {
