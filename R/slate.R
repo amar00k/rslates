@@ -100,12 +100,22 @@ slateServer <- function(input, output, session,
     )
   }
 
+  # ui.ready <- reactive({
+  #   if (is.null(input[[ names(input)[1] ]]))
+  #     return(FALSE)
+  #
+  #   return (TRUE)
+  # })
+
   # extract inputs from layout and update values
   input.list <- reactive({
+    req(ui.ready())
+
     inputs <- lapply(blueprint$input.layout$pages, function(p) {
-      lapply(p$groups, function(g) {
-        lapply(g$inputs, function(i) {
-          i$value <- input.handlers[[ i$input.type ]]$get.value(i, session)
+      lapply(p$children, function(g) {
+        lapply(g$children, function(i) {
+          i$value <- input.handlers[[ i$input.type ]]$get.source(i, session)
+
           return(i)
         })
       }) %>% unlist(recursive = FALSE)
@@ -487,7 +497,7 @@ slate_modal <- function(ns, id, input, output, session, blueprint, global.envir)
     # create inputs defined in slate
     input.tabs <- create_slate_inputs(ns, slate())
 
-    if (slate()$inputs[[1]]$main == TRUE) {
+    if (slate()$children[[1]]$main == TRUE) {
       input.main <- input.tabs[[1]]
       input.tabs[[1]] <- NULL
       input.tabset <- do.call(slatesCompactTabsetPanel, unname(input.tabs))

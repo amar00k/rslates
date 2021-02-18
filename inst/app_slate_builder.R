@@ -10,14 +10,14 @@
 # flat layout to st tree structure
 layoutToTree <- function(layout, selected = "") {
   tree <- lapply(layout$pages, function(p) {
-    groups <- lapply(p$groups, function(g) {
-      inputs <- lapply(g$inputs, function(i) {
+    groups <- lapply(p$children, function(g) {
+      inputs <- lapply(g$children, function(i) {
         structure("", sttype = i$type, stclass = "input",
                   stinfo = i$id, stselected = i$id == selected)
-      }) %>% set_names(sapply(g$inputs, "[[", "name"))
+      }) %>% set_names(sapply(g$children, "[[", "name"))
       structure(inputs, sttype = "group", stclass = "group", stopened = TRUE,
                 stinfo = g$id, stselected = g$id == selected)
-    }) %>% set_names(sapply(p$groups, "[[", "name"))
+    }) %>% set_names(sapply(p$children, "[[", "name"))
     structure(groups, sttype = "page", stclass = "page", stopened = TRUE,
               stinfo = p$id, stselected = p$id == selected)
   }) %>% set_names(sapply(layout$pages, "[[", "name"))
@@ -36,15 +36,15 @@ treeToLayout <- function(tree, flat.layout) {
     page <- flat.layout[[ attr(p, "stinfo") ]]
 
     if (length(names(p)) == 0)
-      page$groups <- list()
+      page$children <- list()
     else
-      page$groups <- lapply(p, function(g) {
+      page$children <- lapply(p, function(g) {
         group <- flat.layout[[ attr(g, "stinfo") ]]
 
         if (length(names(g)) == 0)
-          group$inputs <- list()
+          group$children <- list()
         else
-          group$inputs <- lapply(g, function(i) {
+          group$children <- lapply(g, function(i) {
             flat.layout[[ attr(i, "stinfo") ]]
           }) %>% set_names(sapply(., "[[", "name"))
 
@@ -397,6 +397,8 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     blueprint.datasets <- reactiveVal()
     blueprint.imports <- reactiveVal()
 
+    flat.layout <- reactiveVal()
+
     flat.input.layout <- reactive({
       flat <- flattenInputLayout(blueprint.inputs())
       names(flat) <- paste0(sapply(flat, "[[", "type"), "_", sapply(flat, "[[", "name"))
@@ -662,7 +664,6 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     active.item.id <- reactiveVal("")
     active.item <- reactiveVal(NULL)
 
-
     # Inputs tree output
     output$layout_tree <- shinyTree::renderTree({
       req(blueprint.inputs())
@@ -769,7 +770,13 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         item <- layout.item.servers[[ name ]]$item()
 
         # this comparison assumes item has the ancestry property
-        if (!itemsIdentical(item, flat[[ item$id ]])) {
+        old.item <- flat[[ item$id ]]
+        if (!itemsIdentical(item, old.item)) {
+          if (item$type == "page")
+            item$children <- old.item$children
+          else if (item$type == "group")
+            item$children <- old.item$children
+
           layout <- updateInputLayoutItem(layout, item, item$ancestry)
 
           changed <- c(changed, item$id)
@@ -826,6 +833,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         path <- item$name
 
       new.item <- inputGroup(name = global.options$group.name.generator())
+      new.item$ancestry <- path[1]
 
       blueprint.inputs(updateInputLayoutItem(blueprint.inputs(), new.item, path))
 
@@ -844,7 +852,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
           else
             path <- c(item$ancestry, item$name)
 
-          new.item <- slateInput(name = name, input.type = type, default = "")
+          new.item <- slateInput(name = name, input.type = type)
 
           blueprint.inputs(updateInputLayoutItem(blueprint.inputs(), new.item, path))
         })

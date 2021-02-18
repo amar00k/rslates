@@ -10,14 +10,9 @@ slateBlueprint <- function(title,
                            outputs = list(),
                            datasets = list(),
                            imports = list()) {
-
-  # outputs[[ length(outputs) + 1 ]] <- slateOutput("source", title="Source", type="source")
-
-  # names(inputs) <- sapply(inputs, "[[", "name")
-
   input.layout$pages <- lapply(input.layout$pages, function(p) {
-    p$groups <- lapply(p$groups, function(g) {
-      g$inputs <- lapply(g$inputs, function(i) {
+    p$children <- lapply(p$children, function(g) {
+      g$children <- lapply(g$children, function(i) {
         i$value <- i$default
         i
       }) %>% set_names(sapply(., "[[", "name"))
@@ -47,6 +42,9 @@ slateInput <- function(name, input.type,
                        ...) {
   if (is.null(default))
     default <- input.handlers[[ input.type ]]$default.value
+
+  if (is.null(value))
+    value <- default
 
   input <- list(
     name = name,
@@ -88,37 +86,37 @@ inputLayout <- function(pages = list(), main.page = NULL) {
 }
 
 
-inputPage <- function(name, ..., description="", groups = NULL) {
-  if (is.null(groups))
-    groups <- list(...)
+inputPage <- function(name, ..., description="", children = NULL) {
+  if (is.null(children))
+    children <- list(...)
 
-  if (length(groups) > 0)
-    names(groups) <- sapply(groups, "[[", "name")
+  if (length(children) > 0)
+    names(children) <- sapply(children, "[[", "name")
 
   return(list(name = name,
               id = paste0("page_", name),
               description = description,
               type = "page",
-              groups = groups))
+              children = children))
 }
 
 
-inputGroup <- function(name, ..., layout = "flow-2", condition = "", inputs = NULL) {
-  if (is.null(inputs))
-    inputs <- list(...)
+inputGroup <- function(name, ..., layout = "flow-2", condition = "", children = NULL) {
+  if (is.null(children))
+    children <- list(...)
 
-  names(inputs) <- sapply(inputs, "[[", "name")
+  names(children) <- sapply(children, "[[", "name")
 
   return(list(name = name,
               id = paste0("group_", name),
               condition = condition,
               type = "group",
               layout = layout,
-              inputs = inputs))
+              children = children))
 }
 
 
-slateOutput <- function(name, type, source="") {
+slateOutput <- function(name, type, source = "") {
   output.data <- list(
     name = name,
     type = type,
@@ -202,9 +200,9 @@ clearDefaults <- function(x, defaults) {
 simplifyBlueprint <- function(blueprint) {
   blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
     p <- clearDefaults(p, page.defaults)
-    p$groups <- lapply(p$groups, function(g) {
+    p$children <- lapply(p$children, function(g) {
       g <- clearDefaults(g, group.defaults)
-      g$inputs <- lapply(g$inputs, function(i) {
+      g$children <- lapply(g$children, function(i) {
         input.defaults <-
           c(input.defaults,
             sapply(input.handlers[[ i$input.type ]]$params.list, "[[", "default"))
@@ -232,8 +230,8 @@ simplifyBlueprint <- function(blueprint) {
 #' @examples
 restoreBlueprint <- function(blueprint) {
   blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
-    p$groups <- lapply(p$groups, function(g) {
-      g$inputs <- lapply(g$inputs, function(i) {
+    p$children <- lapply(p$children, function(g) {
+      g$children <- lapply(g$children, function(i) {
         do.call(slateInput, i)
       })
       do.call(inputGroup, g)
@@ -280,16 +278,16 @@ printInputLayout <- function(layout) {
 }
 
 
-flattenInputLayout <- function(layout) {
+flattenInputLayout <- function(layout, clear.children = FALSE) {
   lapply(layout$pages, function(p) {
-    lapply(p$groups, function(g) {
-      lapply(g$inputs, function(i) {
+    lapply(p$children, function(g) {
+      lapply(g$children, function(i) {
         i$ancestry <- c(p$name, g$name)
         i
       })
     }) %>%
       unlist(recursive = FALSE) %>%
-      append(lapply(p$groups, function(g) {
+      append(lapply(p$children, function(g) {
         g$ancestry <- p$name
         g
       }))
@@ -304,9 +302,9 @@ flattenInputLayout <- function(layout) {
 traverseInputLayout <- function(layout, callback = function(x, ancestry) x, flatten = FALSE) {
   layout$pages <- lapply(layout$pages, function(p) {
     p <- callback(p, NULL)
-    p$groups <- lapply(p$groups, function(g) {
+    p$children <- lapply(p$children, function(g) {
       g <- callback(g, p$name)
-      g$inputs <- lapply(g$inputs, function(i) {
+      g$children <- lapply(g$children, function(i) {
         callback(i, c(p$name, g$name))
       }) %>% set_names(sapply(., "[[", "name"))
       g
@@ -331,13 +329,13 @@ updateInputLayoutItem <- function(layout, item, ancestry = c(), name = NULL) {
     layout$pages[[ path ]] <- item
     names(layout$pages) <- sapply(layout$pages, "[[", "name")
   } else if (length(path) == 2) {
-    layout$pages[[ path[1] ]]$groups[[ path[2] ]] <- item
-    names(layout$pages[[ path[1] ]]$groups) <-
-      sapply(layout$pages[[ path[1] ]]$groups, "[[", "name")
+    layout$pages[[ path[1] ]]$children[[ path[2] ]] <- item
+    names(layout$pages[[ path[1] ]]$children) <-
+      sapply(layout$pages[[ path[1] ]]$children, "[[", "name")
   } else {
-    layout$pages[[ path[1] ]]$groups[[ path[2] ]]$inputs[[ path[3] ]] <- item
-    names(layout$pages[[ path[1] ]]$groups[[ path[2] ]]$inputs) <-
-      sapply(layout$pages[[ path[1] ]]$groups[[ path[2] ]]$inputs, "[[", "name")
+    layout$pages[[ path[1] ]]$children[[ path[2] ]]$children[[ path[3] ]] <- item
+    names(layout$pages[[ path[1] ]]$children[[ path[2] ]]$children) <-
+      sapply(layout$pages[[ path[1] ]]$children[[ path[2] ]]$children, "[[", "name")
   }
 
   return(layout)
@@ -346,7 +344,7 @@ updateInputLayoutItem <- function(layout, item, ancestry = c(), name = NULL) {
 
 getInputs <- function(blueprint) {
   lapply(blueprint$input.layout$pages, function(p) {
-    lapply(p$groups, "[[", "inputs") %>% unlist(recursive = FALSE)
+    lapply(p$children, "[[", "children") %>% unlist(recursive = FALSE)
   }) %>% unlist(recursive = FALSE) %>% set_names(sapply(., "[[", "name"))
 }
 

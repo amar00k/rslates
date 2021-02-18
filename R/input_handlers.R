@@ -297,7 +297,7 @@ createInput <- function(input, ns = identity) {
 
 
 createInputGroup <- function(group, id = NULL, ns = identity) {
-  ui.elements <- unname(lapply(group$inputs, function(x) {
+  ui.elements <- unname(lapply(group$children, function(x) {
     createInput(x, ns = ns)
   }))
 
@@ -317,10 +317,10 @@ createInputGroup <- function(group, id = NULL, ns = identity) {
 
 
 createInputPage <- function(page, id = NULL, ns = identity, layout = "flow") {
-  if (length(page$groups) == 0)
+  if (length(page$children) == 0)
     return(tagList())
 
-  ui.groups <- lapply(page$groups, function(x) {
+  ui.groups <- lapply(page$children, function(x) {
     if (class(x) == "list" && x$type == "group")
       createInputGroup(x, ns = ns)
     else if (class(x) == "list" && x$type == "input")
