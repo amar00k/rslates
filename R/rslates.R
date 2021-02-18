@@ -428,6 +428,7 @@ runProjectEditorApp <- function(project = NULL, input.container = "collapse", ru
 
 runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer = FALSE) {
     options(rslates.default.theme = theme)
+    options(rslates.default.ace.theme = "github")
     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
 
