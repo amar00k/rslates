@@ -144,15 +144,11 @@ input.handlers <- list(
     update.ui = function(session, id, ...) {
       updateTextInput(session, inputId = id, ...)
     },
-    create.observer = function(session, id) {
-      my_id <- id
+    observer = function(x, session) {
+      shinyjs::removeClass(x$id, "invalid-expression")
 
-      observeEvent(session$input[[ my_id ]], {
-        shinyjs::removeClass(my_id, "invalid-expression")
-
-        if (!isValidExpression(session$input[[ my_id ]]))
-          shinyjs::addClass(my_id, "invalid-expression")
-      })
+      if (!isValidExpression(session$input[[ x$id ]]))
+        shinyjs::addClass(x$id, "invalid-expression")
     },
     get.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
