@@ -3,9 +3,6 @@
 
 
 slatesWidgetGalleryApp <- function() {
-  default.theme <- "solar"
-  default.ace.theme <- "twilight"
-
   input.list <- list(
     slateInput("text", "character", default = "Some text",
                description = "A simple text input."),
@@ -33,41 +30,21 @@ slatesWidgetGalleryApp <- function() {
   ) %>% set_names(sapply(., "[[", "name"))
 
 
-  ui <- fluidPage(
-    shinyjs::useShinyjs(),
-    shiny::bootstrapLib(),
-    shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
-    thematic::thematic_shiny(),
-    theme = loadTheme(getOption("rslates.default.theme")),
+  ui <- slatesNavbarPage(
     title = "Slates Widget Gallery",
-    titlePanel("Slates Widget Gallery"),
-    sidebarLayout(
-      sidebarPanel = sidebarPanel(
-        width = 2,
-        tagList(
-          selectInput("select_theme",
-                      label = "Theme",
-                      choices = getOption("rslates.themes"),
-                      selected = getOption("rslates.default.theme")),
-          selectInput("select_ace_theme",
-                      label = "Ace Editor Theme",
-                      choices = shinyAce::getAceThemes(),
-                      selected = default.ace.theme)
-        )
-      ),
-      mainPanel = mainPanel(
-        widgetGalleryUI(id = "gallery", input.list = input.list),
-        tags$h3("Session Info"),
-        HTML(paste(captureSessionInfo(320), collapse="<br>"))
-      )
-    )
+    theme = getOption("rslates.default.theme"),
+    tabs = list(
+      tabPanel("Inputs", widgetGalleryInputsUI(id = "gallery", input.list = input.list))
+      #tabPanel("Test")
+    ),
+    session.info = TRUE
   )
 
 
   server <- function(input, output, session) {
     global.options <- reactiveValues(
-      ace.theme = default.ace.theme,
-      bslib.theme = getCurrentTheme()
+      ace.theme = getOption("rslates.default.ace.theme"),
+      bslib.theme = getOption("rslates.default.theme")
     )
     global.options$group.name.generator <- sequenceGenerator("group")
 
