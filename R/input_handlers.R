@@ -374,9 +374,9 @@ createInputLayout <- function(pages,
 
       tags$div(
         tags$div(
-          class = "card-header",
+          class = "card-header position-relative",
           tags$a(
-            class = "card-link",
+            class = "card-link stretched-link",
             `data-toggle` = "collapse",
             href = paste0("#", tab.id),
             x$name
