@@ -33,7 +33,7 @@ test_that("updateInputLayoutItem works", {
   expect_true(names(new.layout$pages)[4] == "page")
 
   new.layout <- updateInputLayoutItem(layout, inputGroup("group"), c("Graphical parameters"))
-  expect_true(length(new.layout$pages$`Graphical parameters`$groups) == 2)
+  expect_true(length(new.layout$pages$`Graphical parameters`$children) == 2)
 
   new.input <- slateInput("x", "character", "")
   new.layout <- updateInputLayoutItem(layout, new.input, c("Graphical parameters"))
