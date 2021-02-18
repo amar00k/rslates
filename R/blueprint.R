@@ -136,6 +136,18 @@ slateDataset <- function(name, type, source = "", export = FALSE, export.name = 
   )
 }
 
+
+getHandler <- function(x) {
+  if (x$type == "input") {
+    input.handlers[[ x$input.type ]]
+  } else if (x$type %in% names(output.handlers)) {
+    output.handlers[[ x$type ]]
+  }
+}
+
+
+
+
 #' Define a slate import
 #'
 #' @param name
