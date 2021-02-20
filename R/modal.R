@@ -288,7 +288,7 @@ create_file_import_modal <- function(id, session) {
           choices = c("Local File"="local", "URL"="url", "Built-in Dataset"="builtin")),
         conditionalPanel(
           condition = paste0("input[ '", ns(ID("radio_input")), "'] === 'local'"),
-          fileInput(ns(ID("file_input")), label = "File")
+          slatesFileInput(ns(ID("file_input")), label = "File")
         ),
         conditionalPanel(
           condition = paste0("input[ '", ns(ID("radio_input")), "'] === 'url'"),
