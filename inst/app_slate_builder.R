@@ -307,63 +307,60 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       )
     )
 
-    ui <- fluidPage(
-      shinyjs::useShinyjs(),
-      shiny::bootstrapLib(),
-      shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
-      thematic::thematic_shiny(),
-      theme = loadTheme(getOption("rslates.default.theme")),
-      title = "Slate Builder",
-      titlePanel("Slate Builder"),
-      sidebarLayout(
-        sidebarPanel = sidebarPanel(
-          width = 2,
-          tagList(
-            selectInput(ns("select_theme"),
-                        label = "Theme",
-                        choices = getOption("rslates.themes"),
-                        selected = getOption("rslates.default.theme")),
-            selectInput(ns("select_ace_theme"),
-                        label = "Ace Editor Theme",
-                        choices = shinyAce::getAceThemes(),
-                        selected = default.ace.theme)
-          )
+    # section.div <- function(...) {
+    #   tags$div(
+    #     class = "bg-light px-5 pb-2 slanted-top",
+    #     style = "padding-top: 60px",
+    #     ...
+    #   )
+    # }
+
+    section.div <- function(...) {
+      tags$div(
+        style = "filter: drop-shadow(0px 18px 8px #00000011);",
+        tags$div(
+          class = "bg-light px-5 pb-2",
+          ...
         ),
-        mainPanel = mainPanel(
-          width = 10,
-          fileInput(ns("load_blueprint"), label = "Load Blueprint"),
-          tags$div(
-            class = "card",
-            #style = "height: 620px;",
-            tags$div(
-              class = "card-body",
-              tags$div(
-                class = "d-flex justify-content-between align-items-center",
-                textInput(ns("blueprint_title"), label = "Blueprint Name", value = blueprint.ini$title),
-                downloadButton(ns("save_blueprint"), label = "Save Blueprint")
-              ),
-              tabsetPanel(
-                tabPanel(title = "Imports", tags$div(class = "container p-3", imports.ui)),
-                tabPanel(title = "Inputs", tags$div(class = "container p-3", layout.ui)),
-                tabPanel(title = "Datasets", tags$div(class = "container p-3", datasets.ui)),
-                tabPanel(title = "Outputs", tags$div(class = "container p-3", outputs.ui)),
-                tabPanel(title = "Export", tags$div(class = "container p-3",export.ui))
-              )
-            )
-          ),
-          tags$h3("Preview"),
-          checkboxInput(ns("show_slate_preview"), label = "Show Preview", value = FALSE),
-          tags$div(
-            id = ns("slate_preview"),
-            uiOutput(ns("slate_imports")),
-            uiOutput(ns("slate_ui")),
-          ),
-          tags$h3("Session Info"),
-          HTML(paste(captureSessionInfo(320), collapse="<br>"))
+        tags$div(
+          class = "bg-light slanted-bottom-40-rev",
+          style = "height: 50px;"
         )
       )
+    }
+
+    ui <- slatesNavbarPage(
+      title = "Slate Builder",
+      theme = getOption("rslates.default.theme"),
+      header = tagList(
+        tags$div(
+          class = "d-flex justify-content-between align-items-start bg-light p-3 px-5",
+          slatesFileInput(ns("load_blueprint"),
+                    class = "mb-0",
+                    label = "Load Blueprint"),
+          addTagAttribs(textInput(ns("blueprint_title"),
+                                  label = "Blueprint Name",
+                                  value = blueprint.ini$title), class = "ml-3"),
+          downloadButton(ns("save_blueprint"),
+                         class = "ml-auto align-self-center",
+                         label = "Save Blueprint")
+        ),
+      ),
+      tabs = list(
+        #tabPanel(title = "Imports", tags$div(class = "container p-3", imports.ui)),
+        tabPanel(title = "Inputs", section.div(layout.ui)),
+        tabPanel(title = "Datasets", section.div(datasets.ui)),
+        tabPanel(title = "Outputs", section.div(outputs.ui)),
+        tabPanel(title = "Preview", section.div(
+          uiOutput(ns("slate_imports")),
+          uiOutput(ns("slate_ui")),
+        )),
+        tabPanel(title = "Export", section.div(export.ui))
+      ),
+      session.info = TRUE
     )
   }
+
 
   builderServer <- function(input, output, session) {
     global.options <- reactiveValues(ace.theme = default.ace.theme)
@@ -396,8 +393,6 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     blueprint.outputs <- reactiveVal()
     blueprint.datasets <- reactiveVal()
     blueprint.imports <- reactiveVal()
-
-    flat.layout <- reactiveVal()
 
     flat.input.layout <- reactive({
       flat <- flattenInputLayout(blueprint.inputs())
