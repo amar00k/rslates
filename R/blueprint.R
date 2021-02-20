@@ -280,6 +280,12 @@ blueprintFromJSON <- function(filename=NULL, text=NULL) {
 # Blueprint utilities
 #
 
+printInputItem <- function(x) {
+  x$children <- NULL
+  print(paste(names(x), x, sep = " = ", collapse=", "))
+}
+
+
 printInputLayout <- function(layout) {
   indent <- list("", "  ", "    ")
 
