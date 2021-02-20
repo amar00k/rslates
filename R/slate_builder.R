@@ -13,38 +13,42 @@ createTypeSpecificUI <- function(ns, item) {
     }
   }
 
-  params <- input.handlers[[ item$input.type ]]$params.list
+  params <- getHandler(item)$params.list
 
-  tags <- lapply(names(params), function(name) {
-    par <- params[[ name ]]
-    id <- paste0("input_", name)
+  if (length(params) > 0) {
+    tags <- lapply(names(params), function(name) {
+      par <- params[[ name ]]
+      id <- paste0("input_", name)
 
-    switch(
-      par$type,
-      "list" = selectizeInput(
-        ns(id), label = par$label,
-        choices = parseChoices(item[[ name ]]),
-        selected = parseChoices(item[[ name ]]),
-        multiple = TRUE,
-        options = list(
-          delimiter = '',
-          create = "function(input) { return { value: input, text: input } }"
+      switch(
+        par$type,
+        "list" = selectizeInput(
+          ns(id), label = par$label,
+          choices = parseChoices(item[[ name ]]),
+          selected = parseChoices(item[[ name ]]),
+          multiple = TRUE,
+          options = list(
+            delimiter = '',
+            create = "function(input) { return { value: input, text: input } }"
+          )
+        ),
+        "choices" = selectInput(
+          ns(id), label = par$label,
+          choices = par$choices, selected = item[[ name ]]
+        ),
+        "logical" = checkboxInput(
+          ns(id), label = par$label, value = item[[ name ]]
         )
-      ),
-      "choices" = selectInput(
-        ns(id), label = par$label,
-        choices = par$choices, selected = item[[ name ]]
-      ),
-      "logical" = checkboxInput(
-        ns(id), label = par$label, value = item[[ name ]]
       )
-    )
-  })
+    })
 
-  div(
-    class = "slates-flow-3",
-    tags
-  )
+    div(
+      class = "slates-flow-3",
+      tags
+    )
+  } else {
+    tagList()
+  }
 }
 
 
@@ -99,7 +103,7 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     item <- reactiveVal(item.ini)
     need.redraw <- reactiveVal("")  # change when we need to redraw this whole page
-    need.default <- reactiveVal("") # change to update default input (on entering page)
+    redraw.default.ui <- reactiveVal("") # change to update default input (on entering page)
 
 
     createUI <- function() {
@@ -112,16 +116,17 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
     output$input_default_ui <- renderUI({
       req(isolate(item <- item()))
 
-      print("slate_builder.R: redraw default")
+      pprint("slate_builder.R: redraw default for",
+             item$id, "( default =", paste(item$default, collapse = ", "), ")")
 
       # listen to these events
-      need.default()
+      redraw.default.ui()
       input$input_input.type
 
       item$name <- "Default Value"
       item$value <- item$default
       item$wizards <- NULL
-      input.handlers[[ item$input.type ]]$create.ui(session$ns("input_default"), item)
+      getHandler(item)$create.ui(session$ns(item$id), item)
     })
 
 
@@ -141,6 +146,7 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
         item <- slateInput(name = item$name, input.type = input$input_input.type,
                            long.name = item$long.name, description = item$description,
                            wizards = item$wizards)
+        print(item)
         item$ancestry <- ancestry
       }
 
@@ -155,7 +161,7 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
 
       # check for changes in input type-specific parameters
       if (item$type == "input") {
-        params <- input.handlers[[ item$input.type ]]$params.list
+        params <- getHandler(item)$params.list
 
         for (var in names(params)) {
           par <- params[[ var ]]
@@ -181,9 +187,12 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
 
       # if any type-specific parameters changed, redraw default input
       if (item$type == "input") {
-        params <- input.handlers[[ item$input.type ]]$params.list
-        if (!all(sapply(names(params), function(var) identical(item[[ var ]], item()$var))))
-          need.default(runif(1))
+        params <- getHandler(item)$params.list
+        if (length(params) > 0 &&
+            !all(sapply(names(params), function(var) identical(item[[ var ]], item()$var)))) {
+          print("here")
+          redraw.default.ui(runif(1))
+        }
       }
 
       if (!identical(item, item())) {
@@ -194,29 +203,47 @@ builderItemServer <- function(id, item.ini, global.options = NULL) {
     })
 
 
-    observeEvent(input$input_default, {
+    # get the value of the default input, taking the input type into consideration
+    default.value <- reactive({
       req(
-        default <- input$input_default,
-        item <- item()
+        item <- isolate(item()),
+        input$input_input.type
       )
 
-      value <- input.handlers[[ item$input.type ]]$get.value(item, value = default)
+      value <- getHandler(item)$get.value(item, session)
+
+      if (length(value) > 0) {
+        req(all(!sapply(value, is.null)))
+      } else {
+        req(!is.null(value))
+      }
+
+      return(value)
+    })
+
+
+    # check for changes in default value
+    observe({
+      req(
+        item <- isolate(item())
+      )
+
+      value <- default.value()
 
       if (!identical(item$default, value)) {
-        pprint("updating input default value:", item$name, " default =", value)
+        pprint("Setting new default for", item$name, ":", paste(value, collapse=", "))
 
-        item$default <- value
+        item$value <- item$default <- value
 
         item(item)
       }
     })
 
-
     list(
       item = item,
       createUI = createUI,
       need.redraw = need.redraw,
-      need.default = need.default
+      redraw.default.ui = redraw.default.ui
     )
   })
 }

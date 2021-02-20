@@ -715,6 +715,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
     # list of builderItemServer
     layout.item.servers <- reactiveValues()
+    active.layout.server <- reactiveVal(NULL)
 
     # observe active.item.id and switch to the corresponding
     # properties page. Create the page if necessary and add to
@@ -722,33 +723,35 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     observeEvent(active.item.id(), {
       req(
         active.id <- active.item.id(),
-        item <- isolate(active.item())
+        item <- isolate(active.item()),
       )
+
+      active.server <- isolate(active.layout.server())
+      if (!is.null(active.server))
+        active.server$redraw.default.ui(runif(1))
 
       server <- layout.item.servers[[ active.id ]]
 
       if (is.null(server)) {
         server <- builderItemServer(session$ns(paste0("builder_", item$id)),
                                     item, global.options)
-
-        layout.item.servers[[ active.id ]] <- server
       }
+
+      layout.item.servers[[ active.id ]] <- server
+      active.layout.server(server)
     })
 
     # render the active item's properties page.
     # also listen to changes in input.type and update the ui.
     output$layout_item_ui <- renderUI({
       req(
-        active.id <- active.item.id(),
-        server <- layout.item.servers[[ active.id ]]
+        active.server <- active.layout.server()
       )
 
-      print("redraw item properties")
+      active.server$need.redraw()          # listen to changes
+      active.server$redraw.default.ui(runif(1)) # send signal
 
-      server$need.redraw()          # listen to changes
-      server$need.default(runif(1)) # send signal
-
-      server$createUI()
+      active.server$createUI()
     })
 
 
@@ -759,8 +762,8 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       layout <- isolate(blueprint.inputs())
 
       itemsIdentical <- function(item1, item2) {
-        item1[ which(names(item1) %in% c("groups", "inputs")) ] <- NULL
-        item2[ which(names(item2) %in% c("groups", "inputs")) ] <- NULL
+        item1$children <- NULL
+        item2$children <- NULL
 
         identical(item1, item2)
       }
