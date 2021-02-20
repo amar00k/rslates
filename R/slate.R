@@ -145,11 +145,11 @@ slateServer <- function(input, output, session,
   })
 
 
-  import.data <- reactiveValues()
-  for (x in blueprint$imports) {
-    if (x$type == "file")
-      import.data[[ x$name ]] <- x
-  }
+  # import.data <- reactiveValues()
+  # for (x in blueprint$imports) {
+  #   if (x$type == "file")
+  #     import.data[[ x$name ]] <- x
+  # }
 
 
   # run datasets code in slate environment
@@ -176,26 +176,28 @@ slateServer <- function(input, output, session,
   })
 
 
-  # initialize output renderer functions
-  for (x in blueprint$outputs) {
-    output.handlers[[ x$type ]]$create.output(x$name, session, blueprint, input.list, slate.envir)
-  }
-
-
-  # run output observers
-  observe({
-    global.options$ace.theme
-
-    for (x in blueprint$output) {
-      output.handlers[[ x$type ]]$observer(x$name, session, blueprint, input.list, slate.envir, global.options)
-    }
-  })
+  # # initialize output renderer functions
+  # for (x in blueprint$outputs) {
+  #   output.handlers[[ x$type ]]$create.output(x$name, session, blueprint, input.list, slate.envir)
+  # }
+  #
+  #
+  # # run output observers
+  # observe({
+  #   global.options$ace.theme
+  #
+  #   for (x in blueprint$output) {
+  #     output.handlers[[ x$type ]]$observer(x$name, session, blueprint, input.list, slate.envir, global.options)
+  #   }
+  # })
 
 
   # initialize input observers
-  for (x in getInputs(blueprint)) {
-    observers[[ x$id ]] <- input.handlers[[ x$input.type ]]$create.observer(session, x$id)
-  }
+  observe({
+    for (x in getInputs(blueprint)) {
+     input.handlers[[ x$input.type ]]$observer(x, session)
+    }
+  })
 
 
   # for (g in groups) {
@@ -229,7 +231,7 @@ slateServer <- function(input, output, session,
   return(
     list(blueprint = blueprint,
          inputs = input.list,
-         import.data = import.data,
+         #import.data = import.data,
          destroy = destroy)
   )
 }
