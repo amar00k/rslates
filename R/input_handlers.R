@@ -56,7 +56,7 @@ inputHandler <- function(default.value,
                            return (value)
                          },
                          get.source = function(x, session = NULL, value = NULL) {
-                           input.handlers[[ x$input.type ]]$get.value(x, session, value)
+                           as.character(getHandler(x)$get.value(x, session, value))
                          },
                          observer = function(x, session) {}) {
   list(
