@@ -3,18 +3,24 @@
 
 
 rslate.themes <- list(
-  # https://coolors.co/f8f6f2-2a7f62-182825-3772ff-092b36
+  # https://coolors.co/f8f6f2-2a7f62-182825-171b0e-390805-092b36
   "Natural (soft light)" = bslib::bs_theme(
     bootswatch = "minty", version = "4",
-    bg = "#F8F6F2", fg = "#000000",
-    primary = "#092B36", secondary = "#2A7F62"
+    bg = "#F1ede4", fg = "#000000",
+    primary = "#092B36", secondary = "#2A7F62",
+    "input-border-color" = "#6c757d"
     ) %>%
     bslib::bs_add_variables(
-      "theme-colors" = "('light': #F8F6F2, 'dark': #182825, 'title': #26403B)"
+      "theme-colors" = "('light': #f1ede4, 'dark': #0b0d07, 'title': #26403B)"
+
     ) %>%
     bslib::bs_add_rules("
       body { background-image: linear-gradient(
-        to bottom, #F8F6F2, #DBD1BD 1000px, #B09A6D 2000px, #D64933 100%) ; }")
+        to bottom, #F8F6F2, #DBD1BD 1000px, #B09A6D 2000px, #D64933 100%) ; }
+      .jstree-proton .jstree-wholerow-clicked {
+        background: $primary;
+      }
+    ")
 )
 
 
