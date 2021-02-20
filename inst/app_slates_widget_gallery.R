@@ -29,12 +29,24 @@ slatesWidgetGalleryApp <- function() {
                description = "A multiple-choice select input that allows arbitrary entries.")
   ) %>% set_names(sapply(., "[[", "name"))
 
+  section.div <- function(...) {
+    tags$div(
+      tags$div(
+        class = "bg-light px-5 pt-5 pb-2",
+        ...
+      ),
+      tags$div(
+        class = "bg-light slanted-bottom-40-rev",
+        style = "height: 50px;"
+      )
+    )
+  }
 
   ui <- slatesNavbarPage(
     title = "Slates Widget Gallery",
     theme = getOption("rslates.default.theme"),
     tabs = list(
-      tabPanel("Inputs", widgetGalleryInputsUI(id = "gallery", input.list = input.list))
+      tabPanel("Inputs", section.div(widgetGalleryInputsUI(id = "gallery", input.list = input.list)))
       #tabPanel("Test")
     ),
     session.info = TRUE

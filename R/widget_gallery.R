@@ -9,7 +9,7 @@ widgetGalleryInputsUI <- function(id, input.list) {
     createInputGroup(inputGroup(name = "inputs", layout = "flow-3", children = input.list), ns = ns),
     #reactable::reactableOutput(ns("input_table"))
     div(
-      class = "card align-items-center",
+      class = "card align-items-center mt-3",
       div(
         class = "card-body",
         tableOutput(ns("input_table"))
