@@ -142,9 +142,11 @@ slatesNumeric2Input <- function(id, label, value = c(0,0), ..., wizards = NULL) 
       tags$div(
         #class = "slates-flow-4",
         style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
-        tags$input(id = paste0(id, "_1"), type = "number", class = "form-control numeric4-input", value = value[1]),
+        tags$input(id = paste0(id, "_1"), type = "number",
+                   class = "form-control numeric4-input", value = value[1]),
         tags$span(",", style = "z-index: 1;"),
-        tags$input(id = paste0(id, "_2"), type = "number", class = "form-control numeric4-input", value = value[2]),
+        tags$input(id = paste0(id, "_2"), type = "number",
+                   class = "form-control numeric4-input", value = value[2]),
       )
     )
   )
@@ -220,9 +222,23 @@ slatesSwitchInput <- function(id, label, value = FALSE, on.off.labels = c("True"
 #' @export
 #'
 #' @examples
-fileInput <- function(id, label, ...) {
-  tag <- shiny::fileInput(id, label = label, ...)
+slatesFileInput <- function(id, label,
+                      multiple = FALSE,
+                      accept = NULL,
+                      width = NULL,
+                      buttonLabel = "Browse...",
+                      placeholder = "No file selected",
+                      class = "") {
+  tag <- shiny::fileInput(id, label = label,
+                          multiple = multiple,
+                          accept = accept,
+                          width = width,
+                          buttonLabel = buttonLabel,
+                          placeholder = placeholder)
+
+  tag <- addTagAttribs(tag, class = class)
   tag$children[[2]]$children[[1]]$children[[1]]$children[[2]]$attribs$style <- "display: none"
+
   return(tag)
 }
 
@@ -233,6 +249,8 @@ fileInput <- function(id, label, ...) {
 
 
 slatesNavbarPage <- function(title, tabs,
+                             header = tagList(),
+                             footer = tagList(),
                              theme = getOption("rslates.default.theme"),
                              ace.theme = getOption("rslates.default.ace.theme"),
                              session.info = TRUE,
@@ -267,7 +285,7 @@ slatesNavbarPage <- function(title, tabs,
 
   navpanel <- tags$nav(
     id = "title-navbar",
-    class = "navbar navbar-dark navbar-static-top bg-title",
+    class = "navbar navbar-dark navbar-static-top bg-title mb-0",
     role = "navigation",
     tags$div(
       class = "container-fluid",
@@ -282,12 +300,11 @@ slatesNavbarPage <- function(title, tabs,
 
   if (session.info == TRUE) {
     footer <- tags$div(
+      footer,
       class = "container",
       tags$h3("Session Info"),
       tags$div(HTML(paste(captureSessionInfo(320), collapse="<br>")))
     )
-  } else {
-    footer <- tagList()
   }
 
   bootstrapPage(
@@ -298,12 +315,13 @@ slatesNavbarPage <- function(title, tabs,
     title = title,
     theme = loadTheme(theme),
     navpanel,
+    header,
     tabset$children[[2]],
     tags$br(),
     footer,
     tags$br(),
     tags$div(
-      class = "bg-title text-muted p-2",
+      class = "bg-title p-2",
       tags$div(class = "container",
       tags$span("Copyright (c) 2021 Daniel Neves"),
       tags$span(class = "float-right", paste("rlates", packageVersion("rslates")))
