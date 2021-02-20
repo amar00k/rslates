@@ -45,25 +45,30 @@ quote.input <- function(x) {
 inputHandler <- function(default.value,
                          params.list = list(),
                          create.ui = function(...) { tagList() },
-                         update.ui = function(...) {},
+                         update.ui = function(x, session) {},
+                         get.inputs = function(x, session) {
+                           list(session$input[[ x$id ]])
+                         },
                          get.value = function(x, session = NULL, value = NULL) {
                            if (is.null(value))
                              value <- session$input[[ x$id ]]
 
-                           return (as.character(value))
+                           return (value)
                          },
                          get.source = function(x, session = NULL, value = NULL) {
                            input.handlers[[ x$input.type ]]$get.value(x, session, value)
                          },
-                         create.observer = function(...) {}) {
+                         observer = function(x, session) {}) {
   list(
     default.value = default.value,
     params.list = params.list,
     create.ui = create.ui,
     update.ui = update.ui,
+    get.inputs = get.inputs,
+#    get.input.value = get.input.value,
     get.value = get.value,
     get.source = get.source,
-    create.observer = create.observer
+    observer = observer
   )
 }
 
@@ -95,19 +100,20 @@ input.handlers <- list(
         )
       )
     },
-    update.ui = function(session, id, ...) {
-      #updateCheckboxInput(session, inputId = id, ...)
-      updateSelectInput(session, inputId = id, ...)
+    update.ui = function(x, session) {
+      # TODO
+      # updateSelectInput(session, inputId = id, ...)
     }
   ),
   character = inputHandler(
     default.value = "",
     params.list = list(
+#      quote = list(label = "Quote", type = "logical", default = TRUE)
     ),
     create.ui = function(id, x) {
       slatesTextInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
-    update.ui = function(session, id, ...) {
+    update.ui = function(x, session) {
       updateTextInput(session, inputId = id, ...)
     },
     get.value = function(x, session = NULL, value = NULL) {
@@ -155,11 +161,6 @@ input.handlers <- list(
         value <- session$input[[ x$id ]]
 
       return(value)
-      # if (!is.null(value) && value != "" && isValidExpression(value))
-      #   eval(parse(text = value), envir = new.env())
-      #
-      # else
-      #   NULL
     },
     get.source = function(x, session = NULL, value = NULL) {
       if (is.null(value))
@@ -179,23 +180,42 @@ input.handlers <- list(
       multiple <- if (is.null(x$multiple)) FALSE else x$multiple
       custom <- if (is.null(x$custom)) FALSE else x$custom
 
+      pprint(paste(x$value, collapse=", "))
+
       if (!custom) {
         slatesSelectInput(id, label = x$name, selected = x$value,
                           choices = x$choices, multiple = multiple,
                           wizards = x$wizards)
       } else {
+        options <- list(
+          delimiter = '',
+          create = "function(input) { return { value: input, text: input } }"
+        )
+
         selectizeInput(
-          id, label = x$name, selected = x$value,
+          inputId = id, label = x$name, selected = x$value,
           choices = x$choices, multiple = multiple,
-          options = list(
-            delimiter = '',
-            create = "function(input) { return { value: input, text: input } }"
-          )
+          options = options
         )
       }
+
+      # if (custom == TRUE)
+      #   options <- list(
+      #     delimiter = '',
+      #     create = "function(input) { return { value: input, text: input } }"
+      #   )
+      # else
+      #   options <- NULL
+
+      # selectizeInput(
+      #   id, label = x$name, selected = x$value,
+      #   choices = x$choices, multiple = multiple,
+      #   options = options
+      # )
     },
-    update.ui = function(session, id, ...) {
-      updateSelectInput(session, inputId = id, ...)
+    update.ui = function(x, session) {
+      # TODO
+      #updateSelectInput(session, x$id, choices = x$choices, selected = x$value, multiple = multiple)
     },
     get.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
@@ -221,6 +241,10 @@ input.handlers <- list(
     },
     update.ui = function(session, id, ...) {
       #updateNumericInput(session, inputId = id, ...)
+    },
+    get.inputs = function(x, session) {
+      print(x$id)
+      list(session$input[[ paste0(x$id, "_1") ]], session$input[[ paste0(x$id, "_2") ]])
     },
     get.value = function(x, session = NULL, value = NULL) {
       if (is.null(value)) {
