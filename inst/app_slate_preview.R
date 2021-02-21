@@ -4,58 +4,67 @@ slatePreviewApp <- function(blueprint, input.container = "tabset") {
   default.theme <- "solar"
   default.ace.theme <- "twilight"
 
-  ui <- fluidPage(
-    shiny::bootstrapLib(bslib::bs_theme(bootswatch = default.theme, version = "4")),
-    shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
-    thematic::thematic_shiny(),
-    title = "Slate Preview",
-    titlePanel("Slate Preview"),
-    sidebarLayout(
-      sidebarPanel = sidebarPanel(
-        width = 2,
-        tagList(
-          selectInput("select_theme",
-                      label = "Theme",
-                      choices = bslib::bootswatch_themes(),
-                      selected = default.theme),
-          selectInput("select_ace_theme",
-                      label = "Ace Editor Theme",
-                      choices = shinyAce::getAceThemes(),
-                      selected = default.ace.theme)
-        )
+  section.div <- function(...) {
+    tags$div(
+      style = "filter: drop-shadow(0px 18px 8px #00000011);",
+      tags$div(
+        class = "bg-light px-5 py-4",
+        ...
       ),
-      mainPanel = mainPanel(
-        width = 10,
-        slateUI("slate_preview", blueprint, input.container)
+      tags$div(
+        class = "bg-light slanted-bottom-40-rev",
+        style = "height: 50px;"
       )
     )
+  }
+
+  ui <- slatesNavbarPage(
+    title = "Slate Preview",
+    theme = getOption("rslates.default.theme"),
+    header = tagList(
+    ),
+    tabs = list(
+      tabPanel(title = "Slate", section.div(
+        slateUI("slate_preview", blueprint = blueprint, input.container = input.container))
+      )
+    ),
+    session.info = TRUE
   )
 
   server <- function(input, output, session) {
-
     global.options <- reactiveValues(ace.theme = default.ace.theme)
 
-    slate <- callModule(slateServer, "slate_preview", blueprint, global.options = global.options)
+    slate <- slateServer(
+      "slate_preview",
+      blueprint = blueprint,
+      slate.options = list(
+        input.container = input.container,
+        envir = reactiveVal(new.env()),
+        open.settings = TRUE
+      ),
+      global.options = global.options
+    )
+
+    #
+    # Themeing
+    #
 
     observeEvent(input$select_ace_theme, {
       global.options$ace.theme <- input$select_ace_theme
     })
 
     observeEvent(input$select_theme, {
-      theme <- getCurrentTheme()
+      print("select_theme")
 
-      if (!is.null(theme) && bslib::theme_bootswatch(theme) != input$select_theme) {
-        theme <- bslib::bs_theme_update(theme, bootswatch = input$select_theme, version = "4")
-        session$setCurrentTheme(theme)
-      }
+      theme <- loadTheme(input$select_theme)
+      session$setCurrentTheme(theme)
     })
   }
 
   shiny::shinyApp(ui, server)
 }
 
-blueprint <- getOption("rslates.preview.blueprint")
-input.container <- getOption("rslates.preview.input.container")
+input.container <- getOption("rslates.input.container")
 
-slatePreviewApp(blueprint, input.container)
+slatePreviewApp(getOption("rslates.preview.blueprint"), input.container)
 
