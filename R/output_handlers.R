@@ -21,11 +21,9 @@ output.handlers <- list(
     },
     create.output = function(x, session, blueprint, input.list, envir) {
       session$output[[ x$id ]] <- renderPlot({
-        req(x$source)
         req(envir())
 
         src <- buildSource(x$source, input.list())
-
         eval(parse(text = src), envir = new.env(parent = envir()))
       })
     }
@@ -39,7 +37,6 @@ output.handlers <- list(
     },
     create.output = function(x, session, blueprint, input.list, envir) {
       session$output[[ x$id ]] <- renderTable({
-        req(x$source)
         req(envir())
 
         src <- buildSource(x$source, input.list())
@@ -53,7 +50,6 @@ output.handlers <- list(
     },
     create.output = function(x, session, blueprint, input.list, envir) {
       session$output[[ x$id ]] <- reactable::renderReactable({
-        req(x$source)
         req(envir())
 
         src <- buildSource(x$source, input.list())
@@ -74,7 +70,6 @@ output.handlers <- list(
     },
     create.output = function(x, session, blueprint, input.list, envir) {
       session$output[[ x$id ]] <- renderPrint({
-        req(x$source)
         req(envir())
 
         src <- buildSource(x$source, input.list())
@@ -92,27 +87,27 @@ output.handlers <- list(
                           highlightActiveLine = FALSE)
     },
     observer = function(id, session, blueprint, input.list, envir, global.options) {
-      # if (length(blueprint$output) == 0) {
-      #   return("")
-      # }
-      #
-      # sources <- list()
-      #
-      # to.display <- as.logical(sapply(blueprint$datasets, function(x) !is.null(x$source)))
-      # sources$datasets.src <- lapply(blueprint$datasets[ to.display ], function(x) {
-      #   paste0("#-- ", x$name, "\n", assignValue(buildSource(x$source, input.list()), x$name))
-      # }) %>% paste(collapse = "\n\n")
-      #
-      # to.display <- sapply(blueprint$output, function(x) !is.null(x$source) && x$name != "Source")
-      # sources$outputs.src <- paste(
-      #   lapply(blueprint$output[ to.display ], function(x) {
-      #     paste0("#-- ", x$name, "\n", buildSource(x$source, input.list()))
-      #   }), collapse="\n\n")
-      #
-      # sources <- sources[ sources != "" ]
-      # src <- paste(sources, collapse="\n\n")
-      #
-      # shinyAce::updateAceEditor(session, editorId = id, value = src, theme = global.options$ace.theme)
+      if (length(blueprint$output) == 0) {
+        return("")
+      }
+
+      sources <- list()
+
+      to.display <- as.logical(sapply(blueprint$datasets, function(x) !is.null(x$source)))
+      sources$datasets.src <- lapply(blueprint$datasets[ to.display ], function(x) {
+        paste0("#-- ", x$name, "\n", assignValue(buildSource(x$source, input.list()), x$name))
+      }) %>% paste(collapse = "\n\n")
+
+      to.display <- sapply(blueprint$output, function(x) !is.null(x$source) && x$name != "Source")
+      sources$outputs.src <- paste(
+        lapply(blueprint$output[ to.display ], function(x) {
+          paste0("#-- ", x$name, "\n", buildSource(x$source, input.list()))
+        }), collapse="\n\n")
+
+      sources <- sources[ sources != "" ]
+      src <- paste(sources, collapse="\n\n")
+
+      shinyAce::updateAceEditor(session, editorId = id, value = src, theme = global.options$ace.theme)
     }
   )
   # debug = outputHandler(
