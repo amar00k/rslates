@@ -14,8 +14,6 @@
 #'
 #' @return the shiny app.
 #' @export
-#'
-#' @examples
 slatesApp <- function(...) {
 
     # local.projects.ui <- wellPanel(
@@ -381,8 +379,6 @@ slatesApp <- function(...) {
 #'
 #' @return
 #' @export
-#'
-#' @examples
 loadBlueprints <- function(path) {
     filenames <- dir(path, pattern = ".json$", full.names = TRUE)
     blueprints <- lapply(filenames, blueprintFromJSON)
@@ -412,6 +408,7 @@ runSlateBuilderApp <- function(blueprint = NULL, input.container = "collapse",
     options(rslates.builder.blueprint = blueprint)
     options(rslates.input.container = input.container)
     options(rslates.default.theme = theme)
+    options(rslates.default.ace.theme = "github")
     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
 
@@ -419,11 +416,15 @@ runSlateBuilderApp <- function(blueprint = NULL, input.container = "collapse",
 }
 
 
-runProjectEditorApp <- function(project = NULL, input.container = "collapse", run.themer = FALSE) {
+runProjectEditorApp <- function(project = NULL, input.container = "collapse",
+                                theme = "Natural (soft light)" , run.themer = FALSE) {
     options(rslates.blueprints = loadBlueprints(system.file("blueprints", package="rslates")))
     options(rslates.data.blueprints = loadBlueprints(system.file("blueprints/data_blueprints", package="rslates")))
     options(rslates.input.container = input.container)
     options(rslates.editor.project = project)
+    options(rslates.default.theme = theme)
+    options(rslates.default.ace.theme = "github")
+    options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
 
     runApp(system.file("app_project_editor.R", package = "rslates"))
