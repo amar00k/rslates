@@ -15,39 +15,52 @@ projectEditorApp <- function(project = NULL) {
     project <- slatesProject("Untitled Project")
   }
 
-  ui <- fluidPage(
-    shinyjs::useShinyjs(),
-    shiny::bootstrapLib(bslib::bs_theme(bootswatch = default.theme, version = "4")),
-    thematic::thematic_shiny(), # recolors plots
-    shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
-    title = "Slates Project Editor",
-    titlePanel("Slates Project Editor"),
-    sidebarLayout(
-      sidebarPanel = sidebarPanel(
-        width = 2,
-        tagList(
-          selectInput("select_theme",
-                      label = "Theme",
-                      choices = bslib::bootswatch_themes(),
-                      selected = default.theme),
-          selectInput("select_ace_theme",
-                      label = "Ace Editor Theme",
-                      choices = shinyAce::getAceThemes(),
-                      selected = default.ace.theme)
-        )
-      ),
-      mainPanel = mainPanel(
-        width = 10,
-        slates_editUI("editor", project)
-      )
-    )
+  # ui <- fluidPage(
+  #   shinyjs::useShinyjs(),
+  #   shiny::bootstrapLib(bslib::bs_theme(bootswatch = default.theme, version = "4")),
+  #   thematic::thematic_shiny(), # recolors plots
+  #   shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
+  #   title = "Slates Project Editor",
+  #   titlePanel("Slates Project Editor"),
+  #   sidebarLayout(
+  #     sidebarPanel = sidebarPanel(
+  #       width = 2,
+  #       tagList(
+  #         selectInput("select_theme",
+  #                     label = "Theme",
+  #                     choices = bslib::bootswatch_themes(),
+  #                     selected = default.theme),
+  #         selectInput("select_ace_theme",
+  #                     label = "Ace Editor Theme",
+  #                     choices = shinyAce::getAceThemes(),
+  #                     selected = default.ace.theme)
+  #       )
+  #     ),
+  #     mainPanel = mainPanel(
+  #       width = 10,
+  #       slates_editUI("editor", project)
+  #     )
+  #   )
+  # )
+
+  ui <- slatesNavbarPage(
+    title = "Slates",
+    theme = getOption("rslates.default.theme"),
+    header = tagList(
+    ),
+    tabs = list(
+      tabPanel(title = "Project Editor", div(
+        class = "",
+        projectEditorUI("editor", project)
+      ))
+    ),
+    session.info = TRUE
   )
 
-
-  htmltools::htmlDependencies(ui) <- htmltools::htmlDependency(
-    "font-awesome",
-    "5.13.0", "www/shared/fontawesome", package = "shiny",
-    stylesheet = c("css/all.min.css", "css/v4-shims.min.css"))
+  # htmltools::htmlDependencies(ui) <- htmltools::htmlDependency(
+  #   "font-awesome",
+  #   "5.13.0", "www/shared/fontawesome", package = "shiny",
+  #   stylesheet = c("css/all.min.css", "css/v4-shims.min.css"))
 
 
   server <- function(input, output, session) {
@@ -66,21 +79,19 @@ projectEditorApp <- function(project = NULL) {
     })
 
     observeEvent(input$select_theme, {
-      theme <- getCurrentTheme()
+      print("select_theme")
 
-      if (!is.null(theme) && bslib::theme_bootswatch(theme) != input$select_theme) {
-        theme <- bslib::bs_theme_update(theme, bootswatch = input$select_theme, version = "4")
-        session$setCurrentTheme(theme)
-      }
+      theme <- loadTheme(input$select_theme)
+      session$setCurrentTheme(theme)
     })
 
     #
     # Editor module
     #
-    editor <- callModule(module = slates_editServer,
-                         id = "editor",
-                         project, session.data, global.options)
-
+    editor <- projectEditorServer(
+      id = "editor",
+      project, session.data, global.options
+    )
   }
 
   if (options()$rslates.run.themer == TRUE)
