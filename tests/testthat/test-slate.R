@@ -6,14 +6,13 @@ testServer(
   slateServer,
   args = list(blueprint = blueprint, slate.options = NULL, global.options = NULL), {
 
-    # get a list of inputs in blueprint
-    inputs <- Filter(function(x) x$type == "input",
-                     flattenInputLayout(blueprint$input.layout))
+    inputs <- getInputs(blueprint)
 
     # get all pairs (input_id, initial_value)
-    args <- lapply(inputs, function(x) getHandler(x)$get.inputs(x, session, x$default)) %>%
+    args <- lapply(inputs,
+                   function(x) getHandler(x)$get.inputs(x, session, x$default)) %>%
       unlist(recursive = FALSE) %>%
-      set_names(names(inputs))
+      set_names(sapply(inputs, "[[", "id"))
 
     # set initial input values
     do.call(session$setInputs, args)
