@@ -6,5 +6,5 @@ inputs <- list(
 )
 
 test_that("srcBuild works", {
-  expect_equal(srcBuild(srcParse("paste(${Q:x}, ${y})"), inputs), 'paste("HELLO", 42)')
+  expect_equal(srcBuild(srcParse("paste(${x}, ${y})"), inputs), 'paste("HELLO", 42)')
 })

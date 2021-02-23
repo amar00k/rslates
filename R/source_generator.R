@@ -143,7 +143,10 @@ srcBuild <- function(src, inputs) {
       if (val.default && ("d" %in% v$opts))
         return(NULL)
 
-      value.text <- if (val.null) "NULL" else input$source
+      if (val.null)
+        value.text <- "NULL"
+      else
+        value.text <- getHandler(input)$get.source(input, value = input$value) # input$source
 
       # q: single quote
       if (!val.null && ("q" %in% v$opts))
