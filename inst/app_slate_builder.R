@@ -330,7 +330,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     }
 
     ui <- slatesNavbarPage(
-      title = "Slate Builder",
+      title = "Slates",
       theme = getOption("rslates.default.theme"),
       header = tagList(
         tags$div(
@@ -557,8 +557,8 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         if (!is.null(slate.data$module))
           slate.data$module$destroy()
 
-        mod <- callModule(
-          slateServer, id,
+        mod <- slateServer(
+          id,
           blueprint = blueprint(),
           slate.options = list(
             envir = reactiveVal(new.env()),
@@ -1070,8 +1070,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
     shiny::shinyApp(builderUI(), builderServer)
 }
 
-blueprint <- getOption("rslates.builder.blueprint")
 #input.container <- getOption("rslates.builder.input.container")
 
-slateBuilderApp(blueprint)
+slateBuilderApp(getOption("rslates.builder.blueprint"))
 
