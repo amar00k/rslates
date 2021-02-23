@@ -11,6 +11,7 @@
 #'   the ui of the body of the modal.
 #' @param observers an optional list of observers to be destroyed when the
 #'   modal is destroyed.
+#' @param focus.on.show unused
 #'
 #' @return a list with the following members. `id`: the id of the modal,
 #'   `show`: a function with signature `function(callback, title = NULL, ...)`
@@ -20,13 +21,11 @@
 #'   parameters are passed to the `ui.fun` function.
 #'
 #' @export
-#'
-#' @examples
 slatesModal <- function(id, session,
-                  submit.fun,
-                  ui.fun,
-                  observers=list(),
-                  focus.on.show = NULL) {
+                        submit.fun,
+                        ui.fun,
+                        observers=list(),
+                        focus.on.show = NULL) {
   ID <- function(x) paste0(id, "_", x)
   ns <- session$ns
   input <- session$input
@@ -148,33 +147,6 @@ slatesTextModal <- function(id, session) {
 #' created.
 #'
 #' @export
-#'
-#' @examples
-#' if (interactive()) {
-#'   shinyApp(
-#'     ui = fluidPage(
-#'       actionButton("show_modal", "Show Modal"),
-#'       verbatimTextOutput("result")
-#'     ),
-#'     server = function(input, output, session) {
-#'       # create the modal object
-#'       modal <- create_new_project_modal("new_project", session)
-#'
-#'       # create a reactiveVal to store the result
-#'       project <- reactiveVal(list())
-#'
-#'       # show modal when button is pressed
-#'       observeEvent(input$show_modal, {
-#'         modal$show(callback = function(title, authors) {
-#'           project(list(title=title, authors=authors))
-#'         })
-#'       })
-#'
-#'       # show the contents of project
-#'       output$result <- renderPrint(project())
-#'     }
-#'   )
-#' }
 create_new_project_modal <- function(id, session) {
   ID <- function(x) paste0(id, "_", x)
 
@@ -226,19 +198,6 @@ create_new_project_modal <- function(id, session) {
 
 
 
-#' Create a file import modal
-#'
-#' @description Creates a modal.
-#'
-#' @param id
-#' @param input
-#' @param output
-#' @param session
-#'
-#' @return
-#' @export
-#'
-#' @examples
 create_file_import_modal <- function(id, session) {
   ID <- function(x) paste0(id, "_", x)
   ns <- session$ns
