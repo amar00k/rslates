@@ -352,9 +352,9 @@ updateInputLayoutItem <- function(layout, item, ancestry = c(), name = NULL) {
 
 
 getInputs <- function(blueprint) {
-  lapply(blueprint$input.layout$pages, function(p) {
-    lapply(p$children, "[[", "children") %>% unlist(recursive = FALSE)
-  }) %>% unlist(recursive = FALSE) %>% set_names(sapply(., "[[", "name"))
+  Filter(function(x) x$type == "input",
+         flattenInputLayout(blueprint$input.layout)) %>%
+    set_names(sapply(., "[[", "name"))
 }
 
 
