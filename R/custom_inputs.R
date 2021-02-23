@@ -252,7 +252,7 @@ slatesNavbarPage <- function(title, tabs,
   settings <- shinyWidgets::dropdownButton(
     inputId = paste(ns("app_settings")),
     label = "",
-    icon = icon("cog"),
+    icon = icon("cogs"),
     circle = FALSE,
     inline = TRUE,
     right = TRUE,
