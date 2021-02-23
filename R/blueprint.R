@@ -116,12 +116,17 @@ inputGroup <- function(name, ..., layout = "flow-2", condition = "", children = 
 }
 
 
-slateOutput <- function(name, type, source = "") {
+slateOutput <- function(name, type, source = "", ...) {
   output.data <- list(
     name = name,
     type = type,
     source = source
   )
+
+  # add additional output parameters specified
+  output.data <- c(output.data, list(...))
+
+  output.data$id <- paste0("output_", name)
 
   return (output.data)
 }
@@ -146,18 +151,6 @@ getHandler <- function(x) {
 }
 
 
-
-
-#' Define a slate import
-#'
-#' @param name
-#' @param type file or dataframe
-#' @param value path of file or name of dataframe
-#'
-#' @return
-#' @export
-#'
-#' @examples
 slateImport <- function(name, type, value = "", description = "") {
   list(
     name = name,
@@ -207,8 +200,6 @@ clearDefaults <- function(x, defaults) {
 #' @export
 #'
 #' @seealso [restoreBlueprint()] to restore a simplified blueprint to its initial state.
-#'
-#' @examples
 simplifyBlueprint <- function(blueprint) {
   blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
     p <- clearDefaults(p, page.defaults)
@@ -238,8 +229,6 @@ simplifyBlueprint <- function(blueprint) {
 #' @export
 #'
 #' @seealso [simplifyBlueprint()] to remove default values from a blueprint.
-#'
-#' @examples
 restoreBlueprint <- function(blueprint) {
   blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
     p$children <- lapply(p$children, function(g) {
@@ -250,6 +239,8 @@ restoreBlueprint <- function(blueprint) {
     })
     do.call(inputPage, p)
   })
+
+  blueprint$outputs <- lapply(blueprint$outputs, function(x) do.call(slateOutput, x))
 
   return(blueprint)
 }
