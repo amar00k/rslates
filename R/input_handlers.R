@@ -29,6 +29,7 @@ quote.input <- function(x) {
 #'   input type: UI creation, UI updating, observer function and string representation
 #'   of the input value.
 #'
+#' @param default.value default value of this input type when no default value is provided
 #' @param params.list list of parameters used by the input type. Each element of the list
 #'   describes a parameter and has the following members: name (pretty name of the parameter),
 #'   choices (vector of allowed values), default (default value when not specified).
@@ -37,17 +38,20 @@ quote.input <- function(x) {
 #' @param get.value function that transforms the current value of the input
 #'   to the appropriate output string value. If value is provided, then
 #'   this value is used instead of the input element value.
+#' @param get.inputs used for testing purporses. Returns a list of pairs (input_id, value).
+#' @param get.source get the value of this input in source form.
+#' @param observer actions to be taken as an observer
 #'
 #' @return a list of functions to handle the the input type.
 #' @export
-#'
-#' @examples
 inputHandler <- function(default.value,
                          params.list = list(),
                          create.ui = function(...) { tagList() },
                          update.ui = function(x, session) {},
-                         get.inputs = function(x, session) {
-                           list(session$input[[ x$id ]])
+                         get.inputs = function(x, session, value) {
+                           inputs <- list()
+                           inputs[[ x$id ]] <- value
+                           return(inputs)
                          },
                          get.value = function(x, session = NULL, value = NULL) {
                            if (is.null(value))
@@ -114,7 +118,7 @@ input.handlers <- list(
       slatesTextInput(id, label = x$name, value = x$value, wizards = x$wizards)
     },
     update.ui = function(x, session) {
-      updateTextInput(session, inputId = id, ...)
+      #updateTextInput(session, inputId = id, ...)
     },
     get.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
@@ -180,8 +184,6 @@ input.handlers <- list(
       multiple <- if (is.null(x$multiple)) FALSE else x$multiple
       custom <- if (is.null(x$custom)) FALSE else x$custom
 
-      pprint(paste(x$value, collapse=", "))
-
       if (!custom) {
         slatesSelectInput(id, label = x$name, selected = x$value,
                           choices = x$choices, multiple = multiple,
@@ -242,10 +244,6 @@ input.handlers <- list(
     update.ui = function(session, id, ...) {
       #updateNumericInput(session, inputId = id, ...)
     },
-    get.inputs = function(x, session) {
-      print(x$id)
-      list(session$input[[ paste0(x$id, "_1") ]], session$input[[ paste0(x$id, "_2") ]])
-    },
     get.value = function(x, session = NULL, value = NULL) {
       if (is.null(value)) {
         value <- sapply(1:2, function(i) {
@@ -262,6 +260,12 @@ input.handlers <- list(
       value <- input.handlers$numeric2$get.value(x, session, value)
 
       paste0("c(", paste(as.numeric(value), collapse = ", "), ")")
+    },
+    get.inputs = function(x, session, value) {
+      inputs <- list()
+      inputs[[ paste0(x$id, "_", 1) ]] <- value[1]
+      inputs[[ paste0(x$id, "_", 2) ]] <- value[2]
+      return(inputs)
     }
   ),
   numeric4 = inputHandler(
@@ -290,6 +294,14 @@ input.handlers <- list(
       value <- input.handlers$numeric4$get.value(x, session, value)
 
       paste0("c(", paste(as.numeric(value), collapse = ", "), ")")
+    },
+    get.inputs = function(x, session, value) {
+      inputs <- list()
+      inputs[[ paste0(x$id, "_", 1) ]] <- value[1]
+      inputs[[ paste0(x$id, "_", 2) ]] <- value[2]
+      inputs[[ paste0(x$id, "_", 3) ]] <- value[3]
+      inputs[[ paste0(x$id, "_", 4) ]] <- value[4]
+     return(inputs)
     }
   )
 )
