@@ -385,6 +385,7 @@ loadBlueprints <- function(path) {
     setNames(blueprints, sapply(blueprints, "[[", "title"))
 }
 
+options(rslates.default.ace.theme = "dawn")
 
 runSlatesApp <- function() {
     options(rslates.blueprints = loadBlueprints(system.file("blueprints", package="rslates")))
@@ -408,7 +409,6 @@ runSlateBuilderApp <- function(blueprint = NULL, input.container = "collapse",
     options(rslates.builder.blueprint = blueprint)
     options(rslates.input.container = input.container)
     options(rslates.default.theme = theme)
-    options(rslates.default.ace.theme = "github")
     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
 
@@ -423,7 +423,6 @@ runProjectEditorApp <- function(project = NULL, input.container = "collapse",
     options(rslates.input.container = input.container)
     options(rslates.editor.project = project)
     options(rslates.default.theme = theme)
-    options(rslates.default.ace.theme = "github")
     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
 
@@ -432,7 +431,6 @@ runProjectEditorApp <- function(project = NULL, input.container = "collapse",
 
 runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer = FALSE) {
     options(rslates.default.theme = theme)
-    options(rslates.default.ace.theme = "github")
     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
 
