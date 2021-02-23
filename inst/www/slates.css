@@ -283,9 +283,19 @@ input.numeric4-input {
     clip-path: polygon(0 50px, 100% 0, 100% 100%, 0 100%);
 }
 
+.slanted-top-40 {
+    -webkit-clip-path: polygon(0 40px, 100% 0, 100% 100%, 0 100%);
+    clip-path: polygon(0 40px, 100% 0, 100% 100%, 0 100%);
+}
+
 .slanted-top-50-rev {
     -webkit-clip-path: polygon(0 0px, 100% 50px, 100% 100%, 0 100%);
     clip-path: polygon(0 0px, 100% 50px, 100% 100%, 0 100%);
+}
+
+.slanted-top-40-rev {
+    -webkit-clip-path: polygon(0 0px, 100% 40px, 100% 100%, 0 100%);
+    clip-path: polygon(0 0px, 100% 40px, 100% 100%, 0 100%);
 }
 
 
