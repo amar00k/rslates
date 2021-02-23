@@ -35,8 +35,6 @@ NULL
 #' @param ... arguments for the paste call
 #'
 #' @return
-#'
-#' @examples
 pprint <- function(...) {
   print(paste(...))
 }
@@ -51,8 +49,6 @@ pprint <- function(...) {
 #'
 #' @return a random string.
 #' @export
-#'
-#' @examples
 b64.uid <- function(size = 64) {
   paste(sample(c(LETTERS, letters, 0:9), size = size, replace=TRUE), collapse="")
 }
@@ -66,8 +62,6 @@ b64.uid <- function(size = 64) {
 #'
 #' @return a unique string id.
 #' @export
-#'
-#' @examples
 seq.uid <- function(prefix = "_") {
   counts <- attr(seq.uid, "counts")
   if (is.null(counts))
