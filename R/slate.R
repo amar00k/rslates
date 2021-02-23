@@ -76,6 +76,8 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    ui.ready <- uiReady(session)
+
     # append the source code outputs
     blueprint$outputs[[ length(blueprint$outputs) + 1 ]] <- slateOutput("Source", type="source")
 
@@ -98,36 +100,16 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
       )
     }
 
-    ui.ready <- reactive({
-      ui.ready <- all(sapply(names(input), function(name) !is.null(input[[ name ]])))
-
-      pprint("slate: ui.ready() =", ui.ready)
-
-      ui.ready
-    })
-
     # extract inputs from layout and update values
     input.list <- reactive({
       req(ui.ready())
 
-      inputs <- flattenInputLayout(blueprint$input.layout)
-      inputs <- Filter(function(x) x$type == "input", inputs)
-      inputs <- lapply(inputs, function(x) {
+      inputs <- lapply(getInputs(blueprint), function(x) {
         x$value <- getHandler(x)$get.value(x, session)
         x$source <- getHandler(x)$get.source(x, session)
-        x
-      })
 
-#
-#       inputs <- lapply(blueprint$input.layout$pages, function(p) {
-#         lapply(p$children, function(g) {
-#           lapply(g$children, function(i) {
-#             i$value <- getHandler(i)$get.source(i, session)
-#
-#             return(i)
-#           })
-#         }) %>% unlist(recursive = FALSE)
-#       }) %>% unlist(recursive = FALSE)
+        return(x)
+      })
 
       # if (length(blueprint$imports) > 0) {
       #   imports <- lapply(blueprint$imports, function(x) {
@@ -184,23 +166,24 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     })
 
 
-    # initialize output renderer functions
+    # initialize outputs
     for (x in blueprint$outputs) {
       getHandler(x)$create.output(x, session, blueprint, input.list, slate.envir)
     }
 
 
-    # run output observers
+    # observe outputs
     observe({
       global.options$ace.theme
 
-      for (x in blueprint$output) {
-        getHandler(x)$observer(x$name, session, blueprint, input.list, slate.envir, global.options)
+      for (x in blueprint$outputs) {
+        # run observer
+        getHandler(x)$observer(x$id, session, blueprint, input.list, slate.envir, global.options)
       }
     })
 
 
-    # initialize input observers
+    # observe inputs
     observe({
       for (x in getInputs(blueprint)) {
         getHandler(x)$observer(x, session)
