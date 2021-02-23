@@ -16,7 +16,7 @@ rslate.themes <- list(
     ) %>%
     bslib::bs_add_rules("
       body { background-image: linear-gradient(
-        to bottom, #F8F6F2, #DBD1BD 1000px, #B09A6D 2000px, #D64933 100%) ; }
+        to bottom, #eae3d7, #DBD1BD 1000px, #B09A6D 2000px, #D64933 100%) ; }
       .jstree-proton .jstree-wholerow-clicked {
         background: $primary;
       }
