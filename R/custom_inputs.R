@@ -214,14 +214,7 @@ slatesSwitchInput <- function(id, label, value = FALSE, on.off.labels = c("True"
 #'
 #' @description Fixes an issue where the page jumps to top when clicking the "Browse..." button.
 #'
-#' @param id
-#' @param label
-#' @param ...
-#'
-#' @return
 #' @export
-#'
-#' @examples
 slatesFileInput <- function(id, label,
                       multiple = FALSE,
                       accept = NULL,
@@ -288,13 +281,24 @@ slatesNavbarPage <- function(title, tabs,
     class = "navbar navbar-dark navbar-static-top bg-title mb-0",
     role = "navigation",
     tags$div(
-      class = "container-fluid",
+      class = "container-fluid d-flex align-items-baseline mt-2",
       tags$div(
         class = "navbar-header",
-        tags$span(class = "navbar-brand", "Slates Widget Gallery"),
+        tags$a(
+          class = "navbar-brand d-flex align-items-baseline",
+          href = "#",
+          tags$img(src = "slates-logo-white-24dpi.png",
+                   style="padding-right: .5em"),
+          title
+        ),
       ),
+      # div(class = "text-muted", "|"),
+      # if (length(tabs) > 1) links else tagList(),
       links,
-      settings
+      div(
+        class = "align-self-center",
+        settings
+      )
     )
   )
 
