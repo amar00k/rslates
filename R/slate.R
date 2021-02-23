@@ -1,6 +1,7 @@
 
 
 
+
 slateUI <- function(id,
                     blueprint,
                     container.fun = function(...) tags$div(id = ns("slate_div"), class = "card slate", ...),
@@ -24,7 +25,7 @@ slateUI <- function(id,
       title = x$name,
       tags$div(
         tags$br(),
-        output.handlers[[ x$type ]]$create.ui(ns(x$name), x$name)
+        output.handlers[[ x$type ]]$create.ui(ns(x$id), x$name)
       )
     )
   }))
@@ -71,171 +72,178 @@ slateUI <- function(id,
   tagList(ui)
 }
 
+slateServer <- function(id, blueprint, slate.options = NULL, global.options = NULL) {
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
 
-slateServer <- function(input, output, session,
-                        blueprint,
-                        slate.options = NULL,
-                        global.options = NULL) {
-  ns <- session$ns
+    # append the source code outputs
+    blueprint$outputs[[ length(blueprint$outputs) + 1 ]] <- slateOutput("Source", type="source")
 
-  # append the source code outputs
-  blueprint$outputs[[ length(blueprint$outputs) + 1 ]] <- slateOutput("Source", type="source")
+    # modal.edit <- slate_modal(ns, "edit_modal", input, output, session, blueprint, global.envir)
 
-  # modal.edit <- slate_modal(ns, "edit_modal", input, output, session, blueprint, global.envir)
+    # list of observers to be destroyed on exit
+    observers <- list()
 
-  # list of observers to be destroyed on exit
-  observers <- list()
-
-  # slate reactives
-  if (is.null(global.options)) {
-    global.options <- reactiveValues(
-      ace.theme = "ambiance"
-    )
-  }
-
-  if (is.null(slate.options)) {
-    slate.options <- reactiveValues(
-      envir = new.env(),
-      open.settings = TRUE
-    )
-  }
-
-  # ui.ready <- reactive({
-  #   if (is.null(input[[ names(input)[1] ]]))
-  #     return(FALSE)
-  #
-  #   return (TRUE)
-  # })
-
-  # extract inputs from layout and update values
-  input.list <- reactive({
-    req(ui.ready())
-
-    inputs <- lapply(blueprint$input.layout$pages, function(p) {
-      lapply(p$children, function(g) {
-        lapply(g$children, function(i) {
-          i$value <- input.handlers[[ i$input.type ]]$get.source(i, session)
-
-          return(i)
-        })
-      }) %>% unlist(recursive = FALSE)
-    }) %>% unlist(recursive = FALSE)
-
-    if (length(blueprint$imports) > 0) {
-      imports <- lapply(blueprint$imports, function(x) {
-        x$data <- import.data[[ x$name ]]$data
-        x$value <- dataset.handlers[[ x$type ]]$get.value(x, session)
-        return(x)
-      })
-
-      inputs <- append(inputs, imports)
+    # slate reactives
+    if (is.null(global.options)) {
+      global.options <- reactiveValues(
+        ace.theme = "ambiance"
+      )
     }
 
-    names(inputs) <- sapply(inputs, "[[", "name")
+    if (is.null(slate.options)) {
+      slate.options <- reactiveValues(
+        envir = new.env(),
+        open.settings = TRUE
+      )
+    }
 
-    return(inputs)
-  })
+    ui.ready <- reactive({
+      ui.ready <- all(sapply(names(input), function(name) !is.null(input[[ name ]])))
+
+      pprint("slate: ui.ready() =", ui.ready)
+
+      ui.ready
+    })
+
+    # extract inputs from layout and update values
+    input.list <- reactive({
+      req(ui.ready())
+
+      inputs <- flattenInputLayout(blueprint$input.layout)
+      inputs <- Filter(function(x) x$type == "input", inputs)
+      inputs <- lapply(inputs, function(x) {
+        x$value <- getHandler(x)$get.value(x, session)
+        x$source <- getHandler(x)$get.source(x, session)
+        x
+      })
+
+#
+#       inputs <- lapply(blueprint$input.layout$pages, function(p) {
+#         lapply(p$children, function(g) {
+#           lapply(g$children, function(i) {
+#             i$value <- getHandler(i)$get.source(i, session)
+#
+#             return(i)
+#           })
+#         }) %>% unlist(recursive = FALSE)
+#       }) %>% unlist(recursive = FALSE)
+
+      # if (length(blueprint$imports) > 0) {
+      #   imports <- lapply(blueprint$imports, function(x) {
+      #     x$data <- import.data[[ x$name ]]$data
+      #     x$value <- dataset.handlers[[ x$type ]]$get.value(x, session)
+      #     return(x)
+      #   })
+      #
+      #   inputs <- append(inputs, imports)
+      # }
+
+      #names(inputs) <- sapply(inputs, "[[", "name")
+
+      return(inputs)
+    })
 
 
-  # extract groups from layout
-  group.list <- reactive({
-    lapply(blueprint$input.layout$pages, "[[", "groups") %>%
-      unlist(recursive = FALSE) %>%
-      set_names(sapply(., "[[", "name"))
-  })
+    # extract groups from layout
+    group.list <- reactive({
+      lapply(blueprint$input.layout$pages, "[[", "groups") %>%
+        unlist(recursive = FALSE) %>%
+        set_names(sapply(., "[[", "name"))
+    })
 
 
-  # import.data <- reactiveValues()
-  # for (x in blueprint$imports) {
-  #   if (x$type == "file")
-  #     import.data[[ x$name ]] <- x
-  # }
+    # import.data <- reactiveValues()
+    # for (x in blueprint$imports) {
+    #   if (x$type == "file")
+    #     import.data[[ x$name ]] <- x
+    # }
 
 
-  # run datasets code in slate environment
-  slate.envir <- reactive({
-    inputs <- input.list()
-    env <- new.env(parent = slate.options$envir())
+    # run datasets code in slate environment
+    slate.envir <- reactive({
+      inputs <- input.list()
+      env <- new.env(parent = slate.options$envir())
 
-    env <- tryCatch({
-      for (d in blueprint$datasets) {
-        if (!is.null(d$source)) {
-          src <- buildSource(d$source, input.list())
-          env[[ d$name ]] <- eval(parse(text = src), envir = new.env(parent = env))
+      env <- tryCatch({
+        for (d in blueprint$datasets) {
+          if (!is.null(d$source)) {
+            src <- buildSource(d$source, input.list())
+            env[[ d$name ]] <- eval(parse(text = src), envir = new.env(parent = env))
+          }
         }
-      }
 
-      return(env)
-    },
-    error = function(e) {
-      # ignore errors
+        return(env)
+      },
+      error = function(e) {
+        # ignore errors
+        return(env)
+      })
+
       return(env)
     })
 
-    return(env)
+
+    # initialize output renderer functions
+    for (x in blueprint$outputs) {
+      getHandler(x)$create.output(x, session, blueprint, input.list, slate.envir)
+    }
+
+
+    # run output observers
+    observe({
+      global.options$ace.theme
+
+      for (x in blueprint$output) {
+        getHandler(x)$observer(x$name, session, blueprint, input.list, slate.envir, global.options)
+      }
+    })
+
+
+    # initialize input observers
+    observe({
+      for (x in getInputs(blueprint)) {
+        getHandler(x)$observer(x, session)
+      }
+    })
+
+
+    # for (g in groups) {
+    #   if (g$condition != "") {
+    #     lapply(input.list, "[[", "value")
+    #
+    #   }
+    # }
+
+
+    # Cleanup function
+    destroy <- function() {
+      # remove inputs
+      # https://www.r-bloggers.com/2020/02/shiny-add-removing-modules-dynamically/
+      id <- session$ns("")
+      for (x in paste0(id, names(input))) {
+        .subset2(input, "impl")$.values$remove(x)
+      }
+
+      # remove outputs
+      for (x in paste0(id, names(output.handlers))) {
+        output[[ x ]] <- NULL
+      }
+
+      # remove observers
+      for (x in observers) {
+        x$destroy()
+      }
+    }
+
+    return(
+      list(blueprint = blueprint,
+           inputs = input.list,
+           #import.data = import.data,
+           destroy = destroy)
+    )
   })
-
-
-  # # initialize output renderer functions
-  # for (x in blueprint$outputs) {
-  #   output.handlers[[ x$type ]]$create.output(x$name, session, blueprint, input.list, slate.envir)
-  # }
-  #
-  #
-  # # run output observers
-  # observe({
-  #   global.options$ace.theme
-  #
-  #   for (x in blueprint$output) {
-  #     output.handlers[[ x$type ]]$observer(x$name, session, blueprint, input.list, slate.envir, global.options)
-  #   }
-  # })
-
-
-  # initialize input observers
-  observe({
-    for (x in getInputs(blueprint)) {
-     input.handlers[[ x$input.type ]]$observer(x, session)
-    }
-  })
-
-
-  # for (g in groups) {
-  #   if (g$condition != "") {
-  #     lapply(input.list, "[[", "value")
-  #
-  #   }
-  # }
-
-
-  # Cleanup function
-  destroy <- function() {
-    # remove inputs
-    # https://www.r-bloggers.com/2020/02/shiny-add-removing-modules-dynamically/
-    id <- session$ns("")
-    for (x in paste0(id, names(input))) {
-      .subset2(input, "impl")$.values$remove(x)
-    }
-
-    # remove outputs
-    for (x in paste0(id, names(output.handlers))) {
-      output[[ x ]] <- NULL
-    }
-
-    # remove observers
-    for (x in observers) {
-      x$destroy()
-    }
-  }
-
-  return(
-    list(blueprint = blueprint,
-         inputs = input.list,
-         #import.data = import.data,
-         destroy = destroy)
-  )
 }
-
 
   # observers$edit <- observeEvent(input$menu_edit, {
   #   modal.edit$show(blueprint, callback = function(new.input.list, ...) {
