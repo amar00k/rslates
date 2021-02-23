@@ -15,12 +15,6 @@ slatesFileInput(
   class = ""
 )
 }
-\arguments{
-\item{...}{}
-}
-\value{
-
-}
 \description{
 Fixes an issue where the page jumps to top when clicking the "Browse..." button.
 }

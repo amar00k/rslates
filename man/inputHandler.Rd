@@ -8,16 +8,19 @@ inputHandler(
   default.value,
   params.list = list(),
   create.ui = function(...) {     tagList() },
-  update.ui = function(...) { },
-  get.inputs = function(x, session) {     session$input[[x$id]] },
+  update.ui = function(x, session) { },
+  get.inputs = function(x, session, value) {     inputs <- list()     inputs[[x$id]] <-
+    value     return(inputs) },
   get.value = function(x, session = NULL, value = NULL) {     if (is.null(value))      
-       value <- session$input[[x$id]]     return(as.character(value)) },
+       value <- session$input[[x$id]]     return(value) },
   get.source = function(x, session = NULL, value = NULL) {    
-    input.handlers[[x$input.type]]$get.value(x, session, value) },
+    as.character(getHandler(x)$get.value(x, session, value)) },
   observer = function(x, session) { }
 )
 }
 \arguments{
+\item{default.value}{default value of this input type when no default value is provided}
+
 \item{params.list}{list of parameters used by the input type. Each element of the list
 describes a parameter and has the following members: name (pretty name of the parameter),
 choices (vector of allowed values), default (default value when not specified).}
@@ -26,9 +29,15 @@ choices (vector of allowed values), default (default value when not specified).}
 
 \item{update.ui}{function used to update the input UI.}
 
+\item{get.inputs}{used for testing purporses. Returns a list of pairs (input_id, value).}
+
 \item{get.value}{function that transforms the current value of the input
 to the appropriate output string value. If value is provided, then
 this value is used instead of the input element value.}
+
+\item{get.source}{get the value of this input in source form.}
+
+\item{observer}{actions to be taken as an observer}
 }
 \value{
 a list of functions to handle the the input type.

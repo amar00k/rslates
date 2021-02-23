@@ -19,30 +19,3 @@ created.
 Creates a modal to be displayed when creating a new project. Allows
 input of the project's initital configuration, such as title and author.
 }
-\examples{
-if (interactive()) {
-  shinyApp(
-    ui = fluidPage(
-      actionButton("show_modal", "Show Modal"),
-      verbatimTextOutput("result")
-    ),
-    server = function(input, output, session) {
-      # create the modal object
-      modal <- create_new_project_modal("new_project", session)
-
-      # create a reactiveVal to store the result
-      project <- reactiveVal(list())
-
-      # show modal when button is pressed
-      observeEvent(input$show_modal, {
-        modal$show(callback = function(title, authors) {
-          project(list(title=title, authors=authors))
-        })
-      })
-
-      # show the contents of project
-      output$result <- renderPrint(project())
-    }
-  )
-}
-}

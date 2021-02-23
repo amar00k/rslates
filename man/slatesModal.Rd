@@ -26,6 +26,8 @@ the ui of the body of the modal.}
 
 \item{observers}{an optional list of observers to be destroyed when the
 modal is destroyed.}
+
+\item{focus.on.show}{unused}
 }
 \value{
 a list with the following members. `id`: the id of the modal,
