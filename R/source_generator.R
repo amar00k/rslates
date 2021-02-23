@@ -122,15 +122,18 @@ srcBuild <- function(src, inputs) {
   if (is.null(names(inputs)))
     names(inputs) <- sapply(inputs, "[[", "name")
 
+  # iterate through source code elements
   paste(lapply(src, function(x) {
+    # this is a chunk of code without variables
     if (class(x) == "character")
       return(x)
 
+    # iterate through variables
     vars <- lapply(x, function(v) {
       input <- inputs[[ v$input.name ]]
 
       val.null <- (is.null(input$value) || input$value == "")
-      val.default <- (input$value == input.handlers[[ input$input.type ]]$get.value(input, NULL, value = input$default))
+      val.default <- (input$value == getHandler(input)$get.value(input, NULL, value = input$default))
 
       # n: suppress null
       if (val.null && ("n" %in% v$opts))
@@ -140,7 +143,7 @@ srcBuild <- function(src, inputs) {
       if (val.default && ("d" %in% v$opts))
         return(NULL)
 
-      value.text <- if (val.null) "NULL" else input$value
+      value.text <- if (val.null) "NULL" else input$source
 
       # q: single quote
       if (!val.null && ("q" %in% v$opts))
