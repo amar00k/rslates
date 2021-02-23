@@ -30,6 +30,29 @@ NULL
 #
 
 
+
+#' Observe shiny inputs for readyness
+#'
+#' @param session the server session
+#'
+#' @return a reactiveVal that if TRUE indicates the UI has been initialized.
+#' @export
+uiReady <- function(session) {
+  ready <- reactiveVal(FALSE)
+  input <- session$input
+
+  observer <- observe({
+    ready <- all(sapply(names(input), function(name) !is.null(input[[ name ]])))
+
+    if (ready)
+      observer$destroy()
+
+    ready(ready)
+  })
+
+  return(ready)
+}
+
 #' Paste and print
 #'
 #' @param ... arguments for the paste call
