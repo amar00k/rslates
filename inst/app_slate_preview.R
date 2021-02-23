@@ -4,6 +4,7 @@ slatePreviewApp <- function(blueprint, input.container = "tabset") {
   default.theme <- "solar"
   default.ace.theme <- "twilight"
 
+
   section.div <- function(...) {
     tags$div(
       style = "filter: drop-shadow(0px 18px 8px #00000011);",
@@ -18,18 +19,20 @@ slatePreviewApp <- function(blueprint, input.container = "tabset") {
     )
   }
 
+
   ui <- slatesNavbarPage(
-    title = "Slate Preview",
+    title = "Slates",
     theme = getOption("rslates.default.theme"),
     header = tagList(
     ),
     tabs = list(
-      tabPanel(title = "Slate", section.div(
+      tabPanel(title = "Slate Preview", section.div(
         slateUI("slate_preview", blueprint = blueprint, input.container = input.container))
       )
     ),
     session.info = TRUE
   )
+
 
   server <- function(input, output, session) {
     global.options <- reactiveValues(ace.theme = default.ace.theme)
