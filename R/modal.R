@@ -57,37 +57,8 @@ slatesModal <- function(id, session,
       ),
       ...
     )
-    # md$children[[1]]$children[[1]]$attribs$id <- "modal-content"
-    # md$children[[1]]$children[[1]]$children[[2]]$attribs$id <- "modal-body"
 
     showModal(md, session)
-
-    # i <- 0
-    # if (!is.null(focus.on.show)) {
-    #   o <- observe({
-    #     #input[[ focus.on.show ]], {
-    #     req(!is.null(input[[ focus.on.show ]]))
-    #
-    #     pprint("focus", focus.on.show, input[[ focus.on.show ]])
-    #
-    #     # shinyjs::js$focus("modal-content")
-    #     # shinyjs::js$focus("modal-body")
-    #     shinyjs::js$focus(focus.on.show)
-    #
-    #     i <<- i + 1
-    #     print(i)
-    #     if (i == 2) {
-    #       o$destroy()
-    #     } else {
-    #       invalidateLater(200)
-    #     }
-    #
-    #
-    #     #o$destroy()
-    #   })
-    # }
-
-    # TODO: set focus on show
   }
 
   list(
@@ -95,6 +66,8 @@ slatesModal <- function(id, session,
     show = show
   )
 }
+
+
 
 
 slatesSelectModal <- function(id, session) {
@@ -127,6 +100,242 @@ slatesTextModal <- function(id, session) {
 
   slatesModal(id, session, ui.fun = ui.fun, submit.fun = submit.fun)
 }
+
+
+
+
+
+
+
+
+#' Construct a Multi-Page Modal Dialog
+#'
+#' @description Used to construct a multi-page modal dialog. Next and Back buttons are
+#'   used to navigate the pages sequentially. Optional validation functions may be
+#'   specified for each page. A callback function may be specified to obtain the
+#'   user's inputs.
+#'
+#' @param id dialog id
+#' @param session shiny server session
+#' @param pages.ui a *list* of functions, each used to build a page. These functions
+#'   may define any number of arguments used to build the page's UI. The return value
+#'   of these functions should be a valid `shiny.tag` definition.
+#' @param submit.fun a function that returns the results of the user interaction with
+#'   the modal dialog. The return value should be a list with named elements.
+#' @param validators a *list* of functions used to validate the state of each page. A
+#'   user may not proceed to the next page of the modal dialog until the validator function
+#'   for the current page returns `TRUE`.
+#' @param back.button whether or not to show the back button on the modal's pages.
+#' @param observers a list containing any number of observers. This is used solely to
+#'   allow the modal dialog to destroy the observers when it is destroyed.
+#'
+#' @return A list containing the modal id and the `show()` function (see details below).
+#'
+#' @details After creating the modal dialog, the `show` function is used to display it. This
+#'   function takes in a mandatory `callback` argument, and optional `title`. When the user
+#'   exits the dialog by pressing the OK button, the provided `callback` function is called
+#'   with each argument named as an element of the result from `submit.fun`. Additional
+#'   arguments provided to the `show` method will be passed on to the UI definition
+#'   functions provided in `pages.ui`. See example below.
+#'
+#' @export
+#'
+#' @examples
+#' if (interactive()) {
+#'   exampleMultiPageModal <- function(id, session) {
+#'     ID <- function(x) paste0(id, "_", x)
+#'     ns <- session$ns
+#'     input <- session$input
+#'
+#'     pages.ui <- list(
+#'       function(common.label, text.value = "") {
+#'         tagList(
+#'           helpText("Hello there! This is page 1! Please enter less than 5 characters."),
+#'           textInput(ns(ID("text_input")), label = common.label, value = text.value)
+#'         )
+#'       },
+#'       function(common.label, numeric.value) {
+#'         tagList(
+#'           helpText("Hi again! We're on page 2 now. Enter 42 below."),
+#'           numericInput(ns(ID("numeric_input")), label = common.label, value = numeric.value)
+#'         )
+#'       }
+#'     )
+#'
+#'     submit.fun <- function() {
+#'       list(text.value = session$input[[ ID("text_input") ]],
+#'            numeric.value = session$input[[ ID("numeric_input") ]])
+#'     }
+#'
+#'     validators <- list(
+#'       function() {
+#'         return(nchar(input[[ ID("text_input") ]]) < 5)
+#'       },
+#'       function() {
+#'         return(input[[ ID("numeric_input") ]] == 42)
+#'       }
+#'     )
+#'
+#'     slatesModalMultiPage(id, session,
+#'                          pages.ui = pages.ui,
+#'                          submit.fun = submit.fun,
+#'                          validators = validators)
+#'   }
+#'
+#'   app <- shinyApp(
+#'     ui = fluidPage(
+#'       shinyjs::useShinyjs(),
+#'       actionButton("show", "Show Modal")
+#'     ),
+#'     server = function(input, output, session) {
+#'       modal <- exampleMultiPageModal("modal", session)
+#'
+#'       observeEvent(input$show, {
+#'         modal$show(
+#'           common.label = "Some input", text.value = "Something", numeric.value = 41,
+#'           title = "Example Multi-Page Modal",
+#'           callback = function(text.value, numeric.value) {
+#'             print(paste("Modal returned:", text.value, ",", numeric.value))
+#'           }
+#'         )
+#'       })
+#'     }
+#'   )
+#'
+#'   runApp(app)
+#' }
+slatesModalMultiPage <- function(id, session,
+                                 pages.ui,
+                                 submit.fun,
+                                 validators = NULL,
+                                 back.button = TRUE,
+                                 observers = list()) {
+  ID <- function(x) paste0(id, "_", x)
+  ns <- session$ns
+  input <- session$input
+
+  current.page <- reactiveVal(1)
+  num.pages <- length(pages.ui)
+  .callback <- NULL
+
+  if (is.null(validators)) {
+    validators <- lapply(1:num.pages, function(x) function() { TRUE })
+  }
+
+  observe({
+    # observe all inputs so we always update the buttons
+    invisible(lapply(names(input), function(x) input[[ x ]]))
+
+    valid <- validators[[ current.page() ]]()
+
+    pprint("valid:", valid, "current.page:", current.page())
+
+    shinyjs::toggleElement(
+      ID("btn_back"),
+      condition = (back.button == TRUE && current.page() > 1)
+    )
+
+    if (current.page() < num.pages) {
+      shinyjs::toggleElement(ID("btn_next"), condition = TRUE)
+      shinyjs::toggleState(ID("btn_next"), condition = valid)
+      shinyjs::toggleElement(ID("btn_ok"), condition = FALSE)
+    } else {
+      shinyjs::toggleElement(ID("btn_next"), condition = FALSE)
+      shinyjs::toggleElement(ID("btn_ok"), condition = TRUE)
+      shinyjs::toggleState(ID("btn_ok"), condition = valid)
+    }
+  })
+
+  observeEvent(input[[ ID("btn_back") ]], {
+    if (current.page() > 1) {
+      current.page(current.page() - 1)
+
+      updateTabsetPanel(session, inputId = ID("tabs"), selected = as.character(current.page()))
+    }
+  })
+
+  observeEvent(input[[ ID("btn_next") ]], {
+    if (current.page() < num.pages) {
+      current.page(current.page() + 1)
+
+      updateTabsetPanel(session, inputId = ID("tabs"), selected = as.character(current.page()))
+    }
+  })
+
+  observeEvent(input[[ ID("btn_ok") ]], {
+    removeModal(session)
+
+    if (!is.null(.callback)) {
+      results <- submit.fun()
+
+      do.call(.callback, results)
+    }
+  })
+
+  show <- function(callback, title = NULL, ...) {
+    ns <- session$ns
+
+    .callback <<- callback
+    current.page(1)
+
+    tabs <- lapply(seq_along(pages.ui), function(i) {
+      fun <- pages.ui[[i]]
+      argnames <- intersect(names(formals(fun)), names(list(...)))
+      args <- list(...)[ argnames ]
+
+      tabPanel(title = as.character(i), do.call(fun, args))
+    })
+    tabs$id <- ns(ID("tabs"))
+    tabs$type <- "hidden"
+
+    tabset <- do.call(tabsetPanel, tabs)
+
+    md <- modalDialog(
+      title = title,
+      easyClose = FALSE,
+      tabset,
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton(ns(ID("btn_back")), "Back"),
+        actionButton(ns(ID("btn_next")), "Next"),
+        actionButton(ns(ID("btn_ok")), "OK")
+      ),
+      ...
+    )
+
+    showModal(md, session)
+  }
+
+  list(
+    id = id,
+    show = show
+  )
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
