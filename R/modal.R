@@ -128,6 +128,8 @@ slatesTextModal <- function(id, session) {
 #' @param back.button whether or not to show the back button on the modal's pages.
 #' @param observers a list containing any number of observers. This is used solely to
 #'   allow the modal dialog to destroy the observers when it is destroyed.
+#' @param size default width of the modal dialog. One of "s", "m", "l", "xl". Note that
+#' the `show()` function can override this setting if desired.
 #'
 #' @return A list containing the modal id and the `show()` function (see details below).
 #'
@@ -209,10 +211,13 @@ slatesModalMultiPage <- function(id, session,
                                  submit.fun,
                                  validators = NULL,
                                  back.button = TRUE,
+                                 default.size = c("m", "s", "l", "xl"),
                                  observers = list()) {
   ID <- function(x) paste0(id, "_", x)
   ns <- session$ns
   input <- session$input
+
+  default.size <- match.arg(default.size)
 
   current.page <- reactiveVal(1)
   num.pages <- length(pages.ui)
@@ -227,8 +232,6 @@ slatesModalMultiPage <- function(id, session,
     invisible(lapply(names(input), function(x) input[[ x ]]))
 
     valid <- validators[[ current.page() ]]()
-
-    pprint("valid:", valid, "current.page:", current.page())
 
     shinyjs::toggleElement(
       ID("btn_back"),
@@ -272,7 +275,7 @@ slatesModalMultiPage <- function(id, session,
     }
   })
 
-  show <- function(callback, title = NULL, ...) {
+  show <- function(callback, title = NULL, size = default.size, ...) {
     ns <- session$ns
 
     .callback <<- callback
@@ -288,20 +291,29 @@ slatesModalMultiPage <- function(id, session,
     tabs$id <- ns(ID("tabs"))
     tabs$type <- "hidden"
 
-    tabset <- do.call(tabsetPanel, tabs)
+    tabset <- do.call(tabsetPanel, tabs) %>%
+      div(style = "overflow-y: auto; overflow-x: hidden;")
+
+    if (size == "xl")
+      modal.size = "m"
+    else
+      modal.size = size
 
     md <- modalDialog(
       title = title,
       easyClose = FALSE,
+      size = modal.size,
       tabset,
       footer = tagList(
         modalButton("Cancel"),
         actionButton(ns(ID("btn_back")), "Back"),
         actionButton(ns(ID("btn_next")), "Next"),
         actionButton(ns(ID("btn_ok")), "OK")
-      ),
-      ...
+      )
     )
+
+    if (size == "xl")
+      md <- addTagAttribs(md, class = "modal-xl")
 
     showModal(md, session)
   }
