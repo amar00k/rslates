@@ -287,7 +287,7 @@ slatesNavbarPage <- function(title, tabs,
         tags$a(
           class = "navbar-brand d-flex align-items-baseline",
           href = "#",
-          tags$img(src = "slates-logo-white-24dpi.png",
+          tags$img(src = "slates-logo-white-small.png",
                    style="padding-right: .5em"),
           title
         ),
@@ -325,10 +325,10 @@ slatesNavbarPage <- function(title, tabs,
     footer,
     tags$br(),
     tags$div(
-      class = "bg-title p-2",
+      class = "bg-title px-2 py-3",
       tags$div(class = "container",
       tags$span("Copyright (c) 2021 Daniel Neves"),
-      tags$span(class = "float-right", paste("rlates", packageVersion("rslates")))
+      tags$span(class = "float-right", paste("rslates", packageVersion("rslates")))
       )
     )
   )
