@@ -161,7 +161,17 @@
 
 /* Bootstrap 4 stuff */
 
+/* larger modal (apply this upstream of the modal dialog) */
+@media (min-width: 576px) {
+  .modal-xl {
+    max-width: initial;
+  }
 
+  .modal-xl > .modal-dialog {
+     width: 80%;
+     max-width: 1200px;
+  }
+}
 
 
 /* Inputs */
