@@ -11,6 +11,7 @@ slatesModalMultiPage(
   submit.fun,
   validators = NULL,
   back.button = TRUE,
+  default.size = c("m", "s", "l", "xl"),
   observers = list()
 )
 }
@@ -34,6 +35,9 @@ for the current page returns `TRUE`.}
 
 \item{observers}{a list containing any number of observers. This is used solely to
 allow the modal dialog to destroy the observers when it is destroyed.}
+
+\item{size}{default width of the modal dialog. One of "s", "m", "l", "xl". Note that
+the `show()` function can override this setting if desired.}
 }
 \value{
 A list containing the modal id and the `show()` function (see details below).
