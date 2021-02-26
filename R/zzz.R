@@ -63,28 +63,10 @@ pprint <- function(...) {
 }
 
 
-#' Generate a random string
-#'
-#' @description Generates a random string of specified length using valid
-#' base 64 characters.
-#'
-#' @param size length of the string to generate.
-#'
-#' @return a random string.
-#' @export
 b64.uid <- function(size = 64) {
   paste(sample(c(LETTERS, letters, 0:9), size = size, replace=TRUE), collapse="")
 }
 
-#' Generate a sequencial id
-#'
-#' @description This function generates a unique sequencial identifier with a given prefix
-#' each time it is called in the current session.
-#'
-#' @param prefix the prefix string to use.
-#'
-#' @return a unique string id.
-#' @export
 seq.uid <- function(prefix = "_") {
   counts <- attr(seq.uid, "counts")
   if (is.null(counts))
