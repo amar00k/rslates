@@ -2,6 +2,261 @@
 
 
 
+
+
+
+
+
+
+# file type information
+file.types <- list(
+  tabular = list(
+    name = "Tabular",
+    extensions = c("txt", "csv", "tsv"),
+    module = system.file("data_blueprints/CSV_Import.json", package = "rslates")
+  ),
+  spreadsheet = list(
+    name = "Spreadsheet",
+    extensions = c("xlsx", "xls")
+  )
+)
+
+valid.extensions <- sapply(file.types, "[[", "extentions") %>% unlist()
+
+getFileType <- function(extension) {
+  for (type in file.types)
+    if (extension %in% type$extensions)
+      return(type$name)
+
+  return(NULL)
+}
+
+
+
+
+
+tabular.helper <- function(filename) {
+  separators <- c(" ", "\t", ",", ";")
+  lines <- readLines(filename, n = 20)
+
+  # comment character
+
+
+  # separator
+  tab <- sapply(lines, function(l) {
+    chars <- strsplit(l, split="")[[1]]
+    sapply(separators, function(s) {
+      sum(chars == s)
+    })
+  })
+
+  sep <- apply(tab, 1, unique)
+  sep <- sep[ sapply(sep, length) == 1 ]
+  sep <- sep[ sapply(sep, "!=", 0) ]
+
+  # decimal
+
+
+}
+
+
+# The import dataset modal dialog
+importDatasetModal <- function(id, session) {
+  ID <- function(x) paste0(id, "_", x)
+  ns <- session$ns
+  input <- session$input
+  output <- session$output
+
+  data <- reactive({
+    import.from <- input[[ ID("import_from") ]]
+    file.data <- input[[ ID("file_input") ]]
+
+    if (is.null(import.from))
+      return(NULL)
+
+    if (import.from == "local" && !is.null(file.data)) {
+      list(origin = "local",
+           name = file.data$name,
+           size = file.data$size,
+           type = file.data$type
+      )
+    } else {
+      return(NULL)
+    }
+
+    # # test data
+    # list(origin = "local",
+    #      name = "Test long filename with unknown extension.rdf",
+    #      size = 1234567,
+    #      type = "blabla"
+    # )
+
+  })
+
+
+  isFileSupported <- reactive({
+    data <- data()
+
+    if (is.null(data))
+      return(FALSE)
+
+    ext <- gsub(".*\\.(.*$)", "\\1", data$name)
+    file.type <- getFileType(ext)
+
+    !is.null(file.type)
+  })
+
+
+  output[[ ID("slate_ui") ]] <- renderUI({
+    data <- data()
+
+    if (is.null(data))
+      return()
+
+    blueprint <- blueprintFromJSON(file.types$tabular$module)
+
+    slate.options <- slateOptions(
+      height = "60vh",
+      use.card = FALSE,
+      inputs.style = "flowing"
+    )
+
+    slateUI(ns(ID("slate")), blueprint, slate.options)
+  })
+
+
+  # summary table
+  output[[ ID("data_summary") ]] <- renderUI({
+    data <- data()
+
+    if (is.null(data)) {
+      return(
+        div(class = "d-flex h-100",
+          div(
+            class = "text-muted text-center m-auto w-50",
+            "Please import a dataset. Click here for a list of supported file types."
+          )
+        )
+      )
+    }
+
+    # get extension and file type
+    ext <- gsub(".*\\.(.*$)", "\\1", data$name)
+    file.type <- getFileType(ext)
+
+    if (!is.null(file.type)) {
+      file.type <- paste0(file.type, " (", ext, ")")
+      type.status <- "ok"
+    } else {
+      file.type <- paste("Unsupported file extension:", ext)
+      type.status <- "error"
+    }
+
+    df <- data.frame(
+      row.names = c("Filename:", "Size:", "File Type:"),
+      Value = c(data$name, utils:::format.object_size(data$size, units = "auto"), file.type),
+      Status = c("ok", "ok", type.status)
+    )
+
+    theme <- autoReactableTheme(
+      options = list(headerStyle = list(display = "none"))
+    )
+
+    reactable::reactable(
+      df,
+      sortable = FALSE,
+      outlined = FALSE,
+      borderless = TRUE,
+      compact = TRUE,
+      theme = theme,
+      columns = list(
+        .rownames = reactable::colDef(
+          maxWidth = 100,
+          align = "right",
+          style = list(fontWeight = 400)),
+        Value = reactable::colDef(
+          minWidth = 200,
+          style = list(fontWeight = 300),
+          name = ""),
+        Status = reactable::colDef(
+          maxWidth = 50,
+          name = "Status",
+          cell = function(status) {
+          switch(
+            status,
+            "ok" = tags$div(class = "text-success", icon("check")),
+            "error" = tags$div(class = "text-danger", icon("times"))
+          )
+        })
+      )
+    ) %>% tagList
+  })
+
+
+  pages.ui <- list(
+    function() {
+      tags$div(
+        class = "row px-4",
+        style = "height: 40vh;",
+        tags$div(
+          class = "col-md-5",
+          shinyWidgets::radioGroupButtons(
+            ns(ID("import_from")),
+            label = "Import from",
+            choices = c("Local File"="local", "URL"="url", "Built-in Dataset"="builtin")),
+          conditionalPanel(
+            condition = paste0("input[ '", ns(ID("import_from")), "'] === 'local'"),
+            helpText("Import a dataset from a file on your computer."),
+            slatesFileInput(ns(ID("file_input")), label = "File")
+          )
+        ),
+        tags$div(
+          class = "col-md-7",
+          uiOutput(ns(ID("data_summary")), class = "h-100")
+        )
+      )
+    },
+    function() {
+      tags$div(
+        uiOutput(ns(ID("slate_ui")))
+      )
+    }
+  )
+
+  validators <- list(
+    function() {
+      import.from <- input[[ ID("import_from") ]]
+
+      if (is.null(import.from))
+        return(FALSE)
+
+      if (import.from %in% c("local", "url")) {
+        return(isFileSupported())
+      } else {
+        return(FALSE)
+      }
+    },
+    function() {
+      TRUE
+    }
+  )
+
+  submit.fun <- function() {
+    list(data = data())
+  }
+
+  slatesModalMultiPage(id, session,
+                       pages.ui = pages.ui,
+                       submit.fun = submit.fun,
+                       validators = validators,
+                       default.size = "xl"
+  )
+}
+
+
+
+
+
 #' Editor Panel UI Function
 #'
 #' @param id the panel id.
@@ -76,7 +331,7 @@ projectEditorUI <- function(id, project) {
       tags$a(class = "h4",
              `data-toggle` = "collapse",
              href = "#data_section_contents",
-             tags$h4("Project Data")
+             "Project Data"
       ),
       div(
         class = "collapse show mt-3",
@@ -91,10 +346,13 @@ projectEditorUI <- function(id, project) {
                          class="ml-3"))
         ),
         tags$hr(),
-        tags$p(class = "text-muted",
-               "No data. Use the buttons above to import a dataset!"),
-        # tags$hr(),
-        # tags$i("No data transformations.")
+        tags$div(
+          tags$p(
+            class = "text-muted",
+            "No data. Use the buttons above to import a dataset!"),
+        ),
+        div(id = "datasets_begin"),
+        div(id = "datasets_end")
       )
     )
   )
@@ -117,7 +375,6 @@ projectEditorUI <- function(id, project) {
       ),
       tags$hr(),
       tags$div(
-        class="editor-section-contents",
         tags$p(
           class = "text-muted",
           "No chunks. Use the buttons above to create a new chunk!"
@@ -136,105 +393,6 @@ projectEditorUI <- function(id, project) {
       data.section,
       br(),
       analysis.section
-
-      # tags$div(
-      #   id = ns("datasets_anchor"),
-      #   class = "project-section-anchor",
-      #   `data-toggle` = "collapse",
-      #   href = paste0("#", ns("datasets_section")),
-      #   "Datasets"
-      # ),
-      # tags$div(
-      #   id = ns("datasets_section"),
-      #   class = "collapse show",
-      #   tags$div(
-      #     class="flex-container",
-      #     tags$div(class="editor-section-subheader", ""),
-      #     tags$div(class="editor-section-sep"),
-      #     tags$div(class="editor-section-contents",
-      #              div(id = "data_slates_begin"),
-      #              div(id = "data_slates_end")
-      #     )
-      #   ),
-      #   tags$div(
-      #     class="flex-container",
-      #     tags$div(class="editor-section-subheader", ""),
-      #     tags$div(class="editor-section-sep"),
-      #     tags$div(class="editor-section-contents",
-      #              actionLink(ns("btn_add_dataset"), "Add Dataset"))
-      #   )
-      # ),
-
-      # tags$br(),
-      #
-      # tags$div(
-      #   id = ns("source_anchor"),
-      #   class = "project-section-anchor collapsed",
-      #   `data-toggle` = "collapse",
-      #   href = paste0("#", ns("source_section")),
-      #   HTML("Source&nbsp;Code")
-      # ),
-      # tags$div(
-      #   id = ns("source_section"),
-      #   class = "collapse",
-      #   class="flex-container",
-      #   tags$div(class="editor-section-subheader", ""),
-      #   tags$div(class="editor-section-sep"),
-      #   tags$div(
-      #     class="editor-section-contents",
-      #     code.ui
-      #   )
-      # ),
-      #
-      # tags$br(),
-
-      # tags$div(
-      #   id = ns("analysis_anchor"),
-      #   class = "project-section-anchor",
-      #   `data-toggle` = "collapse",
-      #   href = paste0("#", ns("analysis_section")),
-      #   "Analysis"
-      # ),
-      # tags$div(
-      #   id = ns("analysis_section"),
-      #   class = "collapse show",
-      #   tags$div(
-      #     class="flex-container",
-      #     tags$div(class="editor-section-subheader", ""),
-      #     tags$div(class="editor-section-sep"),
-      #     tags$div(class="editor-section-contents",
-      #              div(id = "slates_begin"),
-      #              div(id = "slates_end")
-      #     )
-      #   ),
-      #   tags$div(
-      #     class="flex-container",
-      #     tags$div(class="editor-section-subheader", ""),
-      #     tags$div(class="editor-section-sep"),
-      #     tags$div(class="editor-section-contents", actionLink(ns("btn_add_slate"), "Add Slate"))
-      #   )
-      # ),
-      #
-      # tags$br(),
-      #
-      # tags$div(
-      #   id = ns("sessioninfo_anchor"),
-      #   class = "project-section-anchor",
-      #   `data-toggle` = "collapse",
-      #   href = paste0("#", ns("sessioninfo_section")),
-      #   HTML("Session&nbsp;Info")
-      # ),
-      # tags$div(
-      #   id = ns("sessioninfo_section"),
-      #   class = "collapse show",
-      #   class="flex-container",
-      #   tags$div(class="editor-section-subheader", ""),
-      #   tags$div(class="editor-section-sep"),
-      #   tags$div(
-      #     class="editor-section-contents",
-      #     HTML(paste(captureSessionInfo(320), collapse="<br>"))
-      #   )
-      # )
     )
   )
 }
@@ -313,6 +471,11 @@ projectEditorServer <- function(id, project, session.data, global.options) {
     # Datasets
     #
 
+
+    # Modal dialog to import a dataset
+    import.modal <- importDatasetModal("import_dataset", session)
+
+
     addDataset <- function(blueprint, ask.title = TRUE) {
       dataset.list <- reactiveValuesToList(datasets)
       id <- seq.uid("dataset")
@@ -324,14 +487,23 @@ projectEditorServer <- function(id, project, session.data, global.options) {
       datasets[[ id ]] <- callModule(dataSlateServer, id, blueprint, global.envir, open.settings = TRUE)
     }
 
+
     # observe Add Slab buttons
-    observeEvent(input$btn_add_dataset, {
+    observeEvent(input$add_dataset, {
       blueprints <- session.data$data.blueprints
 
-      modals$file.import$show(function(res) {
-        print(res)
-        #add_data_slate(blueprints[[ value ]], ask.title = FALSE)
-      })
+      import.modal$show(
+        title = "Import Dataset",
+        callback = function(data) {
+          print(data)
+
+        }
+      )
+
+      # modals$file.import$show(function(res) {
+      #   print(res)
+      #   #add_data_slate(blueprints[[ value ]], ask.title = FALSE)
+      # })
     })
 
     # outputOptions(output, "output_global", suspendWhenHidden = FALSE)
