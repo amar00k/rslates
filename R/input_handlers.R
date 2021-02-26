@@ -293,6 +293,8 @@ input.handlers <- list(
     get.source = function(x, session = NULL, value = NULL) {
       value <- input.handlers$numeric4$get.value(x, session, value)
 
+      print(value)
+
       paste0("c(", paste(as.numeric(value), collapse = ", "), ")")
     },
     get.inputs = function(x, session, value) {
@@ -373,8 +375,8 @@ createInputPage <- function(page, id = NULL, ns = identity, layout = "flow") {
 
 createInputLayout <- function(pages,
                               ns = identity,
-                              container = c("tabset", "collapse")) {
-  container <- match.arg(container)
+                              inputs.style = c("tabset", "collapses", "flowing")) {
+  inputs.style <- match.arg(inputs.style)
 
   # find main page if it exists
   page.names <- sapply(pages, "[[", "name")
@@ -394,12 +396,12 @@ createInputLayout <- function(pages,
   })
 
   # build the container
-  if (container == "tabset") {
+  if (inputs.style == "tabset") {
     # simple tabset
     tabs <- unname(lapply(pages, function(x) tabPanel(title = x$name, x$ui)))
 
     ui <- do.call(tabsetPanel, tabs)
-  } else if (container == "collapse") {
+  } else if (inputs.style == "collapses") {
     # bs4 accordion
     accordion.id <- seq.uid("accordion")
 
@@ -431,6 +433,18 @@ createInputLayout <- function(pages,
       id = accordion.id,
       tabs
     )
+  } else if (inputs.style == "flowing") {
+    ui.list <- lapply(pages, function(x) {
+      tags$div(
+        tags$h5(
+          class = "slates-page-title-flowing",
+          x$name
+        ),
+        x$ui
+      )
+    })
+
+    ui <- do.call(verticalLayout, ui.list)
   }
 
   # build and pre-append main page

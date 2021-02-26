@@ -70,32 +70,31 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
   outputs.ui <- do.call(tabsetPanel, output.tabs)
 
 
-  ui <- tags$div(
-    id = ns("slate_div"),
-    class = "card slate",
-    tags$div(
-      class="card-header d-flex justify-content-between",
-      tags$p(blueprint$title),
-      actionButton(ns("btn_edit"),
-                   class = "ml-auto",
-                   icon = icon("cog"),
-                   `data-toggle` = "collapse",
-                   href = paste0("#", ns("slate_inputs_body")),
-                   label = "")
-    ),
-    tags$div(
+  card.containder <- function() {
+
+  }
+
+  height <- slate.options$height
+
+  body.ui <- tags$div(
       class = "d-flex mh-100 flex-row justify-content-between align-content-stretch",
-      tags$div(class = "flex-fill"),
-      tags$div(class = "col-6",
-               tags$div(class = "card-body",
-                        style = "",
-                        outputs.ui
-               )
+      style = if (!is.null(height)) paste0("height: ", height, ";") else "",
+      tags$div(
+        class = "flex-fill"),
+      tags$div(
+        class = "col-6",
+        style = "overflow: auto;",
+        tags$div(class = "card-body",
+                 style = "",
+                 outputs.ui
+        )
       ),
-      tags$div(class = "flex-fill"),
+      tags$div(
+        class = "flex-fill"),
       tags$div(
         id = ns("slate_inputs_body"),
         class = "slate-inputs-container col-6 show",
+        style = "overflow: auto;",
         tags$div(
           class = "collapse show",
           style = "width: 100%",
@@ -103,7 +102,71 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
         )
       )
     )
-  )
+
+  if (slate.options$use.card) {
+    if (slate.options$card.header == TRUE) {
+      ui <- tags$div(
+        id = ns("slate_div"),
+        class = "card slate",
+        tags$div(
+          class="card-header d-flex justify-content-between",
+          tags$p(blueprint$title),
+          actionButton(ns("btn_edit"),
+                       class = "ml-auto",
+                       icon = icon("cog"),
+                       `data-toggle` = "collapse",
+                       href = paste0("#", ns("slate_inputs_body")),
+                       label = "")
+        ),
+        body.ui
+      )
+    } else {
+      ui <- tags$div(
+        id = ns("slate_div"),
+        class = "card slate",
+        body.ui
+      )
+    }
+
+  } else {
+    ui <- body.ui
+  }
+#
+#
+#   ui <- tags$div(
+#     id = ns("slate_div"),
+#     class = "card slate",
+#     tags$div(
+#       class="card-header d-flex justify-content-between",
+#       tags$p(blueprint$title),
+#       actionButton(ns("btn_edit"),
+#                    class = "ml-auto",
+#                    icon = icon("cog"),
+#                    `data-toggle` = "collapse",
+#                    href = paste0("#", ns("slate_inputs_body")),
+#                    label = "")
+#     ),
+#     tags$div(
+#       class = "d-flex mh-100 flex-row justify-content-between align-content-stretch",
+#       tags$div(class = "flex-fill"),
+#       tags$div(class = "col-6",
+#                tags$div(class = "card-body",
+#                         style = "",
+#                         outputs.ui
+#                )
+#       ),
+#       tags$div(class = "flex-fill"),
+#       tags$div(
+#         id = ns("slate_inputs_body"),
+#         class = "slate-inputs-container col-6 show",
+#         tags$div(
+#           class = "collapse show",
+#           style = "width: 100%",
+#           inputs.ui
+#         )
+#       )
+#     )
+#   )
 
   tagList(ui)
 }
