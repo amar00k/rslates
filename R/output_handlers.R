@@ -1,4 +1,26 @@
 
+
+
+#
+# Utilities
+#
+
+
+# make a reactable theme from the current bslib theme
+autoReactableTheme <- function(bslib.theme = getCurrentTheme(), options = list()) {
+  vars <- bslib::bs_get_variables(
+    bslib.theme,
+    varnames = c("fg", "bg", "primary", "secondary",
+                 "success", "info", "warning", "danger")
+  )
+
+  options$color <- vars[[ "fg" ]]
+  options$backgroundColor <- vars[[ "bg" ]]
+
+  do.call(reactable::reactableTheme, options)
+}
+
+
 #
 # Outputs
 #
