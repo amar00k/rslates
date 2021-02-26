@@ -2,17 +2,53 @@
 
 
 
-slateUI <- function(id,
-                    blueprint,
-                    container.fun = function(...) tags$div(id = ns("slate_div"), class = "card slate", ...),
-                    input.container = "tabset") {
+
+#' Setup Slate Display and Behaviour Options
+#'
+#' @param envir the parent environment where the slate code is executed.
+#' @param height height of the slate in any css unit (e.g. "500px"). If NULL
+#'   the height of the slate is unrestricted.
+#' @param use.card use a bs4 card as a container for the slate UI.
+#' @param card.header show the card header. Only used if `use.card` is TRUE.
+#' @param open.settings start with the input settings panel open.
+#' @param inputs.style the style used for the inputs panel. `"tabset"` uses
+#'   a tabsetPanel as a container for input pages. `"collapses"` uses bs4
+#'   collapse panels. `"flowing"` displays all pages in a single vertical container.
+#'
+#' @return a list of options to be passed to `slateUI()` and `slateServer()`.
+#' @export
+slateOptions <- function(envir = new.env(),
+                         height = NULL,
+                         use.card = TRUE,
+                         card.header = TRUE,
+                         open.settings = TRUE,
+                         inputs.style = c("tabset", "collapses", "flowing")) {
+  # envir is a reactiveVal
+  if (!("reactiveVal" %in% class(envir)))
+    envir <- reactiveVal(envir)
+
+  return(list(
+    envir = envir,
+    height = height,
+    use.card = use.card,
+    card.header = card.header,
+    open.settings = open.settings,
+    inputs.style = inputs.style
+  ))
+}
+
+
+
+
+
+slateUI <- function(id, blueprint, slate.options = slateOptions()) {
   ns <- NS(id)
 
   # create input panels
   inputs.ui <- createInputLayout(
-    ns = ns,
     pages = blueprint$input.layout$pages,
-    container = input.container
+    ns = ns,
+    inputs.style = slate.options$inputs.style
   )
 
   blueprint$outputs[[ length(blueprint$outputs) + 1 ]] <- slateOutput("Source", type="source")
