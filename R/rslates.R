@@ -393,10 +393,9 @@ runSlatesApp <- function() {
 }
 
 
-runSlatePreviewApp <- function(blueprint, input.container = "collapse",
+runSlatePreviewApp <- function(blueprint,
                                theme = "Natural (soft light)") {
     options(rslates.preview.blueprint = blueprint)
-    options(rslates.input.container = input.container)
     options(rslates.default.theme = theme)
     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
 
@@ -404,10 +403,10 @@ runSlatePreviewApp <- function(blueprint, input.container = "collapse",
 }
 
 
-runSlateBuilderApp <- function(blueprint = NULL, input.container = "collapse",
-                               theme = "Natural (soft light)", run.themer = FALSE) {
+runSlateBuilderApp <- function(blueprint = NULL,
+                               theme = "Natural (soft light)",
+                               run.themer = FALSE) {
     options(rslates.builder.blueprint = blueprint)
-    options(rslates.input.container = input.container)
     options(rslates.default.theme = theme)
     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
