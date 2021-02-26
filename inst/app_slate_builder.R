@@ -131,7 +131,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       input.layout = inputLayout(
         pages = list(inputPage(
           name = "Main",
-          inputGroup()))))
+          inputGroup("group_1")))))
   }
 
   builderUI <- function(id = NULL) {
@@ -295,6 +295,17 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
       )
     )
 
+    preview.ui <- tagList(
+      uiOutput(ns("slate_imports")),
+      selectInput(
+        ns("preview_inputs_style"),
+        label = "Input Panel Style",
+        choices = list("tabset", "collapses", "flowing"),
+        selected = "tabset"
+      ),
+      uiOutput(ns("slate_ui"))
+    )
+
     export.ui <- fluidRow(
       tags$style(type='text/css', '#json_output { white-space: pre-wrap; max-height: 300px; }'),
       column(
@@ -351,10 +362,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         tabPanel(title = "Inputs", section.div(layout.ui)),
         tabPanel(title = "Datasets", section.div(datasets.ui)),
         tabPanel(title = "Outputs", section.div(outputs.ui)),
-        tabPanel(title = "Preview", section.div(
-          uiOutput(ns("slate_imports")),
-          uiOutput(ns("slate_ui")),
-        )),
+        tabPanel(title = "Preview", section.div(preview.ui)),
         tabPanel(title = "Export", section.div(export.ui))
       ),
       session.info = TRUE
@@ -553,6 +561,10 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 
       id <- paste0("slate_", seq.uid("preview"))
 
+      slate.options = slateOptions(
+        inputs.style = input$preview_inputs_style
+      )
+
       isolate({
         if (!is.null(slate.data$module))
           slate.data$module$destroy()
@@ -560,19 +572,14 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         mod <- slateServer(
           id,
           blueprint = blueprint(),
-          slate.options = list(
-            envir = reactiveVal(new.env()),
-            open.settings = TRUE
-          ),
+          slate.options = slate.options,
           global.options = global.options
         )
       })
 
       slate.data$module <- mod
 
-      slateUI(id,
-              blueprint(),
-              input.container = options()$rslates.input.container)
+      slateUI(id, blueprint(), slate.options)
     })
 
 
