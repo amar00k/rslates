@@ -1,6 +1,6 @@
 
 
-slatePreviewApp <- function(blueprint, input.container = "tabset") {
+slatePreviewApp <- function(blueprint) {
   default.theme <- "solar"
   default.ace.theme <- "twilight"
 
@@ -19,7 +19,6 @@ slatePreviewApp <- function(blueprint, input.container = "tabset") {
     )
   }
 
-
   ui <- slatesNavbarPage(
     title = "Slates",
     theme = getOption("rslates.default.theme"),
@@ -27,8 +26,22 @@ slatePreviewApp <- function(blueprint, input.container = "tabset") {
     ),
     tabs = list(
       tabPanel(title = "Slate Preview", section.div(
-        slateUI("slate_preview", blueprint = blueprint, input.container = input.container))
-      )
+        flowLayout(
+          selectInput(
+            "preview_inputs_style",
+            label = "Input Panel Style",
+            choices = list("tabset", "collapses", "flowing"),
+            selected = "flowing"
+          ),
+          textInput("slate_height", "Slate Height", value = "520px"),
+          checkboxGroupInput(
+            "slate_options", "Card",
+            choices = c("Use Card" = "use.card",
+                        "Show Header" = "card.header"),
+            selected = c("use.card", "card.header"))
+        ),
+        uiOutput("slate_preview")
+      ))
     ),
     session.info = TRUE
   )
@@ -40,11 +53,7 @@ slatePreviewApp <- function(blueprint, input.container = "tabset") {
     slate <- slateServer(
       "slate_preview",
       blueprint = blueprint,
-      slate.options = list(
-        input.container = input.container,
-        envir = reactiveVal(new.env()),
-        open.settings = TRUE
-      ),
+      slate.options = slateOptions(),
       global.options = global.options
     )
 
@@ -62,12 +71,27 @@ slatePreviewApp <- function(blueprint, input.container = "tabset") {
       theme <- loadTheme(input$select_theme)
       session$setCurrentTheme(theme)
     })
+
+    #
+    # Slate
+    #
+
+    output$slate_preview <- renderUI({
+      slate.options <- slateOptions(
+        inputs.style = input$preview_inputs_style,
+        height = input$slate_height,
+        use.card = "use.card" %in% input$slate_options,
+        card.header = "card.header" %in% input$slate_options
+      )
+
+      slateUI("slate_preview",
+              blueprint = blueprint,
+              slate.options = slate.options)
+    })
   }
 
   shiny::shinyApp(ui, server)
 }
 
-input.container <- getOption("rslates.input.container")
-
-slatePreviewApp(getOption("rslates.preview.blueprint"), input.container)
+slatePreviewApp(getOption("rslates.preview.blueprint"))
 
