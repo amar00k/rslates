@@ -40,6 +40,8 @@ slatePreviewApp <- function(blueprint) {
                         "Show Header" = "card.header"),
             selected = c("use.card", "card.header"))
         ),
+        shinyBS::bsTooltip("preview_inputs_style", title = "Style of the inputs panel."),
+        shinyBS::bsTooltip("slate_height", title = "Height of the slate in any valid css unit."),
         uiOutput("slate_preview")
       ))
     ),
@@ -56,6 +58,9 @@ slatePreviewApp <- function(blueprint) {
       slate.options = slateOptions(),
       global.options = global.options
     )
+
+    shinyBS::addTooltip(session, "slate_options", "Hello")
+
 
     #
     # Themeing
