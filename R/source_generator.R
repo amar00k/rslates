@@ -45,7 +45,9 @@ srcResolveOptions <- function(var.opts, global.opts) {
 srcParseOptions <- function(str) {
   opts <- strsplit(str, split = "")[[1]]
 
-  stopifnot(all(opts %in% SRC.VALID.OPTIONS))
+  if (!all(opts %in% SRC.VALID.OPTIONS)) {
+    stop(opts[ which(!(opts %in% SRC.VALID.OPTIONS)) ], " is not a valid option.")
+  }
 
   return(opts)
 }
@@ -132,8 +134,13 @@ srcBuild <- function(src, inputs) {
     vars <- lapply(x, function(v) {
       input <- inputs[[ v$input.name ]]
 
-      val.null <- (is.null(input$value) || input$value == "")
-      val.default <- (input$value == getHandler(input)$get.value(input, NULL, value = input$default))
+      if (!is.null(input)) {
+        val.null <- (is.null(input$value) || input$value == "")
+        val.default <- (input$value == getHandler(input)$get.value(input, NULL, value = input$default))
+      } else {
+        val.null <- TRUE
+        val.default <- FALSE
+      }
 
       # n: suppress null
       if (val.null && ("n" %in% v$opts))

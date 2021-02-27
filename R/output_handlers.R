@@ -156,10 +156,28 @@ output.handlers <- list(
   # )
 )
 
-buildSource <- function(src.list, inputs) {
-  paste(lapply(src.list, function(x) {
-    srcBuild(srcParse(x), inputs)
-  }), collapse = "\n")
+
+
+buildSource <- function(lines, inputs) {
+  lines %>%
+    map(~srcBuild(srcParse(.x), inputs)) %>%
+    paste(collapse = "\n")
+
+  # tryCatch({
+  #   result <- character(0)
+  #   for (x in src.list) {
+  #     result <- c(result, srcBuild(srcParse(x), inputs))
+  #   }
+  #
+  #   paste(result, collapse = "\n")
+  # },
+  # error = function(e) {
+  #   pprint("THERE WAS BAD MOJO WHILE PREPROCESSING:", x)
+  #   print(inputs)
+  #   print(e)
+  # })
+  #
+  # return(result)
 }
 
 create_slate_outputs <- function(ns, slate) {
