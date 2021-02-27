@@ -314,6 +314,7 @@ slatesNavbarPage <- function(title, tabs,
   bootstrapPage(
     shinyjs::useShinyjs(),
     shiny::bootstrapLib(),
+    #htmltools::findDependencies(shinyBS::bsButton("test", "test")),
     shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
     thematic::thematic_shiny(),
     title = title,
@@ -330,7 +331,9 @@ slatesNavbarPage <- function(title, tabs,
       tags$span("Copyright (c) 2021 Daniel Neves"),
       tags$span(class = "float-right", paste("rslates", packageVersion("rslates")))
       )
-    )
+    ),
+    # includes fixes to work under Bootstrap 4
+    tags$script(src = "rslates_shinyBS.js")
   )
 
 }

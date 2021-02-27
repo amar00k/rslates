@@ -185,6 +185,30 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     # list of observers to be destroyed on exit
     observers <- list()
 
+    # add tooltips if missing
+    tooltips <- reactiveVal(list())
+
+    observe({
+      req(
+        ui.ready(),
+        tooltips <- tooltips()
+      )
+
+      for (x in getInputs(blueprint)) {
+        if (is.null(tooltips[[ x$id ]])) {
+          tooltips[[ x$id ]] <- paste0("<b>", x$input.type, "</b><br><br>", x$description)
+
+          shinyBS::addTooltip(session, ns(x$id),
+                              title = tooltips[[ x$id ]],
+                              placement = "top",
+                              options = list(container = "body"))
+        }
+      }
+
+      tooltips(tooltips)
+    })
+
+
     # slate reactives
     if (is.null(global.options)) {
       global.options <- reactiveValues(
