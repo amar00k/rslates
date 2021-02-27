@@ -42,7 +42,10 @@ uiReady <- function(session) {
   input <- session$input
 
   observer <- observe({
-    ready <- all(sapply(names(input), function(name) !is.null(input[[ name ]])))
+    if (length(names(input)) == 0)
+      ready <- FALSE
+    else
+      ready <- all(sapply(names(input), function(name) !is.null(input[[ name ]])))
 
     if (ready)
       observer$destroy()
@@ -52,6 +55,7 @@ uiReady <- function(session) {
 
   return(ready)
 }
+
 
 #' Paste and print
 #'
