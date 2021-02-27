@@ -60,15 +60,23 @@ slateViewerApp <- function(blueprint = slateBlueprint("untitled")) {
   server <- function(input, output, session) {
     global.options <- reactiveValues(ace.theme = getOption("default.ace.theme"))
 
-    slate <- slateServer(
-      "slate_preview",
-      blueprint = blueprint,
-      slate.options = slateOptions(),
-      global.options = global.options
-    )
+    slate.options <- reactive({
+      slateOptions(
+        inputs.style = input$preview_inputs_style,
+        height = input$slate_height,
+        use.card = "use.card" %in% input$slate_options,
+        card.header = "card.header" %in% input$slate_options
+      )
+    })
 
-    shinyBS::addTooltip(session, "slate_options", "Hello")
-
+    observe({
+      slate.server <- slateServer(
+        "slate_preview",
+        blueprint = blueprint,
+        slate.options = slate.options(),
+        global.options = global.options
+      )
+    })
 
     #
     # Themeing
@@ -90,16 +98,9 @@ slateViewerApp <- function(blueprint = slateBlueprint("untitled")) {
     #
 
     output$slate_preview <- renderUI({
-      slate.options <- slateOptions(
-        inputs.style = input$preview_inputs_style,
-        height = input$slate_height,
-        use.card = "use.card" %in% input$slate_options,
-        card.header = "card.header" %in% input$slate_options
-      )
-
       slateUI("slate_preview",
               blueprint = blueprint,
-              slate.options = slate.options)
+              slate.options = slate.options())
     })
   }
 

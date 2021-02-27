@@ -47,6 +47,7 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
   height <- slate.options$height
 
   body.ui <- tags$div(
+    tags$div(
       class = "d-flex mh-100 flex-row justify-content-between align-content-stretch",
       style = if (!is.null(height)) paste0("height: ", height, ";") else "",
       tags$div(
@@ -68,10 +69,26 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
         tags$div(
           class = "collapse show",
           style = "width: 100%",
-          uiOutput(ns("inputs_panel"))
+          uiOutput(ns("inputs_panel")),
+          hr(),
+          tags$div(
+            #class = "container",
+            tags$div(
+              shinyAce::aceEditor(ns("blueprint_source"), value = "")
+            )
+          )
         )
       )
     )
+    # br(),
+    # tags$div(
+    #   class = "container",
+    #   tags$div(
+    #     class = "col-6",
+    #     shinyAce::aceEditor(ns("blueprint_source"), value = "")
+    #   )
+    # )
+  )
 
   if (slate.options$use.card) {
     if (slate.options$card.header == TRUE) {
@@ -121,7 +138,7 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     output$inputs_panel <- renderUI({
       layout <- input.layout()
 
-      print("HELLO!")
+      print(slate.options$inputs.style)
 
       createInputLayout(
         pages = layout$pages,
@@ -289,6 +306,17 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     # }
 
 
+
+
+    #
+    # Slate blueprint editor
+    #
+    observe({
+      input.layout <- input.layout()
+      outputs <- output.layout()
+
+
+    })
 
 
 

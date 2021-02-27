@@ -437,3 +437,14 @@ runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer
 }
 
 
+# -------------
+
+runSlateViewerApp <- function(blueprint = slateBlueprint("untitled"),
+                              theme = "Natural (soft light)") {
+    options(rslates.viewer.blueprint = blueprint)
+    options(rslates.default.theme = theme)
+    options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
+
+    runApp(system.file("app_slate_viewer.R", package = "rslates"))
+}
+
