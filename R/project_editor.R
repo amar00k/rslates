@@ -4,16 +4,11 @@
 
 
 
-
-
-
-
-# file type information
-file.types <- list(
+test <- list(
   tabular = list(
     name = "Tabular",
     extensions = c("txt", "csv", "tsv"),
-    module = system.file("data_blueprints/CSV_Import.json", package = "rslates")
+    module = system.file("data_blueprints/CSV_Import.json", package = "rslate")
   ),
   spreadsheet = list(
     name = "Spreadsheet",
@@ -21,43 +16,72 @@ file.types <- list(
   )
 )
 
-valid.extensions <- sapply(file.types, "[[", "extentions") %>% unlist()
+
+
+# file type information
+getFileTypes <- function() {
+  list(
+    tabular = list(
+      name = "Tabular",
+      extensions = c("txt", "csv", "tsv"),
+      module = system.file("data_blueprints/CSV_Import.json", package = "rslates")
+    ),
+    spreadsheet = list(
+      name = "Spreadsheet",
+      extensions = c("xlsx", "xls")
+    )
+  )
+}
 
 getFileType <- function(extension) {
-  for (type in file.types)
+  for (type in getFileTypes())
     if (extension %in% type$extensions)
       return(type$name)
 
-  return(NULL)
+  return("")
+}
+
+getValidExtensions <- function() {
+  sapply(getFileTypes(), "[[", "extentions") %>% unlist()
 }
 
 
 
 
+detectTabularFormat <- function(filename, nlines = 50, comment.char = "") {
+  lines <- readLines(filename, nlines)
+  separators <- c("Space"=" ", "Tab"="\t", "Comma"=",", "Semicolon"=";")
+  comment.chars <- c("#", "%", "$")
+  quotation.marks <- c("Single Quote'=", "Double Quote"='"')
 
-tabular.helper <- function(filename) {
-  separators <- c(" ", "\t", ",", ";")
-  lines <- readLines(filename, n = 20)
+  # for each separator get the unique counts in lines
+  # then discard separators that never show up
+  # and order by separators containing the least amount of different
+  # number of occurrences per line
 
-  # comment character
+  format <- lapply(quotation.marks, function(q) {
+    sapply(separators, function(sep) {
+      gsub(sprintf("(%s.*?)%s(.*?%s)", q, sep, q), "\\1!\\2", lines) %>%
+        map(~sum(strsplit(.x, split="")[[1]] == sep)) %>%
+        unlist %>%
+        unique
+    }) %>%
+      keep(~length(.x) == 1 && .x != 0) %>%
+      unlist
+  }) %>%
+    discard(is.null)
 
+  if (length(format) == 0) {
+    format <- list(sep = "", quote = "")
+  } else if (length(format) == 1) {
+    format <- list(sep = names(format[[1]]), quote = names(format))
+  } else {
+    format <- list(sep = names(format[[1]]), quote = "")
+  }
 
-  # separator
-  tab <- sapply(lines, function(l) {
-    chars <- strsplit(l, split="")[[1]]
-    sapply(separators, function(s) {
-      sum(chars == s)
-    })
-  })
-
-  sep <- apply(tab, 1, unique)
-  sep <- sep[ sapply(sep, length) == 1 ]
-  sep <- sep[ sapply(sep, "!=", 0) ]
-
-  # decimal
-
-
+  return(format)
 }
+
 
 
 # The import dataset modal dialog
@@ -67,29 +91,50 @@ importDatasetModal <- function(id, session) {
   input <- session$input
   output <- session$output
 
+  slate.server <- reactiveVal(NULL)
+
+
+  observe({
+    req(data <- data())
+
+    server <- isolate(slate.server())
+
+    if (!is.null(server))
+      server$destroy()
+
+    blueprint <- blueprintFromJSON(getFileTypes()$tabular$module)
+    slate.options <- list(envir = new.env())
+    server <- slateServer(ID("slate"), blueprint, slate.options)
+  })
+
+
   data <- reactive({
-    import.from <- input[[ ID("import_from") ]]
-    file.data <- input[[ ID("file_input") ]]
+    # import.from <- input[[ ID("import_from") ]]
+    # file.data <- input[[ ID("file_input") ]]
+    #
+    # if (is.null(import.from))
+    #   return(NULL)
+    #
+    # if (import.from == "local" && !is.null(file.data)) {
+    #   list(origin = "local",
+    #        name = file.data$name,
+    #        size = file.data$size,
+    #        extention = gsub(".*\\.(.*$)", "\\1", name)
+    #        type = file.data$type,
+    #        path = file.data$datapath
+    #   )
+    # } else {
+    #   return(NULL)
+    # }
 
-    if (is.null(import.from))
-      return(NULL)
-
-    if (import.from == "local" && !is.null(file.data)) {
-      list(origin = "local",
-           name = file.data$name,
-           size = file.data$size,
-           type = file.data$type
-      )
-    } else {
-      return(NULL)
-    }
-
-    # # test data
-    # list(origin = "local",
-    #      name = "Test long filename with unknown extension.rdf",
-    #      size = 1234567,
-    #      type = "blabla"
-    # )
+    # test data
+    list(origin = "local",
+         name = "WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv",
+         size = file.size("C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"),
+         type = "application/vnd.ms-excel",
+         extention = "csv",
+         path = "C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"
+    )
 
   })
 
@@ -113,7 +158,7 @@ importDatasetModal <- function(id, session) {
     if (is.null(data))
       return()
 
-    blueprint <- blueprintFromJSON(file.types$tabular$module)
+    blueprint <- blueprintFromJSON(getFileTypes()$tabular$module)
 
     slate.options <- slateOptions(
       height = "60vh",
@@ -140,56 +185,97 @@ importDatasetModal <- function(id, session) {
       )
     }
 
+    # make the styled tables for file infos
+    makeTable <- function(df,
+                          widths = list(.rownames = 150,
+                                        Value = 250,
+                                        Status = 50)) {
+      theme <- autoReactableTheme(
+        options = list(headerStyle = list(display = "none"))
+      )
+
+      reactable::reactable(
+        df,
+        sortable = FALSE,
+        outlined = FALSE,
+        borderless = TRUE,
+        compact = TRUE,
+        theme = theme,
+        columns = list(
+          .rownames = reactable::colDef(
+            minWidth = widths$row.names,
+            align = "right",
+            style = list(fontWeight = 400)),
+          Value = reactable::colDef(
+            minWidth = widths$Value,
+            style = list(fontWeight = 300),
+            name = ""),
+          Status = reactable::colDef(
+            minWidth = widths$Status,
+            name = "Status",
+            cell = function(status) {
+              switch(
+                status,
+                "ok" = tags$div(class = "text-success", icon("check")),
+                "question" = tags$div(class = "text-primary", icon("question")),
+                "error" = tags$div(class = "text-danger", icon("times"))
+              )
+            })
+        )
+      ) %>% tagList
+    }
+
     # get extension and file type
-    ext <- gsub(".*\\.(.*$)", "\\1", data$name)
+    ext <- data$extention
     file.type <- getFileType(ext)
 
-    if (!is.null(file.type)) {
-      file.type <- paste0(file.type, " (", ext, ")")
+    if (file.type != "") {
+      type.description <- paste0(file.type, " (", ext, ")")
       type.status <- "ok"
     } else {
-      file.type <- paste("Unsupported file extension:", ext)
+      type.description <- paste("Unsupported file extension:", ext)
       type.status <- "error"
     }
 
-    df <- data.frame(
+    file.df <- data.frame(
       row.names = c("Filename:", "Size:", "File Type:"),
-      Value = c(data$name, utils:::format.object_size(data$size, units = "auto"), file.type),
+      Value = c(data$name,
+                utils:::format.object_size(data$size, units = "auto"),
+                type.description),
       Status = c("ok", "ok", type.status)
     )
 
-    theme <- autoReactableTheme(
-      options = list(headerStyle = list(display = "none"))
-    )
+    file.reactable <- makeTable(file.df)
+    details.reactable <- NULL
 
-    reactable::reactable(
-      df,
-      sortable = FALSE,
-      outlined = FALSE,
-      borderless = TRUE,
-      compact = TRUE,
-      theme = theme,
-      columns = list(
-        .rownames = reactable::colDef(
-          maxWidth = 100,
-          align = "right",
-          style = list(fontWeight = 400)),
-        Value = reactable::colDef(
-          minWidth = 200,
-          style = list(fontWeight = 300),
-          name = ""),
-        Status = reactable::colDef(
-          maxWidth = 50,
-          name = "Status",
-          cell = function(status) {
-          switch(
-            status,
-            "ok" = tags$div(class = "text-success", icon("check")),
-            "error" = tags$div(class = "text-danger", icon("times"))
-          )
-        })
+    # Auto-detection results
+    if (file.type == "Tabular") {
+      format <- detectTabularFormat(data$path)
+
+      details.df <- data.frame(
+        row.names = c("Separator:", "Quote Type:"),
+        Value = c(if (format$sep != "") format$sep else "Undetermined",
+                  if (format$quote != "") format$quote else "Undetermined"),
+        Status = c(if (format$sep != "") "ok" else "error",
+                   if (format$quote != "") "ok" else "question"))
+
+      details.reactable <- makeTable(details.df)
+    }
+
+    # finally make the ui
+    if (!is.null(details.reactable)) {
+      tagList(
+        file.reactable,
+        # tags$div(
+        #   class = "w-100 text-center",
+        #   tags$b(paste(type.description))
+        # ),
+        br(),
+        details.reactable
       )
-    ) %>% tagList
+    } else {
+      file.reactable
+    }
   })
 
 
@@ -197,7 +283,7 @@ importDatasetModal <- function(id, session) {
     function() {
       tags$div(
         class = "row px-4",
-        style = "height: 40vh;",
+        style = "height: 60vh;",
         tags$div(
           class = "col-md-5",
           shinyWidgets::radioGroupButtons(
@@ -218,6 +304,7 @@ importDatasetModal <- function(id, session) {
     },
     function() {
       tags$div(
+        style = "min-height: 60vh;",
         uiOutput(ns(ID("slate_ui")))
       )
     }
