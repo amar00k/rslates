@@ -8,7 +8,8 @@ Description: An experimental R editor with Shiny
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-StagedInstall: no
+StagedInstall: yes
+Roxygen: list(markdown = TRUE)
 Imports: 
     shiny,
     shinyjs,
