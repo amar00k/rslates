@@ -44,36 +44,6 @@ slateOptions <- function(envir = new.env(),
 slateUI <- function(id, blueprint, slate.options = slateOptions()) {
   ns <- NS(id)
 
-  # create input panels
-  inputs.ui <- createInputLayout(
-    pages = blueprint$input.layout$pages,
-    ns = ns,
-    inputs.style = slate.options$inputs.style
-  )
-
-  blueprint$outputs[[ length(blueprint$outputs) + 1 ]] <- slateOutput("Source", type="source")
-
-  # create output pages defined in slate
-  output.tabs <- unname(lapply(blueprint$outputs, function(x) {
-    stopifnot(x$type %in% names(output.handlers))
-
-    tabPanel(
-      title = x$name,
-      tags$div(
-        tags$br(),
-        output.handlers[[ x$type ]]$create.ui(ns(x$id), x$name)
-      )
-    )
-  }))
-  output.tabs$id <- ns("output_tabs")
-  output.tabs$type <- "pills"
-  outputs.ui <- do.call(tabsetPanel, output.tabs)
-
-
-  card.containder <- function() {
-
-  }
-
   height <- slate.options$height
 
   body.ui <- tags$div(
@@ -84,9 +54,9 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
       tags$div(
         class = "col-6",
         style = "overflow: auto;",
-        tags$div(class = "card-body",
-                 style = "",
-                 outputs.ui
+        tags$div(
+          class = "card-body",
+          uiOutput(ns("outputs_panel"))
         )
       ),
       tags$div(
@@ -98,7 +68,7 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
         tags$div(
           class = "collapse show",
           style = "width: 100%",
-          inputs.ui
+          uiOutput(ns("inputs_panel"))
         )
       )
     )
@@ -131,42 +101,6 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
   } else {
     ui <- body.ui
   }
-#
-#
-#   ui <- tags$div(
-#     id = ns("slate_div"),
-#     class = "card slate",
-#     tags$div(
-#       class="card-header d-flex justify-content-between",
-#       tags$p(blueprint$title),
-#       actionButton(ns("btn_edit"),
-#                    class = "ml-auto",
-#                    icon = icon("cog"),
-#                    `data-toggle` = "collapse",
-#                    href = paste0("#", ns("slate_inputs_body")),
-#                    label = "")
-#     ),
-#     tags$div(
-#       class = "d-flex mh-100 flex-row justify-content-between align-content-stretch",
-#       tags$div(class = "flex-fill"),
-#       tags$div(class = "col-6",
-#                tags$div(class = "card-body",
-#                         style = "",
-#                         outputs.ui
-#                )
-#       ),
-#       tags$div(class = "flex-fill"),
-#       tags$div(
-#         id = ns("slate_inputs_body"),
-#         class = "slate-inputs-container col-6 show",
-#         tags$div(
-#           class = "collapse show",
-#           style = "width: 100%",
-#           inputs.ui
-#         )
-#       )
-#     )
-#   )
 
   tagList(ui)
 }
@@ -180,14 +114,47 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     # append the source code outputs
     blueprint$outputs[[ length(blueprint$outputs) + 1 ]] <- slateOutput("Source", type="source")
 
-    # modal.edit <- slate_modal(ns, "edit_modal", input, output, session, blueprint, global.envir)
+    input.layout <- reactiveVal(blueprint$input.layout)
+    output.layout <- reactiveVal(blueprint$outputs)
+
+
+    output$inputs_panel <- renderUI({
+      layout <- input.layout()
+
+      print("HELLO!")
+
+      createInputLayout(
+        pages = layout$pages,
+        ns = ns,
+        inputs.style = slate.options$inputs.style
+      )
+    })
+
+
+    output$outputs_panel <- renderUI({
+      layout <- output.layout()
+
+      output.tabs <- unname(lapply(layout, function(x) {
+        stopifnot(x$type %in% names(output.handlers))
+
+        tabPanel(
+          title = x$name,
+          tags$div(
+            tags$br(),
+            output.handlers[[ x$type ]]$create.ui(ns(x$id), x$name)
+          )
+        )
+      }))
+      output.tabs$id <- ns("output_tabs")
+      output.tabs$type <- "pills"
+      outputs.ui <- do.call(tabsetPanel, output.tabs)
+    })
+
 
     # list of observers to be destroyed on exit
     observers <- list()
 
-    # add tooltips if missing
     tooltips <- reactiveVal(list())
-
     observe({
       req(
         ui.ready(),
@@ -322,6 +289,12 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     # }
 
 
+
+
+
+
+
+
     # Cleanup function
     destroy <- function() {
       # remove inputs
@@ -438,27 +411,6 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
   #     input.list(new.input.list)
   #   })
   # }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
