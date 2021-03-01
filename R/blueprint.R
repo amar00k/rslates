@@ -6,26 +6,25 @@ ARG.TYPES <- c("numeric", "logical", "character", "expression", "choices", "file
 
 
 slateBlueprint <- function(title,
-                           input.layout = list(),
+                           pages = list(),
+                           groups = list(),
+                           inputs = list(),
                            outputs = list(),
                            datasets = list(),
                            imports = list()) {
-  input.layout$pages <- lapply(input.layout$pages, function(p) {
-    p$children <- lapply(p$children, function(g) {
-      g$children <- lapply(g$children, function(i) {
-        i$value <- i$default
-        i
-      }) %>% set_names(sapply(., "[[", "name"))
-      g
-    }) %>% set_names(sapply(., "[[", "id"))
-    p
-  }) %>% set_names(sapply(., "[[", "name"))
+  pages %<>% set_names(map(., "name"))
+  groups %<>% set_names(map(., "name"))
+  inputs %<>% set_names(map(., "name"))
+  outputs %<>% set_names(map(., "name"))
 
-  names(outputs) <- sapply(outputs, "[[", "name")
+  # if (!("default" %in% names(pages)))
+  #   pages %<>% prepend(list(default = slatePage("default")))
 
   list(
     title = title,
-    input.layout = input.layout,
+    pages = pages,
+    groups = groups,
+    inputs = inputs,
     outputs = outputs,
     datasets = datasets,
     imports = imports
@@ -34,34 +33,35 @@ slateBlueprint <- function(title,
 
 
 slateInput <- function(name, input.type,
+                       parent = NULL,
                        default = NULL,
-                       value = default,
                        long.name = "",
                        description = "",
+                       condition = NULL,
                        wizards = list(),
                        ...) {
   if (is.null(default))
     default <- input.handlers[[ input.type ]]$default.value
 
-  if (is.null(value))
-    value <- default
-
   input <- list(
     name = name,
-    type = "input",
+    input.type = input.type,
+    parent = parent,
+    default = default,
     long.name = long.name,
     description = description,
-    input.type = input.type,
-    default = default,
-    value = value,
-    wizards = wizards
+    condition = condition,
+    wizards = wizards,
+    type = "input"
   )
 
   # add additional input parameters specified
   input <- c(input, list(...))
 
   # include type-specific default values that were not specified
-  param.defaults <- lapply(input.handlers[[ input$input.type ]]$params.list, "[[", "default")
+  param.defaults <- map(
+    input.handlers[[ input$input.type ]]$params.list, "default"
+  )
 
   if (length(param.defaults) > 0) {
     param.names <- names(param.defaults)
@@ -76,43 +76,65 @@ slateInput <- function(name, input.type,
 }
 
 
-inputLayout <- function(pages = list(), main.page = NULL) {
-  if (!is.null(main.page))
-    pages <- append(list(main.page), pages)
+# GONE!
+#
+# inputLayout <- function(pages = list(), main.page = NULL) {
+#   if (!is.null(main.page))
+#     pages <- append(list(main.page), pages)
+#
+#   names(pages) <- sapply(pages, "[[", "name")
+#
+#   return(list(pages = pages))
+# }
 
-  names(pages) <- sapply(pages, "[[", "name")
+# test <- list(
+#   slatePage("page_1"),
+#   slatePage("page_2"),
+#   slateGroup("")
+#   slateInput("x", "numeric", parent = "group_2")
+#
+# )
+#
+# makeInputsLayout <- function(inputs) {
+#
+# }
 
-  return(list(pages = pages))
+
+slatePage <- function(name, ...,
+                      description = "",
+                      layout = "flow-2") {
+  page <- list(
+    name = name,
+    description = description,
+    layout = layout,
+    type = "page"
+  )
+
+  page <- c(page, list(...))
+  page$id <- paste0("page_", name)
+
+  return(page)
 }
 
 
-inputPage <- function(name, ..., description="", children = NULL) {
-  if (is.null(children))
-    children <- list(...)
+slateGroup <- function(name, ...,
+                       parent = NULL,
+                       description = "",
+                       layout = "flow-2",
+                       condition = NULL) {
+  group <- list(
+    name = name,
+    parent = parent,
+    description = description,
+    layout = layout,
+    condition = condition,
+    id = paste0("group_", name),
+    type = "group")
 
-  if (length(children) > 0)
-    names(children) <- sapply(children, "[[", "name")
+  group <- c(group, list(...))
+  group$id <- paste0("group_", name)
 
-  return(list(name = name,
-              id = paste0("page_", name),
-              description = description,
-              type = "page",
-              children = children))
-}
-
-
-inputGroup <- function(name, ..., layout = "flow-2", condition = "", children = NULL) {
-  if (is.null(children))
-    children <- list(...)
-
-  names(children) <- sapply(children, "[[", "name")
-
-  return(list(name = name,
-              id = paste0("group_", name),
-              condition = condition,
-              type = "group",
-              layout = layout,
-              children = children))
+  return(group)
 }
 
 
@@ -196,25 +218,18 @@ clearDefaults <- function(x, defaults) {
 #'
 #' @param blueprint the blueprint to simplify.
 #'
-#' @return The simplified blueprint. This blueprint is ideal for export in JSON format or other format.
+#' @return The simplified blueprint. This blueprint is ideal for export in
+#'   JSON format or other format.
 #' @export
 #'
 #' @seealso [restoreBlueprint()] to restore a simplified blueprint to its initial state.
 simplifyBlueprint <- function(blueprint) {
-  blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
-    p <- clearDefaults(p, page.defaults)
-    p$children <- lapply(p$children, function(g) {
-      g <- clearDefaults(g, group.defaults)
-      g$children <- lapply(g$children, function(i) {
-        input.defaults <-
-          c(input.defaults,
-            sapply(input.handlers[[ i$input.type ]]$params.list, "[[", "default"))
+  blueprint$pages %<>% map(~clearDefaults(., page.defaults))
+  blueprint$groups %<>% map(~clearDefaults(., group.defaults))
 
-        clearDefaults(i, input.defaults)
-      })
-      g
-    })
-    p
+  blueprint$inputs %<>% map(function(x) {
+    input.defaults <- c(input.defaults, map(getHandler(x)$params.list, "default"))
+    clearDefaults(x, input.defaults)
   })
 
   return(blueprint)
@@ -230,17 +245,9 @@ simplifyBlueprint <- function(blueprint) {
 #'
 #' @seealso [simplifyBlueprint()] to remove default values from a blueprint.
 restoreBlueprint <- function(blueprint) {
-  blueprint$input.layout$pages <- lapply(blueprint$input.layout$pages, function(p) {
-    p$children <- lapply(p$children, function(g) {
-      g$children <- lapply(g$children, function(i) {
-        do.call(slateInput, i)
-      })
-      do.call(inputGroup, g)
-    })
-    do.call(inputPage, p)
-  })
-
-  blueprint$outputs <- lapply(blueprint$outputs, function(x) do.call(slateOutput, x))
+  blueprint$pages %<>% map(~do.call(slatePage, .))
+  blueprint$groups %<>% map(~do.call(slateGroup, .))
+  blueprint$inputs %<>% map(~do.call(slateInput, .))
 
   return(blueprint)
 }
@@ -249,7 +256,6 @@ restoreBlueprint <- function(blueprint) {
 blueprintToJSON <- function(blueprint, pretty = FALSE) {
   jsonlite::toJSON(blueprint, pretty = pretty)
 }
-
 
 blueprintFromJSON <- function(filename=NULL, text=NULL) {
   if (!is.null(filename) && !is.null(text))
@@ -267,6 +273,9 @@ blueprintFromJSON <- function(filename=NULL, text=NULL) {
 
 
 
+
+
+
 loadBlueprint <- function(filename, format = c("auto", "txt", "json")) {
   format <- match.arg(format)
 
@@ -280,23 +289,18 @@ loadBlueprint <- function(filename, format = c("auto", "txt", "json")) {
   if (format == "txt") {
     source <- readLines(filename) %>% paste(collapse = "\n")
 
-    inputs <- preprocessInputs(source)
-    input.layout <- inputLayout(
-      pages = list(inputPage(
-        "Main",
-        inputGroup(
-          "group_1",
-          children = map(inputs, ~do.call(slateInput, .))
-        )
-      ))
-    )
+    inputs <- preprocessInputs(source) %>%
+      map(~do.call(slateInput, .))
 
     outputs <- preprocessSections(source) %>%
       map(~do.call(slateOutput, .))
 
-    blueprint <- slateBlueprint("untitled")
-    blueprint$input.layout <- input.layout
-    blueprint$outputs <- outputs
+    blueprint <- slateBlueprint(
+      "untitled",
+      inputs = inputs,
+      outputs = outputs
+    )
+
     blueprint$source <- source
   } else if (format == "json") {
     blueprint <- blueprintFromJSON(filename)
@@ -313,91 +317,91 @@ loadBlueprint <- function(filename, format = c("auto", "txt", "json")) {
 # Blueprint utilities
 #
 
-printInputItem <- function(x) {
-  x$children <- NULL
-  print(paste(names(x), x, sep = " = ", collapse=", "))
-}
+# printInputItem <- function(x) {
+#   #x$children <- NULL
+#   print(paste(names(x), x, sep = " = ", collapse=", "))
+# }
 
 
-printInputLayout <- function(layout) {
-  indent <- list("", "  ", "    ")
+# printInputLayout <- function(layout) {
+#   indent <- list("", "  ", "    ")
+#
+#   invisible(traverseInputLayout(layout, function(x, ancestry) {
+#     print(paste0(indent[[ length(ancestry) + 1 ]], x$type, ": ", x$name))
+#     x
+#   }))
+# }
+#
+#
+# flattenInputLayout <- function(layout, clear.children = FALSE) {
+#   lapply(layout$pages, function(p) {
+#     lapply(p$children, function(g) {
+#       lapply(g$children, function(i) {
+#         i$ancestry <- c(p$name, g$name)
+#         i
+#       })
+#     }) %>%
+#       unlist(recursive = FALSE) %>%
+#       append(lapply(p$children, function(g) {
+#         g$ancestry <- p$name
+#         g
+#       }))
+#   }) %>%
+#     unlist(recursive = FALSE) %>%
+#     append(layout$pages) %>%
+#     set_names(sapply(., "[[", "id"))
+# }
+#
+#
+#
+# traverseInputLayout <- function(layout, callback = function(x, ancestry) x, flatten = FALSE) {
+#   layout$pages <- lapply(layout$pages, function(p) {
+#     p <- callback(p, NULL)
+#     p$children <- lapply(p$children, function(g) {
+#       g <- callback(g, p$name)
+#       g$children <- lapply(g$children, function(i) {
+#         callback(i, c(p$name, g$name))
+#       }) %>% set_names(sapply(., "[[", "name"))
+#       g
+#     }) %>% set_names(sapply(., "[[", "name"))
+#     p
+#   }) %>% set_names(sapply(., "[[", "name"))
+#
+#   if (flatten == TRUE)
+#     layout <- flattenInputLayout(layout)
+#
+#   return(layout)
+# }
+#
+#
+# updateInputLayoutItem <- function(layout, item, ancestry = c(), name = NULL) {
+#   if (is.null(name))
+#     path <- c(ancestry, item$name)
+#   else
+#     path <- c(ancestry, name)
+#
+#   if (length(path) == 1) {
+#     layout$pages[[ path ]] <- item
+#     names(layout$pages) <- sapply(layout$pages, "[[", "name")
+#   } else if (length(path) == 2) {
+#     layout$pages[[ path[1] ]]$children[[ path[2] ]] <- item
+#     names(layout$pages[[ path[1] ]]$children) <-
+#       sapply(layout$pages[[ path[1] ]]$children, "[[", "name")
+#   } else {
+#     layout$pages[[ path[1] ]]$children[[ path[2] ]]$children[[ path[3] ]] <- item
+#     names(layout$pages[[ path[1] ]]$children[[ path[2] ]]$children) <-
+#       sapply(layout$pages[[ path[1] ]]$children[[ path[2] ]]$children, "[[", "name")
+#   }
+#
+#   return(layout)
+# }
 
-  invisible(traverseInputLayout(layout, function(x, ancestry) {
-    print(paste0(indent[[ length(ancestry) + 1 ]], x$type, ": ", x$name))
-    x
-  }))
-}
 
-
-flattenInputLayout <- function(layout, clear.children = FALSE) {
-  lapply(layout$pages, function(p) {
-    lapply(p$children, function(g) {
-      lapply(g$children, function(i) {
-        i$ancestry <- c(p$name, g$name)
-        i
-      })
-    }) %>%
-      unlist(recursive = FALSE) %>%
-      append(lapply(p$children, function(g) {
-        g$ancestry <- p$name
-        g
-      }))
-  }) %>%
-    unlist(recursive = FALSE) %>%
-    append(layout$pages) %>%
-    set_names(sapply(., "[[", "id"))
-}
-
-
-
-traverseInputLayout <- function(layout, callback = function(x, ancestry) x, flatten = FALSE) {
-  layout$pages <- lapply(layout$pages, function(p) {
-    p <- callback(p, NULL)
-    p$children <- lapply(p$children, function(g) {
-      g <- callback(g, p$name)
-      g$children <- lapply(g$children, function(i) {
-        callback(i, c(p$name, g$name))
-      }) %>% set_names(sapply(., "[[", "name"))
-      g
-    }) %>% set_names(sapply(., "[[", "name"))
-    p
-  }) %>% set_names(sapply(., "[[", "name"))
-
-  if (flatten == TRUE)
-    layout <- flattenInputLayout(layout)
-
-  return(layout)
-}
-
-
-updateInputLayoutItem <- function(layout, item, ancestry = c(), name = NULL) {
-  if (is.null(name))
-    path <- c(ancestry, item$name)
-  else
-    path <- c(ancestry, name)
-
-  if (length(path) == 1) {
-    layout$pages[[ path ]] <- item
-    names(layout$pages) <- sapply(layout$pages, "[[", "name")
-  } else if (length(path) == 2) {
-    layout$pages[[ path[1] ]]$children[[ path[2] ]] <- item
-    names(layout$pages[[ path[1] ]]$children) <-
-      sapply(layout$pages[[ path[1] ]]$children, "[[", "name")
-  } else {
-    layout$pages[[ path[1] ]]$children[[ path[2] ]]$children[[ path[3] ]] <- item
-    names(layout$pages[[ path[1] ]]$children[[ path[2] ]]$children) <-
-      sapply(layout$pages[[ path[1] ]]$children[[ path[2] ]]$children, "[[", "name")
-  }
-
-  return(layout)
-}
-
-
-getInputs <- function(blueprint) {
-  Filter(function(x) x$type == "input",
-         flattenInputLayout(blueprint$input.layout)) %>%
-    set_names(sapply(., "[[", "name"))
-}
+# getInputs <- function(blueprint) {
+#   Filter(function(x) x$type == "input",
+#          flattenInputLayout(blueprint$input.layout)) %>%
+#     set_names(sapply(., "[[", "name"))
+# }
 
 
 

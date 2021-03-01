@@ -327,73 +327,97 @@ dataset.handlers <- list(
 )
 
 
-
-
-createInput <- function(input, ns = identity) {
-  input.handlers[[ input$input.type ]]$create.ui(ns(input$id), input)
+getLayoutFun <- function(layout) {
+  switch(layout,
+         "flow-2" = function(...) tags$div(class = "slates-flow-2", ...),
+         "flow-3" = function(...) tags$div(class = "slates-flow-3", ...),
+         "flow-4" = function(...) tags$div(class = "slates-flow-4", ...),
+         "vertical" = shiny::verticalLayout)
 }
 
 
-createInputGroup <- function(group, id = NULL, ns = identity) {
-  ui.elements <- unname(lapply(group$children, function(x) {
-    createInput(x, ns = ns)
-  }))
+createInputUI <- function(input, ns = identity) {
+  getHandler(input)$create.ui(ns(input$id), input)
+}
 
-  if (!is.null(id))
-    ui.elements$id <- ns(id)
 
-  layoutFun <- switch(group$layout,
-                      "flow-2" = function(...) tags$div(class = "slates-flow-2", ...),
-                      "flow-3" = function(...) tags$div(class = "slates-flow-3", ...),
-                      "flow-4" = function(...) tags$div(class = "slates-flow-4", ...),
-                      "vertical" = shiny::verticalLayout)
+createGroupUI <- function(group, inputs, ns = identity) {
+  my.inputs <- inputs %>%
+    keep(map(., "parent") == group$name) %>%
+    map(createInputUI, ns = ns) %>%
+    tagList() %>%
+    do.call(getLayoutFun(group$layout), .)
 
-  tagList(
-    do.call(layoutFun, ui.elements)
+  description.ui <- tags$p(
+    class = "slates-group-description",
+    group$description
   )
+
+  ui <- tagList(
+    description.ui,
+    my.inputs
+  )
+
+  return(ui)
 }
 
 
-createInputPage <- function(page, id = NULL, ns = identity, layout = "flow") {
-  if (length(page$children) == 0)
-    return(tagList())
+createPageUI <- function(page, groups = list(), inputs = list(), ns = identity) {
+  my.inputs <- inputs %>%
+    keep(map(., "parent") == page$name) %>%
+    map(createInputUI, ns = ns) %>%
+    tagList() %>%
+    do.call(getLayoutFun(page$layout), .)
 
-  ui.groups <- lapply(page$children, function(x) {
-    if (class(x) == "list" && x$type == "group")
-      createInputGroup(x, ns = ns)
-    else if (class(x) == "list" && x$type == "input")
-      createInput(x, ns = ns)
-  })
+  my.groups <- groups %>%
+    keep(map(., "parent") == page$name) %>%
+    map(createGroupUI, inputs, ns = ns) %>%
+    tagList() %>%
+    do.call(getLayoutFun("vertical"), .)
 
-  if (!is.null(page$description)) {
-    ui.groups <- append(list(helpText(page$description)), ui.groups)
-  }
+  description.ui <- tags$p(
+    class = "slates-page-description",
+    page$description
+  )
 
-  do.call(verticalLayout, ui.groups)
+  ui <- tagList(
+    description.ui,
+    my.inputs,
+    my.groups
+  )
+
+  return(ui)
 }
 
 
-createInputLayout <- function(pages,
+
+#' Create the UI For the Inputs Panel
+#'
+#' @param pages list of pages.
+#' @param groups list of groups.
+#' @param inputs list of inputs.
+#' @param ns the namespace function to use for creating tag ids
+#' @param inputs.style the style of the input panel. `tabset` generates a
+#'   tabsetPanel with each page in a tabPanel element. `collapses` uses
+#'   Bootstrap 4 collapses to compartmentalize pages. `flowing` places
+#'   all pages vertically in the same container and uses h5 tags for the
+#'   page titles.
+#'
+#' @return a tag.list structure.
+#' @export
+#'
+#' @examples
+createInputLayout <- function(pages, groups, inputs,
                               ns = identity,
                               inputs.style = c("tabset", "collapses", "flowing")) {
   inputs.style <- match.arg(inputs.style)
 
-  # find main page if it exists
-  page.names <- sapply(pages, "[[", "name")
-  main.index <- grep("^Main$", page.names)
-  if (length(main.index) == 1) {
-    main.page <- pages[[ main.index ]]
-    pages <- pages[ -main.index ]
-  } else {
-    main.page <- NULL
-  }
+  # default.page <- pages[[ "default" ]]
 
-  # build pages
-  pages <- lapply(pages, function(x) {
-    x$ui <- createInputPage(x, ns = ns)
-
-    return(x)
-  })
+  # build pages (except default page)
+  pages %<>%
+    #keep(map(., "name") != "default") %>%
+    map(~list_modify(., ui = createPageUI(., groups, inputs, ns = ns)))
 
   # build the container
   if (inputs.style == "tabset") {
@@ -447,12 +471,14 @@ createInputLayout <- function(pages,
     ui <- do.call(verticalLayout, ui.list)
   }
 
-  # build and pre-append main page
-  if (!is.null(main.page)) {
-    main.ui <- createInputPage(main.page, ns = ns)
+  # build and prepend default page
+  my.inputs <- inputs %>%
+    keep(map_lgl(., ~is.null(.$parent))) %>%
+    map(createInputUI, ns = ns) %>%
+    tagList() %>%
+    do.call(getLayoutFun("flow-2"), .)
 
-    ui <- tagList(main.ui, ui)
-  }
+  ui <- tagList(my.inputs, ui)
 
   return(ui)
 }
