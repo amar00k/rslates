@@ -70,21 +70,22 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
           class = "collapse show",
           style = "width: 100%",
           uiOutput(ns("inputs_panel")),
-          hr(),
           tags$div(
             #class = "container",
             tags$div(
+              h5("Blueprint Settings"),
               shinyAce::aceEditor(ns("blueprint_source"), value = "")
             )
           )
         )
       )
     )
-    # br(),
+    # hr(),
     # tags$div(
     #   class = "container",
     #   tags$div(
     #     class = "col-6",
+    #     h5("Blueprint Source"),
     #     shinyAce::aceEditor(ns("blueprint_source"), value = "")
     #   )
     # )
@@ -92,35 +93,34 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
 
   if (slate.options$use.card) {
     if (slate.options$card.header == TRUE) {
-      ui <- tags$div(
-        id = ns("slate_div"),
-        class = "card slate",
-        tags$div(
-          class="card-header d-flex justify-content-between",
-          tags$p(blueprint$title),
-          actionButton(ns("btn_edit"),
-                       class = "ml-auto",
-                       icon = icon("cog"),
-                       `data-toggle` = "collapse",
-                       href = paste0("#", ns("slate_inputs_body")),
-                       label = "")
-        ),
-        body.ui
+      header.ui <- tags$div(
+        class="card-header d-flex justify-content-between",
+        tags$p(blueprint$title),
+        actionButton(
+          ns("btn_edit"),
+          class = "ml-auto",
+          icon = icon("cog"),
+          `data-toggle` = "collapse",
+          href = paste0("#", ns("slate_inputs_body")),
+          label = "")
       )
     } else {
-      ui <- tags$div(
-        id = ns("slate_div"),
-        class = "card slate",
-        body.ui
-      )
+      header.ui <- NULL
     }
 
+    ui <- tags$div(
+      id = ns("slate_div"),
+      class = "card slate",
+      header.ui,
+      body.ui
+    )
   } else {
     ui <- body.ui
   }
 
   tagList(ui)
 }
+
 
 slateServer <- function(id, blueprint, slate.options = NULL, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
@@ -133,12 +133,10 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
 
     input.layout <- reactiveVal(blueprint$input.layout)
     output.layout <- reactiveVal(blueprint$outputs)
-
+    output.sources <- reactiveVal(blueprint$outputs %>% map("source"))
 
     output$inputs_panel <- renderUI({
       layout <- input.layout()
-
-      print(slate.options$inputs.style)
 
       createInputLayout(
         pages = layout$pages,
@@ -149,9 +147,11 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
 
 
     output$outputs_panel <- renderUI({
-      layout <- output.layout()
+      outputs <- output.layout()
 
-      output.tabs <- unname(lapply(layout, function(x) {
+      pprint("output selected:", isolate(input$output_tabs))
+
+      output.tabs <- unname(lapply(outputs, function(x) {
         stopifnot(x$type %in% names(output.handlers))
 
         tabPanel(
@@ -166,6 +166,75 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
       output.tabs$type <- "pills"
       outputs.ui <- do.call(tabsetPanel, output.tabs)
     })
+
+
+    # # initialize outputs
+    # for (x in blueprint$outputs) {
+    #   getHandler(x)$create.output(x, session, blueprint, input.list, slate.envir)
+    # }
+    observe({
+      for (x in output.layout()) {
+        #getHandler(x)$create.output(x, session, blueprint, input.list, slate.envir)
+        getHandler(x)$create.output(
+          x, session, output.sources, input.list, slate.envir
+        )
+      }
+    })
+
+
+    #
+    # Slate blueprint editor
+    #
+    observe({
+      input.layout <- isolate(input.layout())
+      output.layout <- isolate(output.layout())
+      output.sources <- isolate(output.sources())
+
+      source <- input$blueprint_source
+
+      try({
+        # inputs
+        inputs <- preprocessInputs(source)
+
+        input.layout <- inputLayout(
+          pages = list(inputPage(
+            "Main",
+            inputGroup(
+              "group_1",
+              children = map(inputs, ~do.call(slateInput, .))
+            )
+          ))
+        )
+
+        input.layout(input.layout)
+      })
+
+      try({
+        new.outputs <-
+          preprocessSections(source) %>%
+          map(~do.call(slateOutput, .))
+
+        new.layout <- new.outputs %>%
+          map(~list_modify(., source = NULL))
+
+        new.sources <- new.outputs %>%
+          map("source")
+
+        if (!identical(output.layout, new.layout)) {
+          output.layout(new.layout)
+        }
+
+        if (!identical(output.sources, new.sources)) {
+          output.sources(new.sources)
+        }
+      })
+    })
+
+
+
+
+
+
 
 
     # list of observers to be destroyed on exit
@@ -273,11 +342,6 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     })
 
 
-    # initialize outputs
-    for (x in blueprint$outputs) {
-      getHandler(x)$create.output(x, session, blueprint, input.list, slate.envir)
-    }
-
 
     # observe outputs
     observe({
@@ -304,19 +368,6 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     #
     #   }
     # }
-
-
-
-
-    #
-    # Slate blueprint editor
-    #
-    observe({
-      input.layout <- input.layout()
-      outputs <- output.layout()
-
-
-    })
 
 
 
