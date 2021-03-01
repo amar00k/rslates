@@ -41,7 +41,7 @@ slateViewerApp <- function(blueprint = slateBlueprint("untitled")) {
             choices = list("tabset", "collapses", "flowing"),
             selected = "flowing"
           ),
-          textInput("slate_height", "Slate Height", value = "520px"),
+          textInput("slate_height", "Slate Height", value = "480px"),
           checkboxGroupInput(
             "slate_options", "Card",
             choices = c("Use Card" = "use.card",
