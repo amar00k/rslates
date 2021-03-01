@@ -22,7 +22,9 @@ Imports:
     magrittr,
     digest,
     rlang,
-    reactable
+    reactable,
+    purrr,
+    dplyr
 Remotes:
     rstudio/shiny
 RoxygenNote: 7.1.1
