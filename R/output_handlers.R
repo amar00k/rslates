@@ -26,8 +26,8 @@ autoReactableTheme <- function(bslib.theme = getCurrentTheme(), options = list()
 #
 
 outputHandler <- function(create.ui = function(...) { tagList() },
-                           create.output = function(...) {},
-                           observer = function(...) {}) {
+                          create.output = function(...) {},
+                          observer = function(...) {}) {
   list(
     create.ui = create.ui,
     create.output = create.output,
@@ -41,11 +41,12 @@ output.handlers <- list(
     create.ui = function(id, title) {
       plotOutput(id)
     },
-    create.output = function(x, session, blueprint, input.list, envir) {
+    create.output = function(x, session, sources, inputs, envir) {
       session$output[[ x$id ]] <- renderPlot({
-        req(envir())
+        req(sources(), inputs(), envir())
 
-        src <- buildSource(x$source, input.list())
+        source <- sources()[[ x$name ]]
+        src <- buildSource(source, inputs())
         eval(parse(text = src), envir = new.env(parent = envir()))
       })
     }
@@ -57,11 +58,12 @@ output.handlers <- list(
         tableOutput(id)
       )
     },
-    create.output = function(x, session, blueprint, input.list, envir) {
+    create.output = function(x, session, sources, inputs, envirr) {
       session$output[[ x$id ]] <- renderTable({
-        req(envir())
+        req(sources(), inputs(), envir())
 
-        src <- buildSource(x$source, input.list())
+        source <- sources()[[ x$name ]]
+        src <- buildSource(source, inputs())
         eval(parse(text = src), envir = new.env(parent = envir()))
       })
     }
@@ -70,11 +72,12 @@ output.handlers <- list(
     create.ui = function(id, title) {
       reactable::reactableOutput(id)
     },
-    create.output = function(x, session, blueprint, input.list, envir) {
+    create.output = function(x, session, sources, inputs, envir) {
       session$output[[ x$id ]] <- reactable::renderReactable({
-        req(envir())
+        req(sources(), inputs(), envir())
 
-        src <- buildSource(x$source, input.list())
+        source <- sources()[[ x$name ]]
+        src <- buildSource(source, inputs())
 
         reactable::reactable(
           eval(parse(text = src), envir = new.env(parent = envir()))
@@ -86,15 +89,17 @@ output.handlers <- list(
   print = outputHandler(
     create.ui = function(id, title) {
       tags$div(
+        # TODO: make the height adapt to the slate height
         style="overflow: auto; max-height: 400px;",
         verbatimTextOutput(id)
       )
     },
-    create.output = function(x, session, blueprint, input.list, envir) {
+    create.output = function(x, session, sources, inputs, envir) {
       session$output[[ x$id ]] <- renderPrint({
-        req(envir())
+        req(sources(), inputs(), envir())
 
-        src <- buildSource(x$source, input.list())
+        source <- sources()[[ x$name ]]
+        src <- buildSource(source, inputs())
         eval(parse(text = src), envir = new.env(parent = envir()))
       })
     }
