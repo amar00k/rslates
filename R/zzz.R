@@ -6,6 +6,8 @@
 #'
 #' @import shiny
 #' @import magrittr
+#' @import dplyr
+#' @import purrr
 #'
 #' @docType package
 #' @name rslates-package
