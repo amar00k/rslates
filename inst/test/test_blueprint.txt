@@ -1,0 +1,14 @@
+# A comment
+# This is the Generic chunk
+
+print(1:10)
+print(head(iris))
+
+#-- plot Scatterplot
+
+plot(${x}, main=${main})
+
+#-- table mtcars
+
+head(mtcars)
+
