@@ -12,7 +12,7 @@ create_new_project_modal(id, session)
 \item{session}{the session from the server function.}
 }
 \value{
-A list containing the `show` function used to display the modal after being
+A list containing the \code{show} function used to display the modal after being
 created.
 }
 \description{

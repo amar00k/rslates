@@ -30,12 +30,12 @@ modal is destroyed.}
 \item{focus.on.show}{unused}
 }
 \value{
-a list with the following members. `id`: the id of the modal,
-  `show`: a function with signature `function(callback, title = NULL, ...)`
-  that brings up the modal dialog when called. The `callback` function is
-  called by the modal dialog when the user presses OK. Each value returned
-  by `submit.fun` is passed to this function as an argument. Extra `...`
-  parameters are passed to the `ui.fun` function.
+a list with the following members. \code{id}: the id of the modal,
+\code{show}: a function with signature \verb{function(callback, title = NULL, ...)}
+that brings up the modal dialog when called. The \code{callback} function is
+called by the modal dialog when the user presses OK. Each value returned
+by \code{submit.fun} is passed to this function as an argument. Extra \code{...}
+parameters are passed to the \code{ui.fun} function.
 }
 \description{
 Create a Modal Dialog

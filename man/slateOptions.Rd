@@ -21,16 +21,16 @@ the height of the slate is unrestricted.}
 
 \item{use.card}{use a bs4 card as a container for the slate UI.}
 
-\item{card.header}{show the card header. Only used if `use.card` is TRUE.}
+\item{card.header}{show the card header. Only used if \code{use.card} is TRUE.}
 
 \item{open.settings}{start with the input settings panel open.}
 
-\item{inputs.style}{the style used for the inputs panel. `"tabset"` uses
-a tabsetPanel as a container for input pages. `"collapses"` uses bs4
-collapse panels. `"flowing"` displays all pages in a single vertical container.}
+\item{inputs.style}{the style used for the inputs panel. \code{"tabset"} uses
+a tabsetPanel as a container for input pages. \code{"collapses"} uses bs4
+collapse panels. \code{"flowing"} displays all pages in a single vertical container.}
 }
 \value{
-a list of options to be passed to `slateUI()` and `slateServer()`.
+a list of options to be passed to \code{slateUI()} and \code{slateServer()}.
 }
 \description{
 Setup Slate Display and Behaviour Options

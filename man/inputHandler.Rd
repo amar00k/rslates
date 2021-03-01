@@ -44,6 +44,6 @@ a list of functions to handle the the input type.
 }
 \description{
 This function prepares a structure that defines all aspects of an
-  input type: UI creation, UI updating, observer function and string representation
-  of the input value.
+input type: UI creation, UI updating, observer function and string representation
+of the input value.
 }

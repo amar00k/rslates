@@ -20,16 +20,16 @@ slatesModalMultiPage(
 
 \item{session}{shiny server session}
 
-\item{pages.ui}{a *list* of functions, each used to build a page. These functions
+\item{pages.ui}{a \emph{list} of functions, each used to build a page. These functions
 may define any number of arguments used to build the page's UI. The return value
-of these functions should be a valid `shiny.tag` definition.}
+of these functions should be a valid \code{shiny.tag} definition.}
 
 \item{submit.fun}{a function that returns the results of the user interaction with
 the modal dialog. The return value should be a list with named elements.}
 
-\item{validators}{a *list* of functions used to validate the state of each page. A
+\item{validators}{a \emph{list} of functions used to validate the state of each page. A
 user may not proceed to the next page of the modal dialog until the validator function
-for the current page returns `TRUE`.}
+for the current page returns \code{TRUE}.}
 
 \item{back.button}{whether or not to show the back button on the modal's pages.}
 
@@ -37,24 +37,24 @@ for the current page returns `TRUE`.}
 allow the modal dialog to destroy the observers when it is destroyed.}
 
 \item{size}{default width of the modal dialog. One of "s", "m", "l", "xl". Note that
-the `show()` function can override this setting if desired.}
+the \code{show()} function can override this setting if desired.}
 }
 \value{
-A list containing the modal id and the `show()` function (see details below).
+A list containing the modal id and the \code{show()} function (see details below).
 }
 \description{
 Used to construct a multi-page modal dialog. Next and Back buttons are
-  used to navigate the pages sequentially. Optional validation functions may be
-  specified for each page. A callback function may be specified to obtain the
-  user's inputs.
+used to navigate the pages sequentially. Optional validation functions may be
+specified for each page. A callback function may be specified to obtain the
+user's inputs.
 }
 \details{
-After creating the modal dialog, the `show` function is used to display it. This
-  function takes in a mandatory `callback` argument, and optional `title`. When the user
-  exits the dialog by pressing the OK button, the provided `callback` function is called
-  with each argument named as an element of the result from `submit.fun`. Additional
-  arguments provided to the `show` method will be passed on to the UI definition
-  functions provided in `pages.ui`. See example below.
+After creating the modal dialog, the \code{show} function is used to display it. This
+function takes in a mandatory \code{callback} argument, and optional \code{title}. When the user
+exits the dialog by pressing the OK button, the provided \code{callback} function is called
+with each argument named as an element of the result from \code{submit.fun}. Additional
+arguments provided to the \code{show} method will be passed on to the UI definition
+functions provided in \code{pages.ui}. See example below.
 }
 \examples{
 if (interactive()) {

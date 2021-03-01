@@ -16,5 +16,5 @@ The simplified blueprint. This blueprint is ideal for export in JSON format or o
 Simplify a blueprint by removing default values
 }
 \seealso{
-[restoreBlueprint()] to restore a simplified blueprint to its initial state.
+\code{\link[=restoreBlueprint]{restoreBlueprint()}} to restore a simplified blueprint to its initial state.
 }

@@ -16,5 +16,5 @@ the restored blueprint containing all fields, including those with default value
 Restore a blueprint by filling-in default values
 }
 \seealso{
-[simplifyBlueprint()] to remove default values from a blueprint.
+\code{\link[=simplifyBlueprint]{simplifyBlueprint()}} to remove default values from a blueprint.
 }
