@@ -267,6 +267,48 @@ blueprintFromJSON <- function(filename=NULL, text=NULL) {
 
 
 
+loadBlueprint <- function(filename, format = c("auto", "txt", "json")) {
+  format <- match.arg(format)
+
+  if (format == "auto") {
+    format <- gsub("^.*\\.(.*?)$", "\\1", filename)
+
+    if (!(format %in% c("txt", "json")))
+      stop("File extension must be txt or json.")
+  }
+
+  if (format == "txt") {
+    source <- readLines(filename) %>% paste(collapse = "\n")
+
+    inputs <- preprocessInputs(source)
+    input.layout <- inputLayout(
+      pages = list(inputPage(
+        "Main",
+        inputGroup(
+          "group_1",
+          children = map(inputs, ~do.call(slateInput, .))
+        )
+      ))
+    )
+
+    outputs <- preprocessSections(source) %>%
+      map(~do.call(slateOutput, .))
+
+    blueprint <- slateBlueprint("untitled")
+    blueprint$input.layout <- input.layout
+    blueprint$outputs <- outputs
+    blueprint$source <- source
+  } else if (format == "json") {
+    blueprint <- blueprintFromJSON(filename)
+  }
+
+  return(blueprint)
+}
+
+
+
+
+
 #
 # Blueprint utilities
 #

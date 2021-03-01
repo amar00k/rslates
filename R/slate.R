@@ -74,7 +74,8 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
             #class = "container",
             tags$div(
               h5("Blueprint Settings"),
-              shinyAce::aceEditor(ns("blueprint_source"), value = "")
+              shinyAce::aceEditor(ns("blueprint_source"),
+                                  value = blueprint$source)
             )
           )
         )
@@ -131,9 +132,43 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     # append the source code outputs
     blueprint$outputs[[ length(blueprint$outputs) + 1 ]] <- slateOutput("Source", type="source")
 
+    blueprint.properties <- reactiveValues(
+      title = blueprint$title
+    )
+
     input.layout <- reactiveVal(blueprint$input.layout)
-    output.layout <- reactiveVal(blueprint$outputs)
+    output.layout <- reactiveVal(blueprint$outputs %>% map(~list_modify(., source = NULL)))
     output.sources <- reactiveVal(blueprint$outputs %>% map("source"))
+
+
+    loadBlueprint <- function(filename, format = c("auto", "txt", "json")) {
+      blueprint <- loadBlueprint(filename)
+
+      if (format == "txt") {
+        shinyAce::updateAceEditor(session, "blueprint_source",
+                                  value = blueprint$source)
+      }
+
+      # input.layout(blueprint$input.layout)
+      # output.layout(blueprint$outputs %>% map(~list_modify(., source = NULL)))
+      # output.sources(blueprint$outputs %>% map("source"))
+    }
+
+
+    inputLayoutFromSource <- function(source) {
+      inputs <- preprocessInputs(source)
+
+      inputLayout(
+        pages = list(inputPage(
+          "Main",
+          inputGroup(
+            "group_1",
+            children = map(inputs, ~do.call(slateInput, .))
+          )
+        ))
+      )
+    }
+
 
     output$inputs_panel <- renderUI({
       layout <- input.layout()
@@ -194,19 +229,11 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
 
       try({
         # inputs
-        inputs <- preprocessInputs(source)
+        new.layout <- inputLayoutFromSource(source)
 
-        input.layout <- inputLayout(
-          pages = list(inputPage(
-            "Main",
-            inputGroup(
-              "group_1",
-              children = map(inputs, ~do.call(slateInput, .))
-            )
-          ))
-        )
-
-        input.layout(input.layout)
+        if (!identical(input.layout, new.layout)) {
+          input.layout(new.layout)
+        }
       })
 
       try({
@@ -395,10 +422,13 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     }
 
     return(
-      list(blueprint = blueprint,
-           inputs = input.list,
-           #import.data = import.data,
-           destroy = destroy)
+      list(
+        load = loadBlueprint,
+        destroy = destroy
+        #blueprint = blueprint,
+        #inputs = input.list,
+        #import.data = import.data,
+      )
     )
   })
 }
