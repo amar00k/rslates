@@ -3,6 +3,7 @@
 export(create_new_project_modal)
 export(inputHandler)
 export(loadBlueprints)
+export(preprocessInputs)
 export(restoreBlueprint)
 export(simplifyBlueprint)
 export(slateOptions)
