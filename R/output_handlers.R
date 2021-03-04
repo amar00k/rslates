@@ -21,6 +21,7 @@ autoReactableTheme <- function(bslib.theme = getCurrentTheme(), options = list()
 }
 
 
+
 #
 # Outputs
 #
@@ -46,7 +47,8 @@ output.handlers <- list(
         req(sources(), inputs(), envir())
 
         source <- sources()[[ x$name ]]
-        src <- buildSource(source, inputs())
+        src <- substituteValues(source, inputs())
+        print(src)
         eval(parse(text = src), envir = new.env(parent = envir()))
       })
     }
@@ -63,7 +65,7 @@ output.handlers <- list(
         req(sources(), inputs(), envir())
 
         source <- sources()[[ x$name ]]
-        src <- buildSource(source, inputs())
+        src <- substituteValues(source, inputs())
         eval(parse(text = src), envir = new.env(parent = envir()))
       })
     }
@@ -77,7 +79,7 @@ output.handlers <- list(
         req(sources(), inputs(), envir())
 
         source <- sources()[[ x$name ]]
-        src <- buildSource(source, inputs())
+        src <- substituteValues(source, inputs())
 
         reactable::reactable(
           eval(parse(text = src), envir = new.env(parent = envir()))
@@ -99,13 +101,13 @@ output.handlers <- list(
         req(sources(), inputs(), envir())
 
         source <- sources()[[ x$name ]]
-        src <- buildSource(source, inputs())
+        src <- substituteValues(source, inputs())
         eval(parse(text = src), envir = new.env(parent = envir()))
       })
     }
   ),
   source = outputHandler(
-    create.ui = function(id, title) {
+    create.ui = function(id, title, options) {
       shinyAce::aceEditor(id,
                           mode = "r",
                           height = "300px",
@@ -113,77 +115,22 @@ output.handlers <- list(
                           showLineNumbers = TRUE,
                           highlightActiveLine = FALSE)
     },
-    observer = function(id, session, blueprint, input.list, envir, global.options) {
-      if (length(blueprint$output) == 0) {
-        return("")
-      }
+    observer = function(id, session, sources, inputs, envir, global.options) {
+      source <- map(sources(), substituteVariables, inputs()) %>%
+        paste(collapse = "\n\n")
 
-      sources <- list()
+      print(source)
 
-      to.display <- as.logical(sapply(blueprint$datasets, function(x) !is.null(x$source)))
-      sources$datasets.src <- lapply(blueprint$datasets[ to.display ], function(x) {
-        paste0("#-- ", x$name, "\n", assignValue(buildSource(x$source, input.list()), x$name))
-      }) %>% paste(collapse = "\n\n")
-
-      to.display <- sapply(blueprint$output, function(x) !is.null(x$source) && x$name != "Source")
-      sources$outputs.src <- paste(
-        lapply(blueprint$output[ to.display ], function(x) {
-          paste0("#-- ", x$name, "\n", buildSource(x$source, input.list()))
-        }), collapse="\n\n")
-
-      sources <- sources[ sources != "" ]
-      src <- paste(sources, collapse="\n\n")
-
-      shinyAce::updateAceEditor(session, editorId = id, value = src, theme = global.options$ace.theme)
+      shinyAce::updateAceEditor(
+        session, editorId = id, value = source, theme = global.options$ace.theme
+      )
     }
   )
-  # debug = outputHandler(
-  #   create.ui = function(id, title) {
-  #     tabPanel(title,
-  #              tagList(
-  #                textInput(paste0(id, "_input"), label = "Source"),
-  #                verbatimTextOutput(id)))
-  #   },
-  #   create.output = function(id, blueprint, input.list, envir, input) {
-  #     outputs <- list()
-  #     outputs[[ id ]] <- renderPrint({
-  #       # req(slate()$outputs[[ id ]]$source)
-  #
-  #       source_assignments(input.list())
-  #
-  #       src <- input[[ paste0(id, "_input") ]]
-  #
-  #       eval(parse(text = src), envir = new.env(parent = envir()))
-  #     })
-  #
-  #     return(outputs)
-  #   }
-  # )
+
 )
 
 
 
-buildSource <- function(lines, inputs) {
-  lines %>%
-    map(~srcBuild(srcParse(.x), inputs)) %>%
-    paste(collapse = "\n")
-
-  # tryCatch({
-  #   result <- character(0)
-  #   for (x in src.list) {
-  #     result <- c(result, srcBuild(srcParse(x), inputs))
-  #   }
-  #
-  #   paste(result, collapse = "\n")
-  # },
-  # error = function(e) {
-  #   pprint("THERE WAS BAD MOJO WHILE PREPROCESSING:", x)
-  #   print(inputs)
-  #   print(e)
-  # })
-  #
-  # return(result)
-}
 
 create_slate_outputs <- function(ns, slate) {
 
