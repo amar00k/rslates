@@ -1,5 +1,35 @@
 
 
+
+# utility function to split a list of expressions separated by comma
+# while ignoring commas inside parenthesis
+split.parameters <- function(text) {
+  # split characters
+  charmap <- strsplit(text, split="") %>%
+    unlist
+
+  # ( = 1, ) = -1, else = 0
+  parmap <- charmap %>%
+    map_dbl(~switch(., "(" = 1, ")" = -1, 0))
+
+  # check
+  if (sum(parmap) != 0)
+    stop("Mismatched parenthesis:", text)
+
+  charmap %>%
+    # inside parenthesis, replace "," by "#"
+    modify_at(which(charmap == "," & cumsum(parmap) > 0), ~"#") %>%
+    # restore the string
+    paste(collapse="") %>%
+    # split by "," and trim (this splits the string by variable)
+    strsplit(split=",") %>%
+    unlist %>%
+    trimws %>%
+    # restore the "," separating variable options
+    gsub("#", ",", .)
+}
+
+
 # Variable substitution:
 #
 # Syntax: ${ [global_options::] [options:][named_argument=]variable_name [...] }
@@ -16,9 +46,9 @@
 # Examples:
 #   plot(${x})
 
-SRC.VALID.OPTIONS <- strsplit("xqQnNdD", split="")[[1]]
+SRC.VALID.OPTIONS <- strsplit("xqQnNdDl", split="")[[1]]
 
-srcResolveOptions <- function(var.opts, global.opts) {
+resolveVariableOutputOptions <- function(var.opts, global.opts) {
   if (any(c("n", "N") %in% var.opts))
     global.opts <- global.opts[ !(global.opts %in% c("n", "N")) ]
 
@@ -34,154 +64,265 @@ srcResolveOptions <- function(var.opts, global.opts) {
     opts <- unique(c(var.opts, global.opts))
   }
 
-  stopifnot(!all(c("n", "N") %in% opts))
-  stopifnot(!all(c("d", "D") %in% opts))
-  stopifnot(!all(c("q", "Q") %in% opts))
+  stopifnot('Options "n" and "N" cannot be used together.' = !all(c("n", "N") %in% opts))
+  stopifnot('Options "d" and "D" cannot be used together.' = !all(c("d", "D") %in% opts))
+  stopifnot('Options "q" and "Q" cannot be used together.' = !all(c("q", "Q") %in% opts))
 
   return(opts)
 }
 
 
-srcParseOptions <- function(str) {
-  opts <- strsplit(str, split = "")[[1]]
+parseVariableOutputOptions <- function(text) {
+  opts <- strsplit(text, split = "")[[1]]
 
   if (!all(opts %in% SRC.VALID.OPTIONS)) {
-    stop(opts[ which(!(opts %in% SRC.VALID.OPTIONS)) ], " is not a valid option.")
+    stop('"', opts[ which(!(opts %in% SRC.VALID.OPTIONS)) ], "' is not a valid output option.")
   }
 
   return(opts)
 }
 
 
-srcParseBlock <- function(str) {
-  # remove enclosure
-  str <- sub("^\\$\\{(.*?)\\}", "\\1", str)
+# text: string of the form
+# [type][, default][, name1 = value1][...]
+parseVariableInputOptions <- function(text) {
+  stopifnot("Text must be a single string." = (length(text) == 1))
 
-  # check for global options (::)
-  if (grepl("::", str)) {
-    global.opts <- srcParseOptions(trimws(sub("::.*$", "", str)))
-    str <- trimws(sub("^.*::", "", str))
+  opts <- split.parameters(text)
+
+  # first unnamed value is input.type
+  if (!grepl("=", opts[[1]]))
+    opts[[1]] <- paste0("input.type = \"", opts[[1]], "\"")
+
+  # if second unnamed value, it's the default value
+  if (length(opts) > 1 && !grepl("=", opts[[2]]))
+    opts[[2]] <- paste0("default = ", opts[[2]])
+
+  if (!all(grepl("=", opts))) {
+    stop("Error parsing variable definition: ", text,
+         ". Missing \"=\" sign in ",
+         opts[ which(!grepl("=", opts))[1] ], ".")
+  }
+
+  options <- tryCatch({
+    # evaluate the options
+    options <- new.env()
+    opts <- paste(opts, collapse = "\n")
+    eval(parse(text = opts), envir = options)
+
+    # character is default input type
+    if (is.null(options$input.type))
+      options$input.type <- "character"
+    else if (!(options$input.type %in% names(input.handlers)))
+      stop(options$input.type, " is not a valid input type.")
+
+    # coerce the default value to the appropriate type
+    # (this may raise an error)
+    if (!is.null(options$default)) {
+      options$default <- input.handlers[[ options$input.type ]]$as.value(
+        value = options$default
+      )
+    }
+
+    # coerce to list type and sort alphabetically
+    options <- as.list(options)
+    options <- options[ order(names(options)) ]
+
+    options
+  },
+  error = function(e) {
+    stop(paste0("Error parsing variable definition: ", text))
+  })
+
+  return(options)
+}
+
+
+# text: a single input variable
+# [output_options:][assing.name = ]varname[(input options)]
+parseInputVariable <- function(text) {
+  stopifnot("Text must be a single string." = (length(text) == 1))
+
+  # extract output options
+  if (grepl("^[^\\()]*?:", text)) {
+    text <- strsplit(text, ":")[[1]] %>% trimws
+    output.options <- parseVariableOutputOptions(text[1])
+    text <- paste(text[ 2:length(text) ], collapse = ":")
+  } else {
+    output.options <- ""
+  }
+
+  # extract assign name
+  if (grepl("^[^\\(]*?=", text)) {
+    text <- strsplit(text, "=")[[1]] %>% trimws
+    assign.name <- text[1]
+    text <- paste(text[ 2:length(text) ], collapse = "=")
+  } else
+    assign.name <- ""
+
+  # extract varname and input options
+  if (grepl("\\(.*\\)", text)) {
+    varname <- sub("^(.*?)\\(.*$", "\\1", text) %>% trimws
+    input.options <-
+      trimws(text) %>%
+      sub("^.*?\\(", "", .) %>%
+      sub("\\)$", "", .) %>%
+      trimws %>%
+      parseVariableInputOptions
+  } else {
+    varname <- text
+    input.options <- ""
+  }
+
+  var <- list(
+    varname = varname,
+    output.options = output.options,
+    assign.name = assign.name,
+    input.options = input.options
+  )
+
+  return(var)
+}
+
+
+# text: a block definition of the form:
+# [global.opts::] [opts1:]var1[(options1)], [opts2:]var2[(options2)], ...
+parseInputVariableBlock <- function(text) {
+  text <- paste(text, collapse = ", ")
+
+  # global block options
+  if (grepl("::", text)) {
+    global.opts <-
+      text %>%
+      sub("::.*$", "", .) %>%
+      parseVariableOutputOptions
+
+    text <- sub("^.*?::", "", text) %>% trimws
   } else {
     global.opts <- character(0)
   }
 
-  # split variable definitions
-  variables <- trimws(strsplit(str, split = ",")[[1]])
-
-  # for each variable definition
-  lapply(variables, function(x) {
-    if (grepl(":", x)) {
-      opts <- srcParseOptions(trimws(sub(":.*$", "", x)))
-      opts <- srcResolveOptions(opts, global.opts)
-    } else {
-      opts <- global.opts
-    }
-
-    # remove options
-    x <- trimws(sub("^.*:", "", x))
-
-    if (grepl("=", x)) {
-      assign.name <- trimws(sub("=.*$", "", x))
-      input.name <- trimws(sub("^.*=", "", x))
-    } else {
-      assign.name <- NULL
-      input.name <- x
-    }
-
-    list(
-      opts = opts,
-      assign.name = assign.name,
-      input.name = input.name
-    )
-  })
+  # parse the variables
+  split.parameters(text) %>%
+    map(parseInputVariable) %>%
+    set_names(map_chr(., "varname"))
 }
 
 
-srcParse <- function(str) {
-  m <- gregexpr("\\$\\{.*?\\}", str)[[1]]
-  ml <- attr(m, "match.length")
 
-  starts <- sort(c(m, 1, m+ml))
-  stops <- sort(c(m+ml-1, m-1, nchar(str)))
 
-  stxt <- unname(mapply(substr, str, start = starts, stop = stops))
+substituteValue <- function(opts, varname, inputs, assign = NULL) {
+  input <- inputs[[ varname ]]
 
-  # which parts to process
-  w <- grep("\\$\\{.*?\\}", stxt)
+  if (is.null(input))
+    stop("Need input, got NULL.")
 
-  blocks <- lapply(stxt[w], function(x) {
-    srcParseBlock(x)
-  })
+  value <- input$value
 
-  res <- as.list(stxt)
-  res[ w ] <- blocks
+  # if (is.null(input))
+  #    stop("Input must not be NULL.")
 
-  return(res)
+  # if (!is.null(input)) {
+  #   is.val.null <- is.null(input$value)
+  #   is.val.default <- input$value == input$default
+  # } else {
+  #   is.val.null <- TRUE
+  #   is.val.default <- FALSE
+  # }
+
+  is.val.null <- is.null(value)
+  is.val.default <- (value == input$default)
+
+  # n: suppress null
+  if (is.val.null && ("n" %in% opts))
+    return(character(0))
+
+  # d: suppress default
+  if (is.val.default && ("d" %in% opts))
+    return(character(0))
+
+  if (is.val.null)
+    value.text <- "NULL"
+  else
+    value.text <- getHandler(input)$as.source(input, value = value)
+
+  # q: single quote
+  if (!is.val.null && ("q" %in% opts))
+    value.text <- paste0("'", value.text, "'")
+
+  # Q: double quotes
+  if (!is.val.null && ("Q" %in% opts))
+    value.text <- paste0('"', value.text, '"')
+
+  # result with or without assignment
+  if (!is.null(assign))
+    paste0(assign, "=", value.text)
+  else
+    value.text
+
+  return(value.text)
 }
 
 
-srcBuild <- function(src, inputs) {
-  if (is.null(names(inputs)))
-    names(inputs) <- sapply(inputs, "[[", "name")
+# Tests:
+# "${x(expression), 1:10)"
+# "${d:x_x(numeric, 20, min = 20, max = 100), q:res(numeric), nd:val=value}"
+#
+substituteVariable <- function(text, inputs) {
+  text <-
+    text %>%
+    gsub("^\\$\\{|\\}$", "", .) %>%   # remove enclosing ${...}
+    gsub("\\(.*?\\)", "", .)          # remove every pair of (...)
 
-  # iterate through source code elements
-  paste(lapply(src, function(x) {
-    # this is a chunk of code without variables
-    if (class(x) == "character")
-      return(x)
+  # global block options
+  if (grepl("::", text)) {
+    global.opts <-
+      text %>%
+      sub("::.*$", "", .) %>%
+      parseOptions
+  } else {
+    global.opts <- character(0)
+  }
 
-    # iterate through variables
-    vars <- lapply(x, function(v) {
-      input <- inputs[[ v$input.name ]]
-
-      if (!is.null(input)) {
-        val.null <- (is.null(input$value) || input$value == "")
-        val.default <- (input$value == getHandler(input)$get.value(input, NULL, value = input$default))
+  values <-
+    text %>%
+    sub("^.*?::", "", .) %>%
+    strsplit(split = ",") %>%
+    unlist %>%
+    trimws %>%
+    map(~{
+      if (grepl(":", .x)) {
+        opts <- parseOptions(sub(":.*$", "", .x)) %>%
+          resolveOptions(global.options)
+        .x <- sub("^.*?:", "", .x)
       } else {
-        val.null <- TRUE
-        val.default <- FALSE
+        opts <- character(0)
       }
 
-      # n: suppress null
-      if (val.null && ("n" %in% v$opts))
-        return(NULL)
+      if (grepl("=", .x)) {
+        assign <- sub("=.*$", "", .x)
+        .x <- sub("^.*=", "", .x)
+      } else {
+        assign <- NULL
+      }
 
-      # d: suppress default
-      if (val.default && ("d" %in% v$opts))
-        return(NULL)
-
-      if (val.null)
-        value.text <- "NULL"
-      else
-        value.text <- getHandler(input)$get.source(input, value = input$value) # input$source
-
-      # q: single quote
-      if (!val.null && ("q" %in% v$opts))
-        value.text <- paste0("'", value.text, "'")
-
-      # Q: double quotes
-      if (!val.null && ("Q" %in% v$opts))
-        value.text <- paste0('"', value.text, '"')
-
-      # result with or without assignment
-      if (!is.null(v$assign.name))
-        paste0(v$assign.name, "=", value.text)
-      else
-        value.text
-    })
-
-    vars <- vars[ !sapply(vars, is.null) ]
-
-    paste(vars, collapse = ", ")
-  }), collapse = "")
+      c(varname = .x, opts = opts, assign = assign)
+    }) %>%
+    map(~substituteValue(.["opts"], .["varname"], inputs, .["namedvar"])) %>%
+    paste(collapse = ", ")
 }
 
 
-assignValue <- function(src, varname) {
-  src <- strsplit(src, split = "\n")[[1]]
-  src[ length(src) ] <- paste(varname, "<-", src[ length(src) ])
-  paste(src, collapse="\n")
+substituteVariables <- function(text, inputs) {
+  matches <- regmatches(text, gregexpr("\\$\\{.*?\\}", text))[[1]]
+
+  for (m in matches)
+    text <- sub(m, substituteVariable(m, inputs), text, fixed = TRUE)
+
+  return(text)
 }
+
+
 
 
 #
@@ -210,35 +351,6 @@ head(iris, ${num_rows(numeric, 6, page = \"Preview Settings\")})
 
 "
 
-
-
-
-preprocessInputOptions <- function(text) {
-  stopifnot("Text must be a single string." = (length(text) == 1))
-
-  if (text == "")
-    return(list(psource = ""))
-
-  opts <- strsplit(text, split = ",")[[1]] %>% trimws
-
-  # first unnamed value is input.type
-  if (!grepl("=", opts[[1]]))
-    opts[[1]] <- paste0("input.type = '", opts[[1]], "'")
-
-  # if second unnamed value, it's the default value
-  if (length(opts) > 1 && !grepl("=", opts[[2]]))
-    opts[[2]] <- paste("default = ", opts[[2]], "")
-
-  # make a list
-  options <- new.env()
-  opts <- paste(opts, collapse = "\n")
-  eval(parse(text = opts), envir = options)
-  options <- as.list(options)
-
-  return(options)
-}
-
-
 #' Extract Input Definitions From Blueprint Source
 #'
 #' @param text a single character string representing the source code
@@ -251,42 +363,22 @@ preprocessInputOptions <- function(text) {
 #'
 #' @examples
 preprocessInputs <- function(text) {
-  # Note to self: I'm having way too much fun with purrr...
   stopifnot("Text must be a single string." = (length(text) == 1))
 
   # split into elements of the form ${<element>}
-  x <-
+  blocks <-
     regmatches(text, gregexpr("\\$\\{.*?\\}", text))[[1]] %>%
     { gsub("^\\$\\{.*?::", "", .) } %>%    # remove "${ xxx::"
     { gsub("^\\$\\{|\\}$", "", .) } %>%    # remove  "${" and "}"
-    trimws
+    trimws %>%
+    map(parseInputVariableBlock)
 
-  # get all input names
-  input.names <-
-    gsub("\\(.*?\\)", "", x) %>%
-    strsplit(split = ",") %>%
-    unlist %>%
-    { gsub(":.*$|^.*=", "", .) } %>%
-    unique
-
-  # get options for inputs that have them
-  input.options <-
-    map(x, ~regmatches(.x, gregexpr("[^ :=]+\\(.*?\\)", .x))) %>%
-    unlist %>%
-    { set_names(., gsub("\\(.*$", "", .)) } %>%
-    { gsub("^.*\\(|\\)$", "", .) } %>%
-    map(~preprocessInputOptions(.x))
-
-  # put it all together
   inputs <-
-    map(input.names, ~c(list(name = .x), input.options[[ .x ]])) %>%
-    set_names(map(., "name")) %>%
-    modify_if(~is.null(.$input.type), ~c(.x, input.type = "character"))
+    unlist(blocks, recursive = FALSE) %>%
+    map(~c(name = .$varname, .$input.options))
 
-
-  return(inputs)
+  return(list(blocks = blocks, inputs = inputs))
 }
-
 
 
 preprocessSection <- function(lines) {
