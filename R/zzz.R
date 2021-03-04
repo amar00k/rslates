@@ -33,30 +33,22 @@ NULL
 
 
 
-#' Observe shiny inputs for readyness
+#' Observe Shiny Inputs for 'Readyness'
 #'
 #' @param session the server session
 #'
-#' @return a reactiveVal that if TRUE indicates the UI has been initialized.
+#' @return a reactive that evaluates to TRUE when all inputs have been initialized
 #' @export
 uiReady <- function(session) {
-  ready <- reactiveVal(FALSE)
-  input <- session$input
-
-  observer <- observe({
-    if (length(names(input)) == 0)
-      ready <- FALSE
-    else
-      ready <- all(sapply(names(input), function(name) !is.null(input[[ name ]])))
-
-    if (ready)
-      observer$destroy()
-
-    ready(ready)
+  reactive({
+    return(
+      length(names(session$input)) > 0 &&
+      map_lgl(names(session$input), ~!is.null(session$input[[ . ]]))
+    )
   })
-
-  return(ready)
 }
+
+
 
 
 #' Paste and print
