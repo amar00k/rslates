@@ -56,48 +56,19 @@ slateInput <- function(name, input.type,
   )
 
   # add additional input parameters specified
-  input <- c(input, list(...))
+  input <- modifyList(input, list(...))
 
   # include type-specific default values that were not specified
-  param.defaults <- map(
-    input.handlers[[ input$input.type ]]$params.list, "default"
-  )
+  pars <- getHandler(input)$params.list %>%
+    map("default")
 
-  if (length(param.defaults) > 0) {
-    param.names <- names(param.defaults)
-    w <- sapply(param.names, function(x) is.null(input[[ x ]]))
-    input <- c(input, param.defaults[ w ])
-  }
+  input <- modifyList(input, pars)
 
   # make sure the id is set
   input$id <- paste0("input_", name)
 
   return (input)
 }
-
-
-# GONE!
-#
-# inputLayout <- function(pages = list(), main.page = NULL) {
-#   if (!is.null(main.page))
-#     pages <- append(list(main.page), pages)
-#
-#   names(pages) <- sapply(pages, "[[", "name")
-#
-#   return(list(pages = pages))
-# }
-
-# test <- list(
-#   slatePage("page_1"),
-#   slatePage("page_2"),
-#   slateGroup("")
-#   slateInput("x", "numeric", parent = "group_2")
-#
-# )
-#
-# makeInputsLayout <- function(inputs) {
-#
-# }
 
 
 slatePage <- function(name, ...,
@@ -164,6 +135,17 @@ slateDataset <- function(name, type, source = "", export = FALSE, export.name = 
 }
 
 
+slateImport <- function(name, type, value = "", description = "") {
+  list(
+    name = name,
+    type = "file",
+    description = description,
+    value = "",
+    data = NULL
+  )
+}
+
+
 getHandler <- function(x) {
   if (x$type == "input") {
     input.handlers[[ x$input.type ]]
@@ -173,14 +155,10 @@ getHandler <- function(x) {
 }
 
 
-slateImport <- function(name, type, value = "", description = "") {
-  list(
-    name = name,
-    type = "file",
-    description = description,
-    value = "",
-    data = NULL
-  )
+assignInputValues <- function(inputs, values) {
+  inputs %>%
+    modify_if(~.$name %in% names(values),
+              ~list_modify(., value = values[[ .$name ]]))
 }
 
 
@@ -289,7 +267,7 @@ loadBlueprint <- function(filename, format = c("auto", "txt", "json")) {
   if (format == "txt") {
     source <- readLines(filename) %>% paste(collapse = "\n")
 
-    inputs <- preprocessInputs(source) %>%
+    inputs <- preprocessInputs(source)$inputs %>%
       map(~do.call(slateInput, .))
 
     outputs <- preprocessSections(source) %>%
