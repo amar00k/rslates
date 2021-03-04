@@ -1,21 +1,40 @@
 
 
-inputs <- list(
-  slateInput("x", "character", "hello", "HELLO"),
-  slateInput("y", "numeric", 42)
-)
+# source <- readLines(system.file("test/test_blueprint.txt", package = "rslates")) %>%
+#                       paste(collapse="\n")
+# inputs <- preprocessInputs(source)
+# sections <- preprocessSections(source)
 
-test_that("srcBuild works", {
-  expect_equal(srcBuild(srcParse("paste(${x}, ${y})"), inputs), 'paste("HELLO", 42)')
+
+
+
+test_that("parseInputVariableOptions works", {
+  tests <- list(
+    'character' = list(input.type = "character"),
+    'numeric, 20' = list(default = 20, input.type = "numeric"),
+    'numeric, default = 20' = list(default = 20, input.type = "numeric"),
+    'expression, "1:10"' = list(default = "1:10", input.type = "expression"),
+    'numeric' = list(input.type = "numeric"),
+    'character, quote = FALSE' = list(input.type = "character", quote = FALSE),
+  )
+
+  for (name in names(tests)) {
+    expect_equal(parseInputVariableOptions(name), tests[[name]])
+  }
 })
 
 
-test_that("extractInputs works", {
+test_that("parseInputVariable works", {
+  tests <- list(
+    'qdl:num=num_lines(numeric, 10)' =
+      list(varname = "num_lines", output.options = "qdl", assign.name = "num"))
 
-  text <- "range <- ${from}:${to}"
-  expect_equal(ppExtractInputs(text)$input.names, c("from", "to"))
+  for (name in names(tests)) {
+    got <- parseInputVariable(name)
+    expect <- tests[[name]]
 
-  text <- "plot(${dn :: x:x, y=y, type=type, main=main(character, Hello), xlab=xlab, ylab=ylab})"
-  expect_equal(ppExtractInputs(text)$input.names, c("x", "y", "type", "main", "xlab", "ylab"))
+    for (var in names(expect))
+      expect_true(got[[ var ]] == expect[[ var ]])
+  }
 
 })
