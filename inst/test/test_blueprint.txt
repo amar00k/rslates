@@ -2,11 +2,11 @@
 # This is the Generic chunk
 
 print(1:10)
-print(head(iris))
+print(head(iris, ${num_lines(numeric, 10)}))
 
 #-- plot Scatterplot
 
-plot(${x}, main=${main})
+plot(${x(expression, expression(1:10), description = "x coordinates of the plot")}, main=${main(character)})
 
 #-- table mtcars
 
