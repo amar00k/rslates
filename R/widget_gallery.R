@@ -1,12 +1,12 @@
 
 
 
-widgetGalleryInputsUI <- function(id, input.list) {
+widgetGalleryInputsUI <- function(id, inputs, group) {
   ns <- NS(id)
 
   div(
     class = "container",
-    createInputGroup(inputGroup(name = "inputs", layout = "flow-3", children = input.list), ns = ns),
+    createGroupUI(group, inputs, ns),
     #reactable::reactableOutput(ns("input_table"))
     div(
       class = "card align-items-center mt-3",
@@ -19,42 +19,45 @@ widgetGalleryInputsUI <- function(id, input.list) {
 }
 
 
-widgetGalleryServer <- function(id, input.list, global.options = NULL) {
+
+widgetGalleryServer <- function(id, inputs, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
 
+    ready <- uiReady(session)
 
-    # initialize input observers
+    # input observers
     observe({
-      for (x in input.list) {
+      for (x in inputs) {
         getHandler(x)$observer(x, session)
       }
     })
 
 
-    inputValueString <- function(x, max.length = 400) {
-      val <- getHandler(x)$get.value(x, session)
-
-      if (x$input.type == "expression" && val != "" && isValidExpression(val)) {
-        val <- eval(parse(text = val), envir = new.env())
-      }
-
+    valueString <- function(val, max.length = 400) {
       val <- toString(val)
       if (nchar(val) > (max.length))
-        val <- paste0(substring(val, 1, max.length / 2), "...",
-                    substring(val, nchar(val) - max.length / 2, nchar(val)))
+        val <- paste0(
+          substring(val, 1, max.length / 2),
+          "...",
+          substring(val, nchar(val) - max.length / 2, nchar(val))
+        )
 
       return(val)
     }
 
 
     inputs.table <- reactive({
-      inputs <- input.list
+      req(ready())
+
+      values <- map(inputs, ~getHandler(.x)$as.value(.x, session))
 
       data.frame(
-        Name = sapply(inputs, "[[", "name"),
-        Type = sapply(inputs, "[[", "input.type"),
-        Source = sapply(inputs, function(x) getHandler(x)$get.source(x, session)),
-        Value = sapply(inputs, function(x) inputValueString(x))
+        Name = map_chr(inputs, "name"),
+        Type = map_chr(inputs, "input.type"),
+        Value = map_chr(values, valueString),
+        Class = map_chr(values, class),
+        Source = map_chr(inputs, ~getHandler(.x)$as.source(.x, session)),
+        check.names = FALSE
       )
     })
 
