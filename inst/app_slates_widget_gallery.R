@@ -3,7 +3,7 @@
 
 
 slatesWidgetGalleryApp <- function() {
-  input.list <- list(
+  inputs <- list(
     slateInput("text", "character", default = "Some text",
                description = "A simple text input."),
     slateInput("expr", "expression", default = "rep(1:10, 2)",
@@ -29,6 +29,10 @@ slatesWidgetGalleryApp <- function() {
                description = "A multiple-choice select input that allows arbitrary entries.")
   ) %>% set_names(sapply(., "[[", "name"))
 
+  group <- slateGroup(name = "group", layout = "flow-3")
+
+  inputs %<>% map(~list_modify(., parent = group$name))
+
   section.div <- function(...) {
     tags$div(
       tags$div(
@@ -46,8 +50,12 @@ slatesWidgetGalleryApp <- function() {
     title = "Slates Widget Gallery",
     theme = getOption("rslates.default.theme"),
     tabs = list(
-      tabPanel("Inputs", section.div(widgetGalleryInputsUI(id = "gallery", input.list = input.list)))
-      #tabPanel("Test")
+      tabPanel(
+        "Inputs",
+        section.div(
+          widgetGalleryInputsUI(id = "gallery", inputs, group)
+        )
+      )
     ),
     session.info = TRUE
   )
@@ -75,7 +83,7 @@ slatesWidgetGalleryApp <- function() {
       session$setCurrentTheme(theme)
     })
 
-    widgetGalleryServer("gallery", input.list, global.options)
+    widgetGalleryServer("gallery", inputs, global.options)
   }
 
   if (options()$rslates.run.themer == TRUE)
