@@ -81,15 +81,6 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
         )
       )
     )
-    # hr(),
-    # tags$div(
-    #   class = "container",
-    #   tags$div(
-    #     class = "col-6",
-    #     h5("Blueprint Source"),
-    #     shinyAce::aceEditor(ns("blueprint_source"), value = "")
-    #   )
-    # )
   )
 
   if (slate.options$use.card) {
@@ -123,54 +114,138 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
 }
 
 
-slateServer <- function(id, blueprint, slate.options = NULL, global.options = NULL) {
+
+slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    ui.ready <- uiReady(session)
+    ready <- uiReady(session)
+    source.output <- slateOutput("Source", type="source")
 
-    # append the source code outputs
-    #blueprint$outputs[[ length(blueprint$outputs) + 1 ]] <- slateOutput("Source", type="source")
+    # blueprint.properties <- reactiveValues(
+    #   title = blueprint$title
+    # )
 
-    blueprint.properties <- reactiveValues(
-      title = blueprint$title
-    )
+    # Store blueprint
+    blueprint <- reactiveValues()
 
-    pages <- reactiveVal(blueprint$pages)
-    groups <- reactiveVal(blueprint$groups)
-    inputs <- reactiveVal(blueprint$inputs)
-    outputs <- reactiveVal(blueprint$outputs %>% map(~list_modify(., source = NULL)))
 
-    # note: this can be inferred from blueprint$source
-    output.sources <- reactiveVal(blueprint$outputs %>% map("source"))
+    input.values <- reactive({
+      print("slate.R: update reactive input values")
 
-    load <- function(filename, format = c("auto", "txt", "json")) {
-      blueprint <- loadBlueprint(filename, format)
+      blueprint$inputs %>%
+        map(~getHandler(.)$as.value(., session)) %>%
+        as.character
+    })
 
-      if (format == "txt") {
-        shinyAce::updateAceEditor(session, "blueprint_source",
-                                  value = blueprint$source)
+    # pages <- reactiveVal(blueprint$pages)
+    # groups <- reactiveVal(blueprint$groups)
+    # inputs <- reactiveVal(blueprint$inputs)
+    # outputs <- reactiveVal(blueprint$outputs %>% map(~list_modify(., source = NULL)))
+
+    # # note: this can be inferred from blueprint$source
+    # output.sources <- reactiveVal(blueprint$outputs %>% map("source"))
+
+
+
+    #
+    # Update inputs and outputs when blueprint source changes
+    #
+    observe({
+      print("slate.R: observe source")
+
+      source <- input$blueprint_source
+      inputs <- isolate(blueprint$inputs)
+      values <- isolate(input.values())
+
+      new.inputs <- tryCatch({
+        preprocessInputs(source)$inputs %>% print %>%
+          map(~do.call(slateInput, .))
+      },
+      error = function(e) {
+        return(NULL)
+      })
+
+      if (!is.null(new.inputs) && !identical(new.inputs, inputs)) {
+        print(new.inputs)
+
+        # set values of new inputs so we retain non-default values in UI
+        new.inputs %<>%
+          assignInputValues(values) %>%
+          modify_if(~!is.null(.$value) && .$value == .$default,
+                    ~list_modify(., value = NULL))
+
+        isolate(blueprint$inputs <- new.inputs)
       }
+    }, priority = 10)
 
-      pages(blueprint$pages)
-      groups(blueprint$groups)
-      inputs(blueprint$inputs)
-      outputs(blueprint$outputs %>% map(~list_modify(., source = NULL)))
-      output.sources(blueprint$outputs %>% map("source"))
-    }
+
+
+    # observe({
+    #   pages <- isolate(pages())
+    #   groups <- isolate(groups())
+    #   inputs <- isolate(inputs())
+    #   outputs <- isolate(outputs())
+    #   output.sources <- isolate(output.sources())
+    #
+    #   source <- input$blueprint_source
+    #
+    #   try({
+    #     # inputs
+    #     new.inputs <- preprocessInputs(source) %>%
+    #       map(~do.call(slateInput, .))
+    #
+    #     if (!identical(new.inputs, inputs)) {
+    #       # reset old values
+    #       values <- isolate(input.values()) %>% map("value")
+    #
+    #       new.inputs %<>% map(~{
+    #         if (.x$name %in% values)
+    #           .x$value <- values[[ .x$name ]]
+    #         else
+    #           .x$value <- .x$default
+    #
+    #         .x
+    #       })
+    #
+    #       inputs(new.inputs)
+    #     }
+    #   })
+    #
+    #   # outputs
+    #   try({
+    #     new.outputs.data <-
+    #       preprocessSections(source) %>%
+    #       map(~do.call(slateOutput, .)) %>%
+    #       append(list(source.output))
+    #
+    #     new.outputs <- new.outputs.data %>%
+    #       map(~list_modify(., source = NULL))
+    #
+    #     new.sources <- new.outputs.data %>%
+    #       map("source")
+    #
+    #     if (!identical(new.outputs, outputs)) {
+    #       outputs(new.outputs)
+    #     }
+    #
+    #     if (!identical(new.sources, output.sources)) {
+    #       output.sources(new.sources)
+    #     }
+    #   })
+    # })
 
 
     output$inputs_panel <- renderUI({
-      req(
-        !is.null(pages()),
-        !is.null(groups()),
-        !is.null(inputs())
-      )
+      print("slate.R: rendering input layout.")
+
+      # remove all tooltips
+      shinyjs::runjs("$('.tooltip').remove();")
 
       createInputLayout(
-        pages = pages(),
-        groups = groups(),
-        inputs = inputs(),
+        pages = blueprint$pages,
+        groups = blueprint$groups,
+        inputs = blueprint$inputs,
         ns = ns,
         inputs.style = slate.options$inputs.style
       )
@@ -178,7 +253,7 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
 
 
     output$outputs_panel <- renderUI({
-      req(outputs <- outputs())
+      req(outputs <- blueprint$outputs)
 
       output.tabs <- unname(lapply(outputs, function(x) {
         stopifnot(x$type %in% names(output.handlers))
@@ -191,101 +266,56 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
           )
         )
       }))
+
       output.tabs$id <- ns("output_tabs")
       output.tabs$type <- "pills"
       outputs.ui <- do.call(tabsetPanel, output.tabs)
     })
 
 
-    # # initialize outputs
-    # for (x in blueprint$outputs) {
-    #   getHandler(x)$create.output(x, session, blueprint, input.list, slate.envir)
-    # }
+    # # create output handlers
+    # observe({
+    #   for (x in blueprint$outputs) {
+    #     getHandler(x)$create.output(
+    #       x, session, output.sources, input.values, slate.envir
+    #     )
+    #   }
+    # })
+    #
+    #
+    # # observe outputs
+    # observe({
+    #   global.options$ace.theme
+    #
+    #   for (x in blueprint$outputs) {
+    #     getHandler(x)$observer(
+    #       x$id, session, output.sources, blueprint$inputs, slate.envir, global.options
+    #     )
+    #   }
+    # })
+    #
+
+    # observe inputs
     observe({
-      for (x in outputs()) {
-        #getHandler(x)$create.output(x, session, blueprint, input.list, slate.envir)
-        getHandler(x)$create.output(
-          x, session, output.sources, input.list, slate.envir
-        )
+      print("slate.R: observe inputs")
+
+      for (x in blueprint$inputs) {
+        getHandler(x)$observer(x, session)
       }
     })
 
 
-    #
-    # Slate blueprint editor
-    #
     observe({
-      pages <- isolate(pages())
-      groups <- isolate(groups())
-      inputs <- isolate(inputs())
-      outputs <- isolate(outputs())
-      output.sources <- isolate(output.sources())
+      map(names(input), ~input[[ . ]])
 
-      source <- input$blueprint_source
-
-      try({
-        # inputs
-        new.inputs <- preprocessInputs(source) %>%
-          map(~do.call(slateInput, .))
-
-        if (!identical(new.inputs, inputs)) {
-          inputs(new.layout)
-        }
-      })
-
-      try({
-        new.outputs.data <-
-          preprocessSections(source) %>%
-          map(~do.call(slateOutput, .))
-
-        new.outputs <- new.outputs.data %>%
-          map(~list_modify(., source = NULL))
-
-        new.sources <- new.outputs.data %>%
-          map("source")
-
-        if (!identical(new.outputs, outputs)) {
-          outputs(new.outputs)
-        }
-
-        if (!identical(new.sources, output.sources)) {
-          output.sources(new.sources)
-        }
-      })
+      # shinyjs::runjs("$('[data-toggle=\"tooltip\"]').tooltip('hide');")
+      # shinyjs::runjs("$('[data-toggle=\"tooltip\"]').tooltip('dispose');")
+      shinyjs::runjs("$('[data-toggle=\"tooltip\"]').tooltip();")
     })
-
-
-
-
-
-
 
 
     # list of observers to be destroyed on exit
     observers <- list()
-
-    tooltips <- reactiveVal(list())
-
-    observe({
-      req(
-        ui.ready(),
-        tooltips <- tooltips()
-      )
-
-      for (x in inputs()) {
-        if (is.null(tooltips[[ x$id ]])) {
-          tooltips[[ x$id ]] <- paste0("<b>", x$input.type, "</b><br><br>", x$description)
-
-          shinyBS::addTooltip(session, ns(x$id),
-                              title = tooltips[[ x$id ]],
-                              placement = "top",
-                              options = list(container = "body"))
-        }
-      }
-
-      tooltips(tooltips)
-    })
-
 
     # slate reactives
     if (is.null(global.options)) {
@@ -300,32 +330,6 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
         open.settings = TRUE
       )
     }
-
-    # extract inputs from layout and update values
-    input.list <- reactive({
-      req(ui.ready())
-
-      inputs <- lapply(inputs(), function(x) {
-        x$value <- getHandler(x)$get.value(x, session)
-        x$source <- getHandler(x)$get.source(x, session)
-
-        return(x)
-      })
-
-      # if (length(blueprint$imports) > 0) {
-      #   imports <- lapply(blueprint$imports, function(x) {
-      #     x$data <- import.data[[ x$name ]]$data
-      #     x$value <- dataset.handlers[[ x$type ]]$get.value(x, session)
-      #     return(x)
-      #   })
-      #
-      #   inputs <- append(inputs, imports)
-      # }
-
-      #names(inputs) <- sapply(inputs, "[[", "name")
-
-      return(inputs)
-    })
 
 
     # extract groups from layout
@@ -343,48 +347,32 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     # }
 
 
-    # run datasets code in slate environment
+    # run exec code in slate environment
     slate.envir <- reactive({
-      inputs <- input.list()
+      # inputs <- input.list()
+      # env <- new.env(parent = slate.options$envir())
+      #
+      # env <- tryCatch({
+      #   for (d in blueprint$datasets) {
+      #     if (!is.null(d$source)) {
+      #       src <- buildSource(d$source, input.list())
+      #       env[[ d$name ]] <- eval(parse(text = src), envir = new.env(parent = env))
+      #     }
+      #   }
+      #
+      #   return(env)
+      # },
+      # error = function(e) {
+      #   # ignore errors
+      #   return(env)
+      # })
+
       env <- new.env(parent = slate.options$envir())
-
-      env <- tryCatch({
-        for (d in blueprint$datasets) {
-          if (!is.null(d$source)) {
-            src <- buildSource(d$source, input.list())
-            env[[ d$name ]] <- eval(parse(text = src), envir = new.env(parent = env))
-          }
-        }
-
-        return(env)
-      },
-      error = function(e) {
-        # ignore errors
-        return(env)
-      })
 
       return(env)
     })
 
 
-
-    # observe outputs
-    observe({
-      global.options$ace.theme
-
-      for (x in blueprint$outputs) {
-        # run observer
-        getHandler(x)$observer(x$id, session, blueprint, input.list, slate.envir, global.options)
-      }
-    })
-
-
-    # observe inputs
-    observe({
-      for (x in inputs()) {
-        getHandler(x)$observer(x, session)
-      }
-    })
 
 
     # for (g in groups) {
@@ -395,6 +383,15 @@ slateServer <- function(id, blueprint, slate.options = NULL, global.options = NU
     # }
 
 
+
+    load <- function(filename, format = c("auto", "txt", "json")) {
+      blueprint <- loadBlueprint(filename, format)
+
+      if (format == "txt") {
+        shinyAce::updateAceEditor(session, "blueprint_source",
+                                  value = blueprint$source)
+      }
+    }
 
 
 
