@@ -4,6 +4,8 @@
 # utility function to split a list of expressions separated by comma
 # while ignoring commas inside parenthesis
 split.parameters <- function(text) {
+  stopifnot("Text must be a single string." = (length(text) == 1))
+
   # split characters
   charmap <- strsplit(text, split="") %>%
     unlist
@@ -14,7 +16,7 @@ split.parameters <- function(text) {
 
   # check
   if (sum(parmap) != 0)
-    stop("Mismatched parenthesis:", text)
+    stop("Mismatched parenthesis in: '", text, "'")
 
   charmap %>%
     # inside parenthesis, replace "," by "#"
@@ -28,6 +30,120 @@ split.parameters <- function(text) {
     # restore the "," separating variable options
     gsub("#", ",", .)
 }
+
+
+#' Clear comments from text
+#'
+#' @param text a string
+#' @param n number of # symbols (i.e. n = 2 clears text appearing after ## or ###
+#'   but not #)
+#'
+#' @return the clean text
+#'
+#' @examples
+clear.comments <- function(text, n = 1) {
+  stopifnot("Text must be a single string." = (length(text) == 1))
+
+  map(text, strsplit, split = "\n") %>%
+    unlist %>%
+    sub(paste0(s, "{", n, "}.*$"), "", .)
+}
+
+
+#
+# Input substitutions in preprocessed source
+#
+
+substituteVariable <- function(input, opts, assign = "") {
+  if (is.null(input))
+    stop("Need input, got NULL.")
+
+  value <- input$value
+
+  if (is.null(value))
+    value <- input$default
+
+  is.val.null <- (value == "" || is.na(value))
+  is.val.default <- (value == input$default)
+
+  # n: suppress null
+  if (is.val.null && ("n" %in% opts))
+    return(character(0))
+
+  # d: suppress default
+  if (is.val.default && ("d" %in% opts))
+    return(character(0))
+
+  if (is.val.null)
+    value.text <- "NULL"
+  else
+    value.text <- getHandler(input)$as.source(input, value = value)
+
+  # q: single quote
+  if (!is.val.null && ("q" %in% opts))
+    value.text <- paste0("'", value.text, "'")
+
+  # Q: double quotes
+  if (!is.val.null && ("Q" %in% opts))
+    value.text <- paste0('"', value.text, '"')
+
+  # result with or without assignment
+  if (assign != "")
+    paste0(assign, "=", value.text)
+  else
+    value.text
+
+  return(value.text)
+}
+
+
+substituteVariableBlock <- function(block, inputs) {
+  map(block, ~substituteVariable(inputs[[ .$varname ]], .$output.options, .$assign)) %>%
+    paste(collapse = ", ")
+}
+
+
+
+substituteVariables <- function(section, blocks, inputs) {
+  # find blocks that occur in section
+  blocks <- blocks[
+    map(names(blocks), ~grepl(., section, fixed = TRUE)) %>%
+      unlist
+  ]
+
+  # compute the substitutions
+  subs <- map(blocks, substituteVariableBlock, inputs)
+
+  # apply substitutions to section text
+  map2(names(subs), subs, sub(.x, .y, section, fixed = TRUE))
+}
+
+
+#
+# Blueprint preprocessor
+#
+
+
+example.source <- "
+### This is a preprocessor comment. It will be suppressed in source code and
+### will not be processed by the preprocessor.
+
+### Below is a section declaration. The section contents ends when another
+### section begins or when \"#-- end section\" is read, or when the file ends.
+#-- print  ### A comment can appear inline. All further contents of line is ignored.
+
+# This is a normal R comment. It will be shown in source code.
+df <- iris
+
+#-- plot plot 1, width = 120px
+
+plot(${dn :: x:x(expression), y=y, type=type, main=main(character, \"Hello\"), xlab=xlab, ylab=ylab})
+
+#-- table my table
+
+head(iris, ${num_rows(numeric, 6, page = \"Preview Settings\")})
+
+"
 
 
 # Variable substitution:
@@ -72,11 +188,13 @@ resolveVariableOutputOptions <- function(var.opts, global.opts) {
 }
 
 
-parseVariableOutputOptions <- function(text) {
+preprocessVariableOutputOptions <- function(text) {
+  stopifnot("Text must be a single string." = (length(text) == 1))
+
   opts <- strsplit(text, split = "")[[1]]
 
   if (!all(opts %in% SRC.VALID.OPTIONS)) {
-    stop('"', opts[ which(!(opts %in% SRC.VALID.OPTIONS)) ], "' is not a valid output option.")
+    stop("'", opts[ which(!(opts %in% SRC.VALID.OPTIONS)) ], "' is not a valid output option.")
   }
 
   return(opts)
@@ -85,7 +203,7 @@ parseVariableOutputOptions <- function(text) {
 
 # text: string of the form
 # [type][, default][, name1 = value1][...]
-parseVariableInputOptions <- function(text) {
+preprocessVariableInputOptions <- function(text) {
   stopifnot("Text must be a single string." = (length(text) == 1))
 
   opts <- split.parameters(text)
@@ -100,8 +218,8 @@ parseVariableInputOptions <- function(text) {
 
   if (!all(grepl("=", opts))) {
     stop("Error parsing variable definition: ", text,
-         ". Missing \"=\" sign in ",
-         opts[ which(!grepl("=", opts))[1] ], ".")
+         ". Missing \"=\" sign in '",
+         opts[ which(!grepl("=", opts))[1] ], "'.")
   }
 
   options <- tryCatch({
@@ -140,13 +258,13 @@ parseVariableInputOptions <- function(text) {
 
 # text: a single input variable
 # [output_options:][assing.name = ]varname[(input options)]
-parseInputVariable <- function(text) {
+preprocessInputVariable <- function(text) {
   stopifnot("Text must be a single string." = (length(text) == 1))
 
   # extract output options
   if (grepl("^[^\\()]*?:", text)) {
     text <- strsplit(text, ":")[[1]] %>% trimws
-    output.options <- parseVariableOutputOptions(text[1])
+    output.options <- preprocessVariableOutputOptions(text[1])
     text <- paste(text[ 2:length(text) ], collapse = ":")
   } else {
     output.options <- ""
@@ -155,10 +273,10 @@ parseInputVariable <- function(text) {
   # extract assign name
   if (grepl("^[^\\(]*?=", text)) {
     text <- strsplit(text, "=")[[1]] %>% trimws
-    assign.name <- text[1]
+    assign <- text[1]
     text <- paste(text[ 2:length(text) ], collapse = "=")
   } else
-    assign.name <- ""
+    assign <- ""
 
   # extract varname and input options
   if (grepl("\\(.*\\)", text)) {
@@ -168,16 +286,16 @@ parseInputVariable <- function(text) {
       sub("^.*?\\(", "", .) %>%
       sub("\\)$", "", .) %>%
       trimws %>%
-      parseVariableInputOptions
+      preprocessVariableInputOptions
   } else {
     varname <- text
-    input.options <- ""
+    input.options <- list(input.type = "character")
   }
 
   var <- list(
     varname = varname,
     output.options = output.options,
-    assign.name = assign.name,
+    assign = assign,
     input.options = input.options
   )
 
@@ -187,169 +305,27 @@ parseInputVariable <- function(text) {
 
 # text: a block definition of the form:
 # [global.opts::] [opts1:]var1[(options1)], [opts2:]var2[(options2)], ...
-parseInputVariableBlock <- function(text) {
-  text <- paste(text, collapse = ", ")
+preprocessInputVariableBlock <- function(text) {
+  stopifnot("Text must be a single string." = (length(text) == 1))
 
   # global block options
   if (grepl("::", text)) {
     global.opts <-
       text %>%
       sub("::.*$", "", .) %>%
-      parseVariableOutputOptions
+      preprocessVariableOutputOptions
 
     text <- sub("^.*?::", "", text) %>% trimws
   } else {
     global.opts <- character(0)
   }
 
-  # parse the variables
+  # preprocess the variables
   split.parameters(text) %>%
-    map(parseInputVariable) %>%
+    map(preprocessInputVariable) %>%
     set_names(map_chr(., "varname"))
 }
 
-
-
-
-substituteValue <- function(opts, varname, inputs, assign = NULL) {
-  input <- inputs[[ varname ]]
-
-  if (is.null(input))
-    stop("Need input, got NULL.")
-
-  value <- input$value
-
-  # if (is.null(input))
-  #    stop("Input must not be NULL.")
-
-  # if (!is.null(input)) {
-  #   is.val.null <- is.null(input$value)
-  #   is.val.default <- input$value == input$default
-  # } else {
-  #   is.val.null <- TRUE
-  #   is.val.default <- FALSE
-  # }
-
-  is.val.null <- is.null(value)
-  is.val.default <- (value == input$default)
-
-  # n: suppress null
-  if (is.val.null && ("n" %in% opts))
-    return(character(0))
-
-  # d: suppress default
-  if (is.val.default && ("d" %in% opts))
-    return(character(0))
-
-  if (is.val.null)
-    value.text <- "NULL"
-  else
-    value.text <- getHandler(input)$as.source(input, value = value)
-
-  # q: single quote
-  if (!is.val.null && ("q" %in% opts))
-    value.text <- paste0("'", value.text, "'")
-
-  # Q: double quotes
-  if (!is.val.null && ("Q" %in% opts))
-    value.text <- paste0('"', value.text, '"')
-
-  # result with or without assignment
-  if (!is.null(assign))
-    paste0(assign, "=", value.text)
-  else
-    value.text
-
-  return(value.text)
-}
-
-
-# Tests:
-# "${x(expression), 1:10)"
-# "${d:x_x(numeric, 20, min = 20, max = 100), q:res(numeric), nd:val=value}"
-#
-substituteVariable <- function(text, inputs) {
-  text <-
-    text %>%
-    gsub("^\\$\\{|\\}$", "", .) %>%   # remove enclosing ${...}
-    gsub("\\(.*?\\)", "", .)          # remove every pair of (...)
-
-  # global block options
-  if (grepl("::", text)) {
-    global.opts <-
-      text %>%
-      sub("::.*$", "", .) %>%
-      parseOptions
-  } else {
-    global.opts <- character(0)
-  }
-
-  values <-
-    text %>%
-    sub("^.*?::", "", .) %>%
-    strsplit(split = ",") %>%
-    unlist %>%
-    trimws %>%
-    map(~{
-      if (grepl(":", .x)) {
-        opts <- parseOptions(sub(":.*$", "", .x)) %>%
-          resolveOptions(global.options)
-        .x <- sub("^.*?:", "", .x)
-      } else {
-        opts <- character(0)
-      }
-
-      if (grepl("=", .x)) {
-        assign <- sub("=.*$", "", .x)
-        .x <- sub("^.*=", "", .x)
-      } else {
-        assign <- NULL
-      }
-
-      c(varname = .x, opts = opts, assign = assign)
-    }) %>%
-    map(~substituteValue(.["opts"], .["varname"], inputs, .["namedvar"])) %>%
-    paste(collapse = ", ")
-}
-
-
-substituteVariables <- function(text, inputs) {
-  matches <- regmatches(text, gregexpr("\\$\\{.*?\\}", text))[[1]]
-
-  for (m in matches)
-    text <- sub(m, substituteVariable(m, inputs), text, fixed = TRUE)
-
-  return(text)
-}
-
-
-
-
-#
-# Blueprint preprocessor
-#
-
-
-example.source <- "
-### This is a preprocessor comment. It will be suppressed in source code and
-### will not be processed by the preprocessor.
-
-### Below is a section declaration. The section contents ends when another
-### section begins or when \"#-- end section\" is read, or when the file ends.
-#-- print  ### A comment can appear inline. All further contents of line is ignored.
-
-# This is a normal R comment. It will be shown in source code.
-df <- iris
-
-#-- plot plot 1, width = 120px
-
-plot(${dn :: x:x(expression), y=y, type=type, main=main(character, \"Hello\"), xlab=xlab, ylab=ylab})
-
-#-- table my table
-
-head(iris, ${num_rows(numeric, 6, page = \"Preview Settings\")})
-
-"
 
 #' Extract Input Definitions From Blueprint Source
 #'
@@ -366,16 +342,21 @@ preprocessInputs <- function(text) {
   stopifnot("Text must be a single string." = (length(text) == 1))
 
   # split into elements of the form ${<element>}
+  block.matches <-
+    regmatches(text, gregexpr("\\$\\{.*?\\}", text))[[1]]
+
   blocks <-
-    regmatches(text, gregexpr("\\$\\{.*?\\}", text))[[1]] %>%
-    { gsub("^\\$\\{.*?::", "", .) } %>%    # remove "${ xxx::"
-    { gsub("^\\$\\{|\\}$", "", .) } %>%    # remove  "${" and "}"
+    block.matches %>%
+    gsub("^\\$\\{.*?::", "", .) %>%    # remove "${ xxx::"
+    gsub("^\\$\\{|\\}$", "", .) %>%    # remove  "${" and "}"
     trimws %>%
-    map(parseInputVariableBlock)
+    map(preprocessInputVariableBlock) %>%
+    set_names(block.matches)
 
   inputs <-
     unlist(blocks, recursive = FALSE) %>%
-    map(~c(name = .$varname, .$input.options))
+    map(~c(name = .$varname, .$input.options)) %>%
+    set_names(map(., "name"))
 
   return(list(blocks = blocks, inputs = inputs))
 }
@@ -398,17 +379,24 @@ preprocessSection <- function(lines) {
 
     section$type <- sub("^(.*?) .*$", "\\1", x[[1]])
 
-    if (grepl(" ", x[[1]]) == TRUE)
-      section$name <- sub("^.*? (.*)$", "\\1", x[[1]])
-    else
-      section$name <- "Untitled"
+    if (!(section$type %in% names(output.handlers)))
+      stop("Invalid output type: ", section$type)
+
+    if (grepl(" ", x[[1]]) == TRUE) {
+      section$name <- sub("^.*? (.*)$", "\\1", x[[1]]) %>%
+        clear.comments %>%
+        trimws
+    }
+
+    if (is.null(section$name) || section$name == "")
+      section$name <- section$type
 
     section$params <- if (length(x) > 1) x[[2]] else ""
     section$source <- paste(lines[2:length(lines)], collapse="\n")
   } else {
     # no header: generic text output
     section$type <- "print"
-    section$name <- "Generic"
+    section$name <- "Preamble"
     section$params <- ""
     section$source <- paste(lines, collapse = "\n")
   }
@@ -424,7 +412,7 @@ preprocessSections <- function(text) {
   lines <- strsplit(text, split = "\n")[[1]]
 
   # check for section markers
-  idx <- grep("^#\\-\\-", lines)
+  idx <- grep("^#--", lines)
   if (length(idx) > 0) {
     idx <- c(idx, length(lines)+1)
 
@@ -454,5 +442,16 @@ preprocessSections <- function(text) {
   return(sections)
 }
 
+
+preprocessSource <- function(text) {
+  input.data <- preprocessInputs(text)
+  section.data <- preprocessSections(text)
+
+  return(list(
+    inputs = input.data$inputs,
+    blocks = input.data$blocks,
+    sections = section.data
+  ))
+}
 
 
