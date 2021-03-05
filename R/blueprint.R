@@ -156,6 +156,8 @@ getHandler <- function(x) {
 
 
 assignInputValues <- function(inputs, values) {
+  values <- as.character(values)
+
   inputs %>%
     modify_if(~.$name %in% names(values),
               ~list_modify(., value = values[[ .$name ]]))
@@ -267,10 +269,12 @@ loadBlueprint <- function(filename, format = c("auto", "txt", "json")) {
   if (format == "txt") {
     source <- readLines(filename) %>% paste(collapse = "\n")
 
-    inputs <- preprocessInputs(source)$inputs %>%
+    parsed <- preprocessSource(source)
+
+    inputs <- parsed$inputs %>%
       map(~do.call(slateInput, .))
 
-    outputs <- preprocessSections(source) %>%
+    outputs <- parsed$sections %>%
       map(~do.call(slateOutput, .))
 
     blueprint <- slateBlueprint(
