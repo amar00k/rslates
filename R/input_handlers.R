@@ -345,7 +345,7 @@ input.handlers <- list(
     get.input = function(x, session) {
       map(1:4, ~session$input[[ paste0(x$id, "_", .x) ]])
     },
-    as.value = function(x, session = NULL, input.value = NULL) {
+    as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$numeric4$get.input(x, session)
 
