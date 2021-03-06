@@ -2,7 +2,7 @@
 % Please edit documentation in R/zzz.R
 \name{uiReady}
 \alias{uiReady}
-\title{Observe shiny inputs for readyness}
+\title{Observe Shiny Inputs for 'Readyness'}
 \usage{
 uiReady(session)
 }
@@ -10,8 +10,8 @@ uiReady(session)
 \item{session}{the server session}
 }
 \value{
-a reactiveVal that if TRUE indicates the UI has been initialized.
+a reactive that evaluates to TRUE when all inputs have been initialized
 }
 \description{
-Observe shiny inputs for readyness
+Observe Shiny Inputs for 'Readyness'
 }

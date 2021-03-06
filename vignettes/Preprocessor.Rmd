@@ -1,0 +1,35 @@
+---
+title: "Preprocessor"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Preprocessor}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+
+library(rslates)
+```
+
+
+# Introduction
+
+Slate blueprints are just regular R source code files with additional *slates* preprocessing directives to define inputs, outputs, datasets and so on. The *Slates* preprocessor is responsible to convert these *slates source files* to regular R source code that can be parsed and executed by the R interpreter.
+
+# Preprocessor Directives
+
+
+
+## Comments
+
+Comments come in three flavors (`#`, `##` and `###`). These affect what comments will be *displayed*, *suppressed* and/ or *interpreted* by the preprocessor.
+
+* `#`: a regular R comment. This comment will show up in the final source that is provided to the user. Any preprocessor directives included in the comment are interpreted by the preprocessor and removed from the source.
+* `##`: will suppressed from user code, but preprocessing directives are interpreted .
+* `###`: a *slates* comment: these are used to comment the *slates* source code itself, as they will be suppressed from the user code and ignored by the preprocessor.
+

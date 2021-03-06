@@ -5,45 +5,58 @@
 \title{Define behaviour of an input type}
 \usage{
 inputHandler(
-  default.value,
+  create.ui = function(x, ns = identity, value = NULL) {     tags$div(id =
+    session$ns(x$id)) },
+  default.value = "",
   params.list = list(),
-  create.ui = function(...) {     tagList() },
   update.ui = function(x, session) { },
-  get.inputs = function(x, session, value) {     inputs <- list()     inputs[[x$id]] <-
-    value     return(inputs) },
-  get.value = function(x, session = NULL, value = NULL) {     if (is.null(value))      
-       value <- session$input[[x$id]]     return(value) },
-  get.source = function(x, session = NULL, value = NULL) {    
-    as.character(getHandler(x)$get.value(x, session, value)) },
+  get.input = function(x, session) {     return(list(session$input[[x$id]])) },
+  set.input = function(x, session, value) {     update.ui(x, session, value) },
+  as.value = function(x, session = NULL, value = NULL) {     if (is.null(value))       
+      value <- getHandler(x)$get.input(x, session)[[1]]     value <- as.character(value) 
+       if (length(value) > 1)          stop("input must have length 1.")    
+    return(value) },
+  as.string = function(x, session, value = NULL) {     getHandler(x)$as.value(x,
+    session, value) \%>\% toString },
+  as.source = function(x, session = NULL, value = NULL) {     getHandler(x)$as.value(x,
+    session, value) \%>\% as.character },
   observer = function(x, session) { }
 )
 }
 \arguments{
-\item{default.value}{default value of this input type when no default value is provided}
+\item{create.ui}{function used to create the input UI.}
+
+\item{default.value}{default value of this input type}
 
 \item{params.list}{list of parameters used by the input type. Each element of the list
-describes a parameter and has the following members: name (pretty name of the parameter),
-choices (vector of allowed values), default (default value when not specified).}
-
-\item{create.ui}{function used to create the input UI.}
+describes a parameter and has the following members: \code{name} (pretty name of
+the parameter), type (one of \code{character}, \code{numeric}, \code{logical}, \code{choices}),
+\code{choices} (when type is \code{choices}, the vector of allowed values), \code{default}
+(default value).}
 
 \item{update.ui}{function used to update the input UI.}
 
-\item{get.inputs}{used for testing purporses. Returns a list of pairs (input_id, value).}
+\item{get.input}{function that returns the raw input(s) from the \code{session$input}
+object as a \emph{list}.}
 
-\item{get.value}{function that transforms the current value of the input
-to the appropriate output string value. If value is provided, then
-this value is used instead of the input element value.}
+\item{as.value}{function that transforms the value from \code{get.input()}
+to the appropriate format for the input type. If \code{value} is provided, then
+the function tries to coerce this value to the appropriate type.}
 
-\item{get.source}{get the value of this input in source form.}
+\item{as.source}{function that transforms the value from \code{as.value()} to source code.}
 
-\item{observer}{actions to be taken as an observer}
+\item{observer}{actions to be taken as an observer of any reactive expression(s).}
 }
 \value{
-a list of functions to handle the the input type.
+the list of functions to handle the the input type.
 }
 \description{
 This function prepares a structure that defines all aspects of an
 input type: UI creation, UI updating, observer function and string representation
 of the input value.
+}
+\details{
+The default functions assume a single input and return the value without
+transformations \code{get.input()} returns a list of one element, \code{as.value} unlists
+this element, and \code{as.source()} returns that value as a character value.
 }

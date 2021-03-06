@@ -10,7 +10,8 @@ simplifyBlueprint(blueprint)
 \item{blueprint}{the blueprint to simplify.}
 }
 \value{
-The simplified blueprint. This blueprint is ideal for export in JSON format or other format.
+The simplified blueprint. This blueprint is ideal for export in
+JSON format or other format.
 }
 \description{
 Simplify a blueprint by removing default values
