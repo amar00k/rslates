@@ -23,13 +23,60 @@ Slate blueprints are just regular R source code files with additional *slates* p
 
 # Preprocessor Directives
 
+Directives are grouped in the following categories:
 
+* Commenting: `#`, `##` and `###`. 
+* Input definition: `$@<input|page|group>`. 
+* Section declaration: `$@<exec|print|plot|table|...> <name>`.
+* Input substitution: `${ ... }`.
+* Conditional output/ execution: `$#[<condition>] ...`.
 
 ## Comments
 
 Comments come in three flavors (`#`, `##` and `###`). These affect what comments will be *displayed*, *suppressed* and/ or *interpreted* by the preprocessor.
 
-* `#`: a regular R comment. This comment will show up in the final source that is provided to the user. Any preprocessor directives included in the comment are interpreted by the preprocessor and removed from the source.
-* `##`: will suppressed from user code, but preprocessing directives are interpreted .
-* `###`: a *slates* comment: these are used to comment the *slates* source code itself, as they will be suppressed from the user code and ignored by the preprocessor.
+### Single Hash (`#`)
+
+A regular R comment. This comment will show up in the final source that is provided to the user. Any preprocessor directives included in the comment are interpreted by the preprocessor and removed from the source.
+
+### Double Hash (`##`)
+
+Will suppressed from user code, but preprocessing directives are interpreted .
+
+### Triple Hash (`###`)
+
+A *slates* comment: these are used to comment the *slates* source code itself, as they will be suppressed from the user code and ignored by the preprocessor.
+
+
+## Input Definition
+
+Inputs are defined using the syntax `$@input <name>[(<options>)]`, where `<name>` represents the name of the *variable* that will hold the input value, and `<options>` define additional input parameters.
+
+In the simplest case, an input may be defined with just a name. In this case it will assume the default 'character' type.
+
+```
+### defines an input 'x' of type 'character' (the default input type).
+$@input x
+```
+
+In most cases it is desirable to specify at least the *input type* and *default value*:
+
+```
+### defines a 'numeric' input with the name 'num_samples' and default value 10.
+$@input num_samples(type = numeric, default = 10)
+```
+
+The first two options (if unnamed) are assumed to represent the type and default value of the input. Thus the above definition can be written more succinctly as `$@input num_samples(numeric, 10)`.
+
+Common user-interface options include `description` (determines the tooltip text for the input) and `pretty.name` (if provided, this name will be used in the user-interface instead of the variable name). 
+
+```
+$@input x(expression, "1:10", description="x coordinates for the plot.", pretty.name = "x-coordinates")
+```
+
+
+
+
+
+
 
