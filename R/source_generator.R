@@ -3,6 +3,7 @@
 
 # utility function to split a list of expressions separated by comma
 # while ignoring commas inside parenthesis
+# TODO: HANDLE STRINGS!
 split.parameters <- function(text) {
   stopifnot("Text must be a single string." = (length(text) == 1))
 
@@ -46,7 +47,8 @@ clear.comments <- function(text, n = 1) {
 
   map(text, strsplit, split = "\n") %>%
     unlist %>%
-    sub(paste0(s, "{", n, "}.*$"), "", .)
+    sub(paste0("#{", n, "}.*$"), "", .) %>%
+    paste(collapse = "\n")
 }
 
 
@@ -63,8 +65,8 @@ substituteVariable <- function(input, opts, assign = "") {
   if (is.null(value))
     value <- input$default
 
-  is.val.null <- (value == "" || is.na(value))
-  is.val.default <- (value == input$default)
+  is.val.null <- identical(value, "")
+  is.val.default <- identical(value, input$default)
 
   # n: suppress null
   if (is.val.null && ("n" %in% opts))
@@ -104,18 +106,24 @@ substituteVariableBlock <- function(block, inputs) {
 
 
 
-substituteVariables <- function(section, blocks, inputs) {
-  # find blocks that occur in section
-  blocks <- blocks[
-    map(names(blocks), ~grepl(., section, fixed = TRUE)) %>%
-      unlist
-  ]
+substituteVariables <- function(text, blocks, inputs) {
+  stopifnot("Text must be a single string." = (length(text) == 1))
+
+  # find blocks that occur in text
+  w <- which(map_lgl(names(blocks), ~grepl(., text, fixed = TRUE)))
+
+  if (length(w) == 0)
+    return (text)
 
   # compute the substitutions
-  subs <- map(blocks, substituteVariableBlock, inputs)
+  subs <- map(blocks[ w ], substituteVariableBlock, inputs)
 
-  # apply substitutions to section text
-  map2(names(subs), subs, sub(.x, .y, section, fixed = TRUE))
+  # apply substitutions to text
+  for (name in names(subs)) {
+    text <- sub(name, subs[[ name ]], text, fixed = TRUE)
+  }
+
+  return(text)
 }
 
 
@@ -256,27 +264,53 @@ preprocessVariableInputOptions <- function(text) {
 }
 
 
+
 # text: a single input variable
 # [output_options:][assing.name = ]varname[(input options)]
-preprocessInputVariable <- function(text) {
+preprocessInputVariable <- function(text, output = FALSE) {
   stopifnot("Text must be a single string." = (length(text) == 1))
 
-  # extract output options
-  if (grepl("^[^\\()]*?:", text)) {
-    text <- strsplit(text, ":")[[1]] %>% trimws
-    output.options <- preprocessVariableOutputOptions(text[1])
-    text <- paste(text[ 2:length(text) ], collapse = ":")
-  } else {
-    output.options <- ""
-  }
 
-  # extract assign name
-  if (grepl("^[^\\(]*?=", text)) {
-    text <- strsplit(text, "=")[[1]] %>% trimws
-    assign <- text[1]
-    text <- paste(text[ 2:length(text) ], collapse = "=")
-  } else
-    assign <- ""
+
+  varname <- regexpr("^.*?(?=\\(| |$)", "xlim", perl = TRUE) %>%
+    regmatches(text, .)
+
+  #  if (grepl("\\(", text)) {
+  # check for type
+  type <- regexpr("^.*([^ ,=]*,)", text)
+
+  gsub("^(.*?)\\(", "\"\\1\", ", text)
+
+#  }
+}
+
+
+# text: a single input variable
+# [output_options:][assing.name = ]varname[(input options)]
+preprocessInputVariable <- function(text, output = FALSE) {
+  stopifnot("Text must be a single string." = (length(text) == 1))
+
+  if (output == TRUE) {
+    # extract output options
+    if (grepl("^[^\\()]*?:", text)) {
+      text <- strsplit(text, ":")[[1]] %>% trimws
+      output.options <- preprocessVariableOutputOptions(text[1])
+      text <- paste(text[ 2:length(text) ], collapse = ":")
+    } else {
+      output.options <- ""
+    }
+
+    # extract assign name
+    if (grepl("^[^\\(]*?=", text)) {
+      text <- strsplit(text, "=")[[1]] %>% trimws
+      assign <- text[1]
+      text <- paste(text[ 2:length(text) ], collapse = "=")
+    } else
+      assign <- ""
+  } else {
+    output.options <- NULL
+    assign <- NULL
+  }
 
   # extract varname and input options
   if (grepl("\\(.*\\)", text)) {
@@ -322,7 +356,7 @@ preprocessInputVariableBlock <- function(text) {
 
   # preprocess the variables
   split.parameters(text) %>%
-    map(preprocessInputVariable) %>%
+    map(preprocessInputVariable, output = TRUE) %>%
     set_names(map_chr(., "varname"))
 }
 
@@ -341,7 +375,23 @@ preprocessInputVariableBlock <- function(text) {
 preprocessInputs <- function(text) {
   stopifnot("Text must be a single string." = (length(text) == 1))
 
-  # split into elements of the form ${<element>}
+  text <- clear.comments(text, n = 3)
+
+  # TODO: handle comments
+  #text <- gsub("^##([^#])", "\\1", text)
+
+  # $@input id[(...)]
+  input.vars <-
+    gregexpr("\\$@[ ]*input[ ]*[^ \n]+[ ]*\\(.*?)[ ]*\n|\\$@[ ]*input[ ]*[^ \n]+[^ \\(]*\n", text) %>%
+    regmatches(text, .) %>%
+    unlist %>%
+    gsub("\n", "", .) %>%
+    gsub("^\\$@[ ]*input", "", .) %>%
+    trimws %>%
+    map(preprocessInputVariable, output = FALSE) %>%
+    set_names(map_chr(., "varname"))
+
+  # ${...} blocks
   block.matches <-
     regmatches(text, gregexpr("\\$\\{.*?\\}", text))[[1]]
 
@@ -353,10 +403,15 @@ preprocessInputs <- function(text) {
     map(preprocessInputVariableBlock) %>%
     set_names(block.matches)
 
-  inputs <-
+  # variables defined in blocks
+  block.vars <-
     unlist(blocks, recursive = FALSE) %>%
     map(~c(name = .$varname, .$input.options)) %>%
     set_names(map(., "name"))
+
+  # merge input.vars and block.vars
+  varnames <- c(map(input.vars, "varname"), map(block.vars, "varname"))
+
 
   return(list(blocks = blocks, inputs = inputs))
 }
