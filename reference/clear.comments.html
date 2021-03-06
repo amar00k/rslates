@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Paste and print — pprint • rslates</title>
+<title>Clear comments from text — clear.comments • rslates</title>
 
 
 <!-- jquery -->
@@ -39,8 +39,8 @@
 
 
 
-<meta property="og:title" content="Paste and print — pprint" />
-<meta property="og:description" content="Paste and print" />
+<meta property="og:title" content="Clear comments from text — clear.comments" />
+<meta property="og:description" content="Clear comments from text" />
 
 
 
@@ -120,31 +120,34 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Paste and print</h1>
-    <small class="dont-index">Source: <a href='https://github.com/amar00k/rslates/blob/master/R/zzz.R'><code>R/zzz.R</code></a></small>
-    <div class="hidden name"><code>pprint.Rd</code></div>
+    <h1>Clear comments from text</h1>
+    <small class="dont-index">Source: <a href='https://github.com/amar00k/rslates/blob/master/R/source_generator.R'><code>R/source_generator.R</code></a></small>
+    <div class="hidden name"><code>clear.comments.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Paste and print</p>
+    <p>Clear comments from text</p>
     </div>
 
-    <pre class="usage"><span class='fu'>pprint</span><span class='op'>(</span><span class='va'>...</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>clear.comments</span><span class='op'>(</span><span class='va'>text</span>, n <span class='op'>=</span> <span class='fl'>1</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>...</th>
-      <td><p>arguments for the paste call</p></td>
+      <th>text</th>
+      <td><p>a string</p></td>
+    </tr>
+    <tr>
+      <th>n</th>
+      <td><p>number of # symbols (i.e. n = 2 clears text appearing after ## or ###
+but not #)</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    
-
-
+    <p>the clean text</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

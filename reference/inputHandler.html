@@ -89,6 +89,18 @@ of the input value." />
 <li>
   <a href="../reference/index.html">Reference</a>
 </li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Articles
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="../articles/Preprocessor.html">Preprocessor</a>
+    </li>
+  </ul>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
@@ -122,16 +134,21 @@ of the input value.</p>
     </div>
 
     <pre class="usage">inputHandler(
-  default.value,
+  create.ui = function(x, ns = identity, value = NULL) {     tags$div(id =
+    session$ns(x$id)) },
+  default.value = "",
   params.list = list(),
-  create.ui = function(...) {     tagList() },
   update.ui = function(x, session) { },
-  get.inputs = function(x, session, value) {     inputs &lt;- list()     inputs[[x$id]] &lt;-
-    value     return(inputs) },
-  get.value = function(x, session = NULL, value = NULL) {     if (is.null(value))      
-       value &lt;- session$input[[x$id]]     return(value) },
-  get.source = function(x, session = NULL, value = NULL) {    
-    as.character(getHandler(x)$get.value(x, session, value)) },
+  get.input = function(x, session) {     return(list(session$input[[x$id]])) },
+  set.input = function(x, session, value) {     update.ui(x, session, value) },
+  as.value = function(x, session = NULL, value = NULL) {     if (is.null(value))       
+      value &lt;- getHandler(x)$get.input(x, session)[[1]]     value &lt;- as.character(value) 
+       if (length(value) &gt; 1)          stop("input must have length 1.")    
+    return(value) },
+  as.string = function(x, session, value = NULL) {     getHandler(x)$as.value(x,
+    session, value) %&gt;% toString },
+  as.source = function(x, session = NULL, value = NULL) {     getHandler(x)$as.value(x,
+    session, value) %&gt;% as.character },
   observer = function(x, session) { }
 )</pre>
 
@@ -139,46 +156,54 @@ of the input value.</p>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
+      <th>create.ui</th>
+      <td><p>function used to create the input UI.</p></td>
+    </tr>
+    <tr>
       <th>default.value</th>
-      <td><p>default value of this input type when no default value is provided</p></td>
+      <td><p>default value of this input type</p></td>
     </tr>
     <tr>
       <th>params.list</th>
       <td><p>list of parameters used by the input type. Each element of the list
-describes a parameter and has the following members: name (pretty name of the parameter),
-choices (vector of allowed values), default (default value when not specified).</p></td>
-    </tr>
-    <tr>
-      <th>create.ui</th>
-      <td><p>function used to create the input UI.</p></td>
+describes a parameter and has the following members: <code>name</code> (pretty name of
+the parameter), type (one of <code>character</code>, <code>numeric</code>, <code>logical</code>, <code>choices</code>),
+<code>choices</code> (when type is <code>choices</code>, the vector of allowed values), <code>default</code>
+(default value).</p></td>
     </tr>
     <tr>
       <th>update.ui</th>
       <td><p>function used to update the input UI.</p></td>
     </tr>
     <tr>
-      <th>get.inputs</th>
-      <td><p>used for testing purporses. Returns a list of pairs (input_id, value).</p></td>
+      <th>get.input</th>
+      <td><p>function that returns the raw input(s) from the <code>session$input</code>
+object as a <em>list</em>.</p></td>
     </tr>
     <tr>
-      <th>get.value</th>
-      <td><p>function that transforms the current value of the input
-to the appropriate output string value. If value is provided, then
-this value is used instead of the input element value.</p></td>
+      <th>as.value</th>
+      <td><p>function that transforms the value from <code>get.input()</code>
+to the appropriate format for the input type. If <code>value</code> is provided, then
+the function tries to coerce this value to the appropriate type.</p></td>
     </tr>
     <tr>
-      <th>get.source</th>
-      <td><p>get the value of this input in source form.</p></td>
+      <th>as.source</th>
+      <td><p>function that transforms the value from <code>as.value()</code> to source code.</p></td>
     </tr>
     <tr>
       <th>observer</th>
-      <td><p>actions to be taken as an observer</p></td>
+      <td><p>actions to be taken as an observer of any reactive expression(s).</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>a list of functions to handle the the input type.</p>
+    <p>the list of functions to handle the the input type.</p>
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
+
+    <p>The default functions assume a single input and return the value without
+transformations <code>get.input()</code> returns a list of one element, <code>as.value</code> unlists
+this element, and <code>as.source()</code> returns that value as a character value.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
