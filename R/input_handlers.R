@@ -314,6 +314,9 @@ input.handlers <- list(
       if (is.null(value))
         value <- input.handlers$numeric2$get.input(x, session)
 
+      if (any(map_lgl(value, is.null)))
+        return(NULL)
+
       value <- as.numeric(value)
 
       if (length(value) < 2)
@@ -348,6 +351,9 @@ input.handlers <- list(
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$numeric4$get.input(x, session)
+
+      if (any(map_lgl(value, is.null)))
+        return(NULL)
 
       value <- as.numeric(value)
 
