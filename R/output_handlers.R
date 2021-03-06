@@ -44,12 +44,9 @@ output.handlers <- list(
     },
     create.output = function(x, session, sources, inputs, envir) {
       session$output[[ x$id ]] <- renderPlot({
-        req(sources(), inputs(), envir())
+        text <- sources()[[ x$name ]]$source
 
-        source <- sources()[[ x$name ]]
-        src <- substituteValues(source, inputs())
-        print(src)
-        eval(parse(text = src), envir = new.env(parent = envir()))
+        eval(str2expression(text), envir = new.env(parent = envir()))
       })
     }
   ),
@@ -60,13 +57,11 @@ output.handlers <- list(
         tableOutput(id)
       )
     },
-    create.output = function(x, session, sources, inputs, envirr) {
+    create.output = function(x, session, sources, inputs, envir) {
       session$output[[ x$id ]] <- renderTable({
-        req(sources(), inputs(), envir())
+        text <- sources()[[ x$name ]]$source
 
-        source <- sources()[[ x$name ]]
-        src <- substituteValues(source, inputs())
-        eval(parse(text = src), envir = new.env(parent = envir()))
+        eval(str2expression(text), envir = new.env(parent = envir()))
       })
     }
   ),
@@ -76,13 +71,10 @@ output.handlers <- list(
     },
     create.output = function(x, session, sources, inputs, envir) {
       session$output[[ x$id ]] <- reactable::renderReactable({
-        req(sources(), inputs(), envir())
-
-        source <- sources()[[ x$name ]]
-        src <- substituteValues(source, inputs())
+        text <- sources()[[ x$name ]]$source
 
         reactable::reactable(
-          eval(parse(text = src), envir = new.env(parent = envir()))
+          eval(str2expression(text), envir = new.env(parent = envir()))
           #theme = theme
         )
       })
@@ -97,12 +89,12 @@ output.handlers <- list(
       )
     },
     create.output = function(x, session, sources, inputs, envir) {
-      session$output[[ x$id ]] <- renderPrint({
-        req(sources(), inputs(), envir())
+      name <- x$name
 
-        source <- sources()[[ x$name ]]
-        src <- substituteValues(source, inputs())
-        eval(parse(text = src), envir = new.env(parent = envir()))
+      session$output[[ x$id ]] <- renderPrint({
+        text <- sources()[[ name ]]$source
+
+        eval(str2expression(text), envir = new.env(parent = envir()))
       })
     }
   ),
@@ -116,13 +108,12 @@ output.handlers <- list(
                           highlightActiveLine = FALSE)
     },
     observer = function(id, session, sources, inputs, envir, global.options) {
-      source <- map(sources(), substituteVariables, inputs()) %>%
+      text <-
+        map(sources(), ~paste0("#-- ", .$name, "\n", .$source)) %>%
         paste(collapse = "\n\n")
 
-      print(source)
-
       shinyAce::updateAceEditor(
-        session, editorId = id, value = source, theme = global.options$ace.theme
+        session, editorId = id, value = text, theme = global.options$ace.theme
       )
     }
   )
