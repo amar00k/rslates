@@ -48,6 +48,21 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
 
   body.ui <- tags$div(
     tags$div(
+      #style = "height: 200px",
+      tags$div(
+        class = "container pt-3",
+        #class = "h-100",
+        shinyAce::aceEditor(
+          ns("blueprint_source"),
+          height = "250px",
+          mode = "r",
+          value = blueprint$source
+        ),
+        uiOutput(ns("blueprint_alerts"))
+      ),
+      tags$hr()
+    ),
+    tags$div(
       class = "d-flex mh-100 flex-row justify-content-between align-content-stretch",
       style = if (!is.null(height)) paste0("height: ", height, ";") else "",
       tags$div(
@@ -65,23 +80,39 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
       tags$div(
         id = ns("slate_inputs_body"),
         class = "slate-inputs-container col-6 show",
-        style = "overflow: auto;",
         tags$div(
           class = "collapse show",
           style = "width: 100%",
-          uiOutput(ns("inputs_panel")),
-          tags$div(
-            #class = "container",
-            tags$div(
-              h5("Blueprint Settings"),
-              shinyAce::aceEditor(ns("blueprint_source"),
-                                  value = blueprint$source)
-            )
+          div(
+            style = "height: 100%; overflow: auto;",
+            uiOutput(ns("inputs_panel")),
           )
         )
       )
     )
   )
+
+  # edit <- shinyjqui::jqui_draggable(
+  #   tags$div(
+  #     class = "card",
+  #     style = "position: absolute; width: 800px; height: 600px;",
+  #     #h5("Blueprint Settings"),
+  #     tags$div(
+  #       class = "card-header",
+  #       tags$p("Slate Source")
+  #     ),
+  #     tags$div(
+  #       class = "card-body",
+  #       uiOutput(ns("blueprint_alerts")),
+  #       shinyAce::aceEditor(
+  #         ns("blueprint_source"),
+  #         height = "100%",
+  #         mode = "r",
+  #         value = blueprint$source
+  #       )
+  #     )
+  #   )
+  # )
 
   if (slate.options$use.card) {
     if (slate.options$card.header == TRUE) {
