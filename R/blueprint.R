@@ -156,8 +156,6 @@ getHandler <- function(x) {
 
 
 assignInputValues <- function(inputs, values) {
-  values <- as.character(values)
-
   inputs %>%
     modify_if(~.$name %in% names(values),
               ~list_modify(., value = values[[ .$name ]]))

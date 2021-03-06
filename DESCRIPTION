@@ -16,15 +16,15 @@ Imports:
     shinyAce,
     shinyBS,
     shinyWidgets,
-    jsonlite,
     bslib,
-    shinyTree,
     magrittr,
+    purrr,
+    dplyr,
+    jsonlite,
+    shinyTree,
     digest,
     rlang,
-    reactable,
-    purrr,
-    dplyr
+    reactable
 Remotes:
     rstudio/shiny
 RoxygenNote: 7.1.1
