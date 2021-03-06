@@ -97,18 +97,47 @@
 <div id="preprocessor-directives" class="section level1">
 <h1 class="hasAnchor">
 <a href="#preprocessor-directives" class="anchor"></a>Preprocessor Directives</h1>
+<p>Directives are grouped in the following categories:</p>
+<ul>
+<li>Commenting: <code>#</code>, <code>##</code> and <code>###</code>.</li>
+<li>Input definition: <code>$@&lt;input|page|group&gt;</code>.</li>
+<li>Section declaration: <code>$@&lt;exec|print|plot|table|...&gt; &lt;name&gt;</code>.</li>
+<li>Input substitution: <code>${ ... }</code>.</li>
+<li>Conditional output/ execution: <code>$#[&lt;condition&gt;] ...</code>.</li>
+</ul>
 <div id="comments" class="section level2">
 <h2 class="hasAnchor">
 <a href="#comments" class="anchor"></a>Comments</h2>
 <p>Comments come in three flavors (<code>#</code>, <code>##</code> and <code>###</code>). These affect what comments will be <em>displayed</em>, <em>suppressed</em> and/ or <em>interpreted</em> by the preprocessor.</p>
-<ul>
-<li>
-<code>#</code>: a regular R comment. This comment will show up in the final source that is provided to the user. Any preprocessor directives included in the comment are interpreted by the preprocessor and removed from the source.</li>
-<li>
-<code>##</code>: will suppressed from user code, but preprocessing directives are interpreted .</li>
-<li>
-<code>###</code>: a <em>slates</em> comment: these are used to comment the <em>slates</em> source code itself, as they will be suppressed from the user code and ignored by the preprocessor.</li>
-</ul>
+<div id="single-hash" class="section level3">
+<h3 class="hasAnchor">
+<a href="#single-hash" class="anchor"></a>Single Hash (<code>#</code>)</h3>
+<p>A regular R comment. This comment will show up in the final source that is provided to the user. Any preprocessor directives included in the comment are interpreted by the preprocessor and removed from the source.</p>
+</div>
+<div id="double-hash" class="section level3">
+<h3 class="hasAnchor">
+<a href="#double-hash" class="anchor"></a>Double Hash (<code>##</code>)</h3>
+<p>Will suppressed from user code, but preprocessing directives are interpreted .</p>
+</div>
+<div id="triple-hash" class="section level3">
+<h3 class="hasAnchor">
+<a href="#triple-hash" class="anchor"></a>Triple Hash (<code>###</code>)</h3>
+<p>A <em>slates</em> comment: these are used to comment the <em>slates</em> source code itself, as they will be suppressed from the user code and ignored by the preprocessor.</p>
+</div>
+</div>
+<div id="input-definition" class="section level2">
+<h2 class="hasAnchor">
+<a href="#input-definition" class="anchor"></a>Input Definition</h2>
+<p>Inputs are defined using the syntax <code>$@input &lt;name&gt;[(&lt;options&gt;)]</code>, where <code>&lt;name&gt;</code> represents the name of the <em>variable</em> that will hold the input value, and <code>&lt;options&gt;</code> define additional input parameters.</p>
+<p>In the simplest case, an input may be defined with just a name. In this case it will assume the default ‘character’ type.</p>
+<pre><code>### defines an input 'x' of type 'character' (the default input type).
+$@input x</code></pre>
+<p>In most cases it is desirable to specify at least the <em>input type</em> and <em>default value</em>:</p>
+<pre><code>### defines a 'numeric' input with the name 'num_samples' and default value 10.
+$@input num_samples(type = numeric, default = 10)</code></pre>
+<p>The first two options (if unnamed) are assumed to represent the type and default value of the input. Thus the above definition can be written more succinctly as <code>$@input num_samples(numeric, 10)</code>.</p>
+<p>Common user-interface options include <code>description</code> (determines the tooltip text for the input) and <code>pretty.name</code> (if provided, this name will be used in the user-interface instead of the variable name).</p>
+<pre><code>$@input x(expression, "1:10", description="x coordinates for the plot.", pretty.name = "x-coordinates")</code></pre>
 </div>
 </div>
   </div>
