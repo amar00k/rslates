@@ -1,8 +1,21 @@
-# A comment
-# This is the Generic chunk
+### This is a preprocessor comment. It will be suppressed in source code and
+### will not be processed by the preprocessor.
+
+# This is the 'Preamble' section.
+# $@ preamble: TRUE
+
+
+### Below is a section declaration. The section contents ends when another
+### section begins or when \"#-- end section\" is read, or when the file ends.
+
+#-- print  ### A comment can appear inline. All further contents of line is ignored.
+
+# This is a normal R comment. It will be shown in source code.
 
 print(1:10)
 print(head(iris, ${num_lines(numeric, 10)}))
+
+# ${a(numeric), b(numeric2), c(numeric4)}
 
 #-- plot Scatterplot
 
