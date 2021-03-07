@@ -19,63 +19,93 @@ library(rslates)
 
 # Introduction
 
-Slate blueprints are just regular R source code files with additional *slates* preprocessing directives to define inputs, outputs, datasets and so on. The *Slates* preprocessor is responsible to convert these *slates source files* to regular R source code that can be parsed and executed by the R interpreter.
+Slate blueprints are just regular R source code files with additional *slates* preprocessing directives. These directives define the inputs that will appear on the slate, the outputs and their source code, datasets imported, and so on. 
 
-# Preprocessor Directives
+The *Slates* preprocessor is responsible to convert **slate code** to regular R source code that can be parsed and executed by the R interpreter. As this latter source code is the one that the user will see, we refer to it as **user code**.
 
-Directives are grouped in the following categories:
+Slates directives are grouped in the following categories:
 
 * Commenting: `#`, `##` and `###`. 
-* Input definition: `$@<input|page|group>`. 
+* Input definition: `$@<input|page|group>`.  
 * Section declaration: `$@<exec|print|plot|table|...> <name>`.
-* Input substitution: `${ ... }`.
-* Conditional output/ execution: `$#[<condition>] ...`.
+* Variable substitution: `${ ... }`.
+* Conditional output `$#[<condition>] ...`.
 
-## Comments
+# Comments
 
 Comments come in three flavors (`#`, `##` and `###`). These affect what comments will be *displayed*, *suppressed* and/ or *interpreted* by the preprocessor.
 
-### Single Hash (`#`)
+## Single Hash (`#`)
 
 A regular R comment. This comment will show up in the final source that is provided to the user. Any preprocessor directives included in the comment are interpreted by the preprocessor and removed from the source.
 
-### Double Hash (`##`)
+## Double Hash (`##`)
 
 Will suppressed from user code, but preprocessing directives are interpreted .
 
-### Triple Hash (`###`)
+## Triple Hash (`###`)
 
 A *slates* comment: these are used to comment the *slates* source code itself, as they will be suppressed from the user code and ignored by the preprocessor.
 
 
-## Input Definition
+# Input, Groups and Pages
 
-Inputs are defined using the syntax `$@input <name>[(<options>)]`, where `<name>` represents the name of the *variable* that will hold the input value, and `<options>` define additional input parameters.
+Inputs, groups and pages are defined through the `$@input`, `$@group` and `$@page` directives. After evaluation, these directives are scrubbed from the user code, and so can be placed outside of comments. However, placing them in double-hash comments may facilitate code-formatting by avoiding unnecessary empty lines in the user code.
 
-In the simplest case, an input may be defined with just a name. In this case it will assume the default 'character' type.
+## Inputs
 
-```
-### defines an input 'x' of type 'character' (the default input type).
-$@input x
-```
+> `$@input name(type, default, ...)`
 
-In most cases it is desirable to specify at least the *input type* and *default value*:
+Inputs are defined using the syntax `$@input name(type, default, ...)` where `name` is the variable name associated with the input, `type` is the input type, and `default` is the default value of the input.
 
-```
-### defines a 'numeric' input with the name 'num_samples' and default value 10.
-$@input num_samples(type = numeric, default = 10)
-```
+Input types include `character`, `numeric`, `logical`, `choices`, `expression`, `numeric2` and `numeric4`. See ??? for a list of supported input types.
 
-The first two options (if unnamed) are assumed to represent the type and default value of the input. Thus the above definition can be written more succinctly as `$@input num_samples(numeric, 10)`.
+### Usage
 
-Common user-interface options include `description` (determines the tooltip text for the input) and `pretty.name` (if provided, this name will be used in the user-interface instead of the variable name). 
+In the simplest case, an input may be defined with just a name. In this case it will assume the default `character` type. The default value will depend on the input type.
 
 ```
-$@input x(expression, "1:10", description="x coordinates for the plot.", pretty.name = "x-coordinates")
+## defines an input 'x' of type 'character' (the default input type).
+## $@input x
 ```
 
+The *input type* and *default value* can be specified with or without parameter names.
+
+```
+## defines a 'numeric' input with the name 'num_samples' and default value 10.
+## $@input num_samples(numeric, 10)
+## $@input num_samples(type = numeric, default = 10)
+```
+
+Additional parameters must be specified by name. Common user-interface options include `description`, that determines the tooltip text for the input and `pretty.name` that, if provided, will be used in the user-interface instead of the variable name.
+
+```
+## $@input x(expression, expression(1:10), description="x coordinates for the plot.", pretty.name = "x-coordinates")
+```
+*Note:* for convenience it is not required to quote the input type parameter, although one may do so if desired. `$@input x(character)` is equivalent to `$@input x("character")`.
 
 
+## Groups
+
+> `$@group name(layout, ...)`
+
+# Sections and Outputs
+
+> `$@section name(type, ...)`
+> ... 
+> `$@section-end`
+
+# Variable Substitution
+
+> `${options:varname}`
+
+> `${default_options:: options1:varname1, options2:varname2, ...}`
+
+# Conditional Output
+
+> `$@if expression` 
+> ... 
+> `$@if-end`
 
 
 
