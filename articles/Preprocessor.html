@@ -92,53 +92,96 @@
 <div id="introduction" class="section level1">
 <h1 class="hasAnchor">
 <a href="#introduction" class="anchor"></a>Introduction</h1>
-<p>Slate blueprints are just regular R source code files with additional <em>slates</em> preprocessing directives to define inputs, outputs, datasets and so on. The <em>Slates</em> preprocessor is responsible to convert these <em>slates source files</em> to regular R source code that can be parsed and executed by the R interpreter.</p>
-</div>
-<div id="preprocessor-directives" class="section level1">
-<h1 class="hasAnchor">
-<a href="#preprocessor-directives" class="anchor"></a>Preprocessor Directives</h1>
-<p>Directives are grouped in the following categories:</p>
+<p>Slate blueprints are just regular R source code files with additional <em>slates</em> preprocessing directives. These directives define the inputs that will appear on the slate, the outputs and their source code, datasets imported, and so on.</p>
+<p>The <em>Slates</em> preprocessor is responsible to convert <strong>slate code</strong> to regular R source code that can be parsed and executed by the R interpreter. As this latter source code is the one that the user will see, we refer to it as <strong>user code</strong>.</p>
+<p>Slates directives are grouped in the following categories:</p>
 <ul>
 <li>Commenting: <code>#</code>, <code>##</code> and <code>###</code>.</li>
-<li>Input definition: <code>$@&lt;input|page|group&gt;</code>.</li>
+<li>Input definition: <code>$@&lt;input|page|group&gt;</code>.<br>
+</li>
 <li>Section declaration: <code>$@&lt;exec|print|plot|table|...&gt; &lt;name&gt;</code>.</li>
-<li>Input substitution: <code>${ ... }</code>.</li>
-<li>Conditional output/ execution: <code>$#[&lt;condition&gt;] ...</code>.</li>
+<li>Variable substitution: <code>${ ... }</code>.</li>
+<li>Conditional output <code>$#[&lt;condition&gt;] ...</code>.</li>
 </ul>
-<div id="comments" class="section level2">
-<h2 class="hasAnchor">
-<a href="#comments" class="anchor"></a>Comments</h2>
+</div>
+<div id="comments" class="section level1">
+<h1 class="hasAnchor">
+<a href="#comments" class="anchor"></a>Comments</h1>
 <p>Comments come in three flavors (<code>#</code>, <code>##</code> and <code>###</code>). These affect what comments will be <em>displayed</em>, <em>suppressed</em> and/ or <em>interpreted</em> by the preprocessor.</p>
-<div id="single-hash" class="section level3">
-<h3 class="hasAnchor">
-<a href="#single-hash" class="anchor"></a>Single Hash (<code>#</code>)</h3>
+<div id="single-hash" class="section level2">
+<h2 class="hasAnchor">
+<a href="#single-hash" class="anchor"></a>Single Hash (<code>#</code>)</h2>
 <p>A regular R comment. This comment will show up in the final source that is provided to the user. Any preprocessor directives included in the comment are interpreted by the preprocessor and removed from the source.</p>
 </div>
-<div id="double-hash" class="section level3">
-<h3 class="hasAnchor">
-<a href="#double-hash" class="anchor"></a>Double Hash (<code>##</code>)</h3>
+<div id="double-hash" class="section level2">
+<h2 class="hasAnchor">
+<a href="#double-hash" class="anchor"></a>Double Hash (<code>##</code>)</h2>
 <p>Will suppressed from user code, but preprocessing directives are interpreted .</p>
 </div>
-<div id="triple-hash" class="section level3">
-<h3 class="hasAnchor">
-<a href="#triple-hash" class="anchor"></a>Triple Hash (<code>###</code>)</h3>
+<div id="triple-hash" class="section level2">
+<h2 class="hasAnchor">
+<a href="#triple-hash" class="anchor"></a>Triple Hash (<code>###</code>)</h2>
 <p>A <em>slates</em> comment: these are used to comment the <em>slates</em> source code itself, as they will be suppressed from the user code and ignored by the preprocessor.</p>
 </div>
 </div>
-<div id="input-definition" class="section level2">
+<div id="input-groups-and-pages" class="section level1">
+<h1 class="hasAnchor">
+<a href="#input-groups-and-pages" class="anchor"></a>Input, Groups and Pages</h1>
+<p>Inputs, groups and pages are defined through the <code>$@input</code>, <code>$@group</code> and <code>$@page</code> directives. After evaluation, these directives are scrubbed from the user code, and so can be placed outside of comments. However, placing them in double-hash comments may facilitate code-formatting by avoiding unnecessary empty lines in the user code.</p>
+<div id="inputs" class="section level2">
 <h2 class="hasAnchor">
-<a href="#input-definition" class="anchor"></a>Input Definition</h2>
-<p>Inputs are defined using the syntax <code>$@input &lt;name&gt;[(&lt;options&gt;)]</code>, where <code>&lt;name&gt;</code> represents the name of the <em>variable</em> that will hold the input value, and <code>&lt;options&gt;</code> define additional input parameters.</p>
-<p>In the simplest case, an input may be defined with just a name. In this case it will assume the default ‘character’ type.</p>
-<pre><code>### defines an input 'x' of type 'character' (the default input type).
-$@input x</code></pre>
-<p>In most cases it is desirable to specify at least the <em>input type</em> and <em>default value</em>:</p>
-<pre><code>### defines a 'numeric' input with the name 'num_samples' and default value 10.
-$@input num_samples(type = numeric, default = 10)</code></pre>
-<p>The first two options (if unnamed) are assumed to represent the type and default value of the input. Thus the above definition can be written more succinctly as <code>$@input num_samples(numeric, 10)</code>.</p>
-<p>Common user-interface options include <code>description</code> (determines the tooltip text for the input) and <code>pretty.name</code> (if provided, this name will be used in the user-interface instead of the variable name).</p>
-<pre><code>$@input x(expression, "1:10", description="x coordinates for the plot.", pretty.name = "x-coordinates")</code></pre>
+<a href="#inputs" class="anchor"></a>Inputs</h2>
+<blockquote>
+<p><code>$@input name(type, default, ...)</code></p>
+</blockquote>
+<p>Inputs are defined using the syntax <code>$@input name(type, default, ...)</code> where <code>name</code> is the variable name associated with the input, <code>type</code> is the input type, and <code>default</code> is the default value of the input.</p>
+<p>Input types include <code>character</code>, <code>numeric</code>, <code>logical</code>, <code>choices</code>, <code>expression</code>, <code>numeric2</code> and <code>numeric4</code>. See ??? for a list of supported input types.</p>
+<div id="usage" class="section level3">
+<h3 class="hasAnchor">
+<a href="#usage" class="anchor"></a>Usage</h3>
+<p>In the simplest case, an input may be defined with just a name. In this case it will assume the default <code>character</code> type. The default value will depend on the input type.</p>
+<pre><code>## defines an input 'x' of type 'character' (the default input type).
+## $@input x</code></pre>
+<p>The <em>input type</em> and <em>default value</em> can be specified with or without parameter names.</p>
+<pre><code>## defines a 'numeric' input with the name 'num_samples' and default value 10.
+## $@input num_samples(numeric, 10)
+## $@input num_samples(type = numeric, default = 10)</code></pre>
+<p>Additional parameters must be specified by name. Common user-interface options include <code>description</code>, that determines the tooltip text for the input and <code>pretty.name</code> that, if provided, will be used in the user-interface instead of the variable name.</p>
+<pre><code>## $@input x(expression, expression(1:10), description="x coordinates for the plot.", pretty.name = "x-coordinates")</code></pre>
+<p><em>Note:</em> for convenience it is not required to quote the input type parameter, although one may do so if desired. <code>$@input x(character)</code> is equivalent to <code>$@input x("character")</code>.</p>
 </div>
+</div>
+<div id="groups" class="section level2">
+<h2 class="hasAnchor">
+<a href="#groups" class="anchor"></a>Groups</h2>
+<blockquote>
+<p><code>$@group name(layout, ...)</code></p>
+</blockquote>
+</div>
+</div>
+<div id="sections-and-outputs" class="section level1">
+<h1 class="hasAnchor">
+<a href="#sections-and-outputs" class="anchor"></a>Sections and Outputs</h1>
+<blockquote>
+<p><code>$@section name(type, ...)</code> … <code>$@section-end</code></p>
+</blockquote>
+</div>
+<div id="variable-substitution" class="section level1">
+<h1 class="hasAnchor">
+<a href="#variable-substitution" class="anchor"></a>Variable Substitution</h1>
+<blockquote>
+<p><code>${options:varname}</code></p>
+</blockquote>
+<blockquote>
+<p><code>${default_options:: options1:varname1, options2:varname2, ...}</code></p>
+</blockquote>
+</div>
+<div id="conditional-output" class="section level1">
+<h1 class="hasAnchor">
+<a href="#conditional-output" class="anchor"></a>Conditional Output</h1>
+<blockquote>
+<p><code>$@if expression</code> … <code>$@if-end</code></p>
+</blockquote>
 </div>
   </div>
 
