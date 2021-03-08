@@ -1,14 +1,13 @@
 
-$@ input test
-$@input test2
-$@input test3 (expression)
+$@title "Scatterplot"
+$@preamble FALSE
 
-$@input x(expression, 1:10, description = "x coordinates for the plot; or structure defining both x and y coordinates.")
+$@input x(expression, expression(1:10), description = "x coordinates for the plot; or structure defining both x and y coordinates.")
 $@input y(expression, description = "y coordinates for the plot.")
 
 $@input type(choices, "p",
              choices = list("Points"="p", "Lines"="l", "Both"="b", "Empty Points"="c",
-                            "Overplotted"="o", "Stairs (Floor)"="s", "Stairs (Ceiling)"="S"),
+                           "Overplotted"="o", "Stairs (Floor)"="s", "Stairs (Ceiling)"="S"),
              description = "desired type of plot.")
 
 $@input main(character, description = "main title for the plot.")
@@ -18,12 +17,16 @@ $@input ylab(character, description = "label for the y-axis.")
 $@input xlim(numeric2, c(NA, NA), description = "x limits (x1, x2) for the plot.")
 $@input ylim(numeric2, c(NA, NA), description = "y limits (x1, x2) for the plot.")
 
-#-- plot Scatterplot
+$@input mar(numeric4, c(5.1, 4.1, 4.1, 2.1), description = "margins of the bottom, left, top and right sides of the plot in lines.")
 
+$@output Scatterplot(plot)
+
+$@if !default(mar)
 # set the margins for the plot
-par(mar=c(${mar_bottom, mar_left, mar_top, mar_right}))
+par(mar=c(${mar}))
+$@end-if
 
 # do the plot
 plot(${dn:: x:x, y=y(check.valid = FALSE), type=type, main=main, xlab=xlab, ylab=ylab})
 
-
+$@end-output
