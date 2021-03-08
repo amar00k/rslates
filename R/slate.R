@@ -48,6 +48,7 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
 
   body.ui <- tags$div(
     tags$div(
+      class = "card-header",
       #style = "height: 200px",
       tags$div(
         class = "container pt-3",
@@ -59,8 +60,7 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
           value = blueprint$source
         ),
         uiOutput(ns("blueprint_alerts"))
-      ),
-      tags$hr()
+      )
     ),
     tags$div(
       class = "d-flex mh-100 flex-row justify-content-between align-content-stretch",
@@ -91,28 +91,6 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
       )
     )
   )
-
-  # edit <- shinyjqui::jqui_draggable(
-  #   tags$div(
-  #     class = "card",
-  #     style = "position: absolute; width: 800px; height: 600px;",
-  #     #h5("Blueprint Settings"),
-  #     tags$div(
-  #       class = "card-header",
-  #       tags$p("Slate Source")
-  #     ),
-  #     tags$div(
-  #       class = "card-body",
-  #       uiOutput(ns("blueprint_alerts")),
-  #       shinyAce::aceEditor(
-  #         ns("blueprint_source"),
-  #         height = "100%",
-  #         mode = "r",
-  #         value = blueprint$source
-  #       )
-  #     )
-  #   )
-  # )
 
   if (slate.options$use.card) {
     if (slate.options$card.header == TRUE) {
@@ -160,16 +138,9 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     ready <- uiReady(session)
     source.output <- slateOutput("Source", type="source")
 
-    # blueprint.properties <- reactiveValues(
-    #   title = blueprint$title
-    # )
-
     # Store blueprint
     blueprint <- reactiveValues()
     preprocessor <- reactiveValues(
-      blocks = NULL,
-      sections = NULL,
-      source = NULL,
       errors = list()
     )
 
@@ -188,14 +159,27 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
       print("slate.R: update output sources")
 
       inputs <- blueprint$inputs
+      outputs <- blueprint$outputs
+      blocks <- blueprint$blocks
       values <- input.values()
-      blocks <- preprocessor$blocks
-      sections <- preprocessor$sections
 
       inputs <- assignInputValues(inputs, values)
 
-      map(sections,
-          ~list_modify(., source = substituteVariables(.$source, blocks, inputs)))
+      map(outputs, ~{
+        new.source <- tryCatch({
+          substituteVariables(.$source, blocks, inputs)
+        },
+        error = function(e) {
+          e <- paste0("Error substituting variables in output '",
+                     .$name, "': ", e)
+
+          isolate(preprocessor$errors %<>% append(list(e)))
+
+          return(.$source)
+        })
+
+        list_modify(., source = new.source)
+      })
     })
 
 
@@ -214,16 +198,17 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
       tryCatch({
         # preprocess the source
         parsed <- preprocessSource(source)
-        preprocessor$source <- source
-        preprocessor$sections <- parsed$sections
-        preprocessor$inputs <- parsed$inputs
-        preprocessor$blocks <- parsed$blocks
+
+        blueprint$source <- source
+        blueprint$pages <- parsed$pages
+        blueprint$groups <- parsed$groups
+        blueprint$outputs <- parsed$outputs
+        blueprint$blocks <- parsed$blocks
 
         # make slate inputs from the preprocessor input data and
         # restore input values but only if they "were" set to
         # the default value, otherwise we let them as they are
         inputs <- parsed$inputs %>%
-          map(~do.call(slateInput, .)) %>%
           assignInputValues(values) %>%
           modify_if(~!is.null(.$value) && identical(.$value, .$default),
                     ~list_modify(., value = NULL))
@@ -231,14 +216,13 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
         isolate(blueprint$inputs <- inputs)
 
         outputs <-
-          parsed$sections %>%
-          map(~do.call(slateOutput, .)) %>%
+          parsed$outputs %>%
           append(list(source.output))
 
-        isolate(blueprint$outputs <- outputs)
+        isolate(blueprint$outputs <- outputs) %>% print
       },
       error = function(e) {
-        isolate(preprocessor$errors %<>% append(list(e)))
+        isolate(preprocessor$errors %<>% append(list(e$message)))
       })
     })
 
@@ -250,7 +234,7 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
       map(preprocessor$errors,
           ~tags$div(
             class = "alert alert-danger",
-            .$message
+            . #$message
           )
       ) %>% tagList()
     })
