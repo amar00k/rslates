@@ -1,0 +1,48 @@
+---
+title: "Introduction to Slates"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{rslates}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rslates)
+```
+
+
+# What is Slates?
+
+Slates is a web based editor that allows easy creation of interactive R based notebooks. 
+
+## Philosophy
+
+
+
+## Target Users
+
+Slates targets different levels of users in different ways. 
+
+For *beginner* level users:
+
+  * Allows *programming without code*.
+  * Source code output allows learning by example
+  
+For *proficient* R users:
+
+  * Speeds up simple tasks
+  * Quickly create interactive, reusable notebooks
+
+For *power users*:
+
+  * Full access to the simple underlying meta-programming infrastructure
+  * Create new reusable *slates* with a few lines of code without ever leaving the application
+

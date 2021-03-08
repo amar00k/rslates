@@ -1,8 +1,8 @@
 ---
-title: "Preprocessor"
+title: "Preprocessing Directives"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Preprocessor}
+  %\VignetteIndexEntry{preprocessor}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -19,9 +19,9 @@ library(rslates)
 
 # Introduction
 
-Slate blueprints are just regular R source code files with additional *slates* preprocessing directives. These directives define the inputs that will appear on the slate, the outputs and their source code, datasets imported, and so on. 
+Slate blueprints are just regular R source code files decorated with *slates* preprocessing directives. These directives define the inputs that will appear on the slate, the outputs and their source code, importing datasets, and so on. 
 
-The *Slates* preprocessor is responsible to convert **slate code** to regular R source code that can be parsed and executed by the R interpreter. As this latter source code is the one that the user will see, we refer to it as **user code**.
+The *Slates* preprocessor is responsible to convert **decorated code** to regular R source code that can be parsed and executed by the R interpreter. As this latter source code is the one that the user will see, we refer to it as **user code**.
 
 Slates directives are grouped in the following categories:
 
@@ -30,6 +30,44 @@ Slates directives are grouped in the following categories:
 * Section declaration: `$@<exec|print|plot|table|...> <name>`.
 * Variable substitution: `${ ... }`.
 * Conditional output `$#[<condition>] ...`.
+
+# Example
+
+We start with a complete example showing off most features of the preprocessing engine. 
+
+```{r, eval = FALSE}
+$@title "Scatterplot"
+$@tags "example", "rgraphics", "scatterplot"
+$@preamble FALSE
+ 
+## $@input x(expression, "1:10", description = "x coordinates for the plot; or structure defining both x and y coordinates.")
+## $@input y(expression, description = "y coordinates for the plot.")
+## 
+## $@input type(choices, "p",
+##              choices = list("Points"="p", "Lines"="l", "Both"="b", "Empty Points"="c",
+##                             "Overplotted"="o", "Stairs (Floor)"="s", "Stairs (Ceiling)"="S"),
+##              description = "desired type of plot.")
+## 
+## $@input main(character, description = "main title for the plot.")
+## $@input xlab(character, description = "label for the x-axis.")
+## $@input ylab(character, description = "label for the y-axis.")
+## 
+## $@input xlim(numeric2, c(NA, NA), description = "x limits (x1, x2) for the plot.")
+## $@input ylim(numeric2, c(NA, NA), description = "y limits (x1, x2) for the plot.")
+
+$@output plot(Scatterplot)
+
+# set the margins for the plot
+par(mar=c(${mar_bottom, mar_left, mar_top, mar_right}))
+
+# do the plot
+plot(${dn:: x:x, y=y(check.valid = FALSE), type=type, main=main, xlab=xlab, ylab=ylab})
+
+$@end-output
+
+```
+
+
 
 # Comments
 
@@ -48,7 +86,7 @@ Will suppressed from user code, but preprocessing directives are interpreted .
 A *slates* comment: these are used to comment the *slates* source code itself, as they will be suppressed from the user code and ignored by the preprocessor.
 
 
-# Input, Groups and Pages
+# Inputs, Groups and Pages
 
 Inputs, groups and pages are defined through the `$@input`, `$@group` and `$@page` directives. After evaluation, these directives are scrubbed from the user code, and so can be placed outside of comments. However, placing them in double-hash comments may facilitate code-formatting by avoiding unnecessary empty lines in the user code.
 
@@ -89,11 +127,17 @@ Additional parameters must be specified by name. Common user-interface options i
 
 > `$@group name(layout, ...)`
 
-# Sections and Outputs
+# Outputs and Datasets
 
-> `$@section name(type, ...)`
+> `$@output name(type, ...)`
 > ... 
-> `$@section-end`
+> `$@end-output`
+
+
+
+> `$@dataset name(type, ...)`
+> ... 
+> `$@end-dataset`
 
 # Variable Substitution
 
@@ -105,7 +149,19 @@ Additional parameters must be specified by name. Common user-interface options i
 
 > `$@if expression` 
 > ... 
-> `$@if-end`
+> `$@end-if`
+
+# Implementation Details
+
+Preprocessor definitions are searched for using simple regular expressions. Because we're not using any parser, some additional syntactic rules are enforced:
+
+* Definitions may span multiple lines, but *must end on a newline character* (i.e. they must not be followed by any other expressions)
+
+The exact expression is below.
+
+> `\\$@ *(title|preamble|input|eval|print|plot|table|markdown) *[^ \n]+ *\\(.*?\\).*?\n|\\$@ *(title|preamble|input|eval|print|plot|table|markdown) *[^ \n]+´
+
+
 
 
 
