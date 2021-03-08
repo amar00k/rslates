@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Create the UI For the Inputs Panel — createInputLayout • rslates</title>
+<title>Resolves Conflicts Between Variable and Block Substitution Options — resolveSubstitutionOptions • rslates</title>
 
 
 <!-- jquery -->
@@ -39,8 +39,8 @@
 
 
 
-<meta property="og:title" content="Create the UI For the Inputs Panel — createInputLayout" />
-<meta property="og:description" content="Create the UI For the Inputs Panel" />
+<meta property="og:title" content="Resolves Conflicts Between Variable and Block Substitution Options — resolveSubstitutionOptions" />
+<meta property="og:description" content="Resolves Conflicts Between Variable and Block Substitution Options" />
 
 
 
@@ -123,55 +123,36 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Create the UI For the Inputs Panel</h1>
-    <small class="dont-index">Source: <a href='https://github.com/amar00k/rslates/blob/master/R/input_handlers.R'><code>R/input_handlers.R</code></a></small>
-    <div class="hidden name"><code>createInputLayout.Rd</code></div>
+    <h1>Resolves Conflicts Between Variable and Block Substitution Options</h1>
+    <small class="dont-index">Source: <a href='https://github.com/amar00k/rslates/blob/master/R/preprocessor.R'><code>R/preprocessor.R</code></a></small>
+    <div class="hidden name"><code>resolveSubstitutionOptions.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Create the UI For the Inputs Panel</p>
+    <p>Resolves Conflicts Between Variable and Block Substitution Options</p>
     </div>
 
-    <pre class="usage"><span class='fu'>createInputLayout</span><span class='op'>(</span>
-  <span class='va'>pages</span>,
-  <span class='va'>groups</span>,
-  <span class='va'>inputs</span>,
-  ns <span class='op'>=</span> <span class='va'>identity</span>,
-  inputs.style <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"tabset"</span>, <span class='st'>"collapses"</span>, <span class='st'>"flowing"</span><span class='op'>)</span>
-<span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>resolveSubstitutionOptions</span><span class='op'>(</span><span class='va'>var.opts</span>, <span class='va'>block.opts</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>pages</th>
-      <td><p>list of pages.</p></td>
+      <th>var.opts</th>
+      <td><p>character vector of variable options</p></td>
     </tr>
     <tr>
-      <th>groups</th>
-      <td><p>list of groups.</p></td>
-    </tr>
-    <tr>
-      <th>inputs</th>
-      <td><p>list of inputs.</p></td>
-    </tr>
-    <tr>
-      <th>ns</th>
-      <td><p>the namespace function to use for creating tag ids</p></td>
-    </tr>
-    <tr>
-      <th>inputs.style</th>
-      <td><p>the style of the input panel. <code>tabset</code> generates a
-tabsetPanel with each page in a tabPanel element. <code>collapses</code> uses
-Bootstrap 4 collapses to compartmentalize pages. <code>flowing</code> places
-all pages vertically in the same container and uses h5 tags for the
-page titles.</p></td>
+      <th>block.opts</th>
+      <td><p>character vector of block options</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>a tag.list structure.</p>
+    <p>The resolved variable options.</p>
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
+
+    <p>throws an error if the options combination cannot be resolved.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
