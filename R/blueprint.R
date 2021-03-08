@@ -32,13 +32,15 @@ slateBlueprint <- function(title,
 }
 
 
-slateInput <- function(name, input.type,
-                       parent = NULL,
+slateInput <- function(name,
+                       type = "character",
                        default = NULL,
+                       parent = NULL,
                        long.name = "",
                        description = "",
                        condition = NULL,
                        wizards = list(),
+                       input.type = type,  # legacy
                        ...) {
   if (is.null(default))
     default <- input.handlers[[ input.type ]]$default.value
@@ -58,11 +60,20 @@ slateInput <- function(name, input.type,
   # add additional input parameters specified
   input <- modifyList(input, list(...))
 
+  # check if valid input type
+  if (!(input$input.type %in% names(input.handlers)))
+    stop("\"", input$input.type, "\" is not a valid input type.")
+
   # include type-specific default values that were not specified
   pars <- getHandler(input)$params.list %>%
     map("default")
 
-  input <- modifyList(input, pars)
+  w <- which(!(names(pars) %in% names(input)))
+
+  input <- modifyList(input, pars[w])
+
+  # coerce default value
+  input$default <- getHandler(input)$as.value(value = input$default)
 
   # make sure the id is set
   input$id <- paste0("input_", name)
