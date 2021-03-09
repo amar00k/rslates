@@ -61,6 +61,20 @@ pprint <- function(...) {
 }
 
 
+dlog <- function(..., format = NULL, use.time = TRUE, use.from = TRUE, level = 3) {
+  if (!is.null(format)) {
+    format <- strsplit(format, split = "")[[1]]
+    use.time <- "t" %in% format
+    use.from <- "f" %in% format
+  }
+
+  time <- if (use.time) paste0(format(Sys.time(), usetz = FALSE), " ") else ""
+  from <- if (use.from) paste0("[", toString(sys.call(sys.parent())), "] ")
+
+  cat(paste0(time, from, paste(...), "\n"))
+}
+
+
 b64.uid <- function(size = 64) {
   paste(sample(c(LETTERS, letters, 0:9), size = size, replace=TRUE), collapse="")
 }
