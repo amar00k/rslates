@@ -100,6 +100,10 @@ inputHandler <- function(create.ui = function(x, ns = identity, value = NULL) {
 
 
 input.handlers <- list(
+
+  #
+  # logical
+  #
   logical = inputHandler(
     default.value = FALSE,
     params.list = list(
@@ -129,8 +133,10 @@ input.handlers <- list(
       )
     },
     update.ui = function(x, session) {
-      # TODO
-      # updateSelectInput(session, inputId = id, ...)
+      switch(
+        x$display.type,
+        "select" = updateSelectInput(session, inputId = x$id, value = as.character(x$value))
+      )
     },
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
@@ -144,6 +150,10 @@ input.handlers <- list(
       return(value)
     }
   ),
+
+  #
+  # character
+  #
   character = inputHandler(
     default.value = "",
     params.list = list(
@@ -156,7 +166,7 @@ input.handlers <- list(
                       value = value, wizards = x$wizards)
     },
     update.ui = function(x, session) {
-      #updateTextInput(session, inputId = id, ...)
+      updateTextInput(session, inputId = x$id, value = as.character(x$value))
     },
     as.source = function(x = NULL, session = NULL, value = NULL) {
       if (is.null(value))
@@ -168,6 +178,10 @@ input.handlers <- list(
         value
     }
   ),
+
+  #
+  # numeric
+  #
   numeric = inputHandler(
     default.value = 0,
     params.list = list(
@@ -180,8 +194,8 @@ input.handlers <- list(
       slatesNumericInput(ns(x$id), label = x$name,
                          value = value, wizards = x$wizards)
     },
-    update.ui = function(session, id, ...) {
-      updateNumericInput(session, inputId = id, ...)
+    update.ui = function(x, session) {
+      updateNumericInput(session, inputId = x$id, value = x$value)
     },
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
@@ -195,6 +209,10 @@ input.handlers <- list(
       as.numeric(value)
     }
   ),
+
+  #
+  # expression
+  #
   expression = inputHandler(
     default.value = "",
     params.list = list(
@@ -206,8 +224,8 @@ input.handlers <- list(
       slatesExpressionInput(ns(x$id), label = x$name,
                             value = value, wizards = x$wizards)
     },
-    update.ui = function(session, id, ...) {
-      updateTextInput(session, inputId = id, ...)
+    update.ui = function(x, session) {
+      updateTextInput(session, inputId = x$id, value = as.character(x$value))
     },
     as.value = function(x = NULL, session = NULL, value = NULL) {
       if (is.null(value))
@@ -243,6 +261,10 @@ input.handlers <- list(
         shinyjs::addClass(x$id, "invalid-expression")
     }
   ),
+
+  #
+  # choices
+  #
   choices = inputHandler(
     default.value = list(),
     params.list = list(
@@ -272,8 +294,10 @@ input.handlers <- list(
       }
     },
     update.ui = function(x, session) {
-      # TODO
-      #updateSelectInput(session, x$id, choices = x$choices, selected = x$value, multiple = multiple)
+      if (!(x$custom == TRUE))
+        updateSelectInput(session, x$id, selected = as.character(x$value))
+      else
+        updateSelectizeInput(session, x$id, selected = as.character(x$value))
     },
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
@@ -295,6 +319,10 @@ input.handlers <- list(
       return (value)
     }
   ),
+
+  #
+  # numeric2
+  #
   numeric2 = inputHandler(
     default.value = c(0, 0),
     params.list = list(
@@ -304,11 +332,14 @@ input.handlers <- list(
 
       slatesNumeric2Input(ns(x$id), label = x$name, value = value, wizards = x$wizards)
     },
-    update.ui = function(session, id, ...) {
-      #updateNumericInput(session, inputId = id, ...)
+    update.ui = function(x, session) {
+      map(1:2, ~updateNumericInput(
+        session,
+        inputId = paste0(x$id, "_", .),
+        value = as.character(x$value[ . ])))
     },
     get.input = function(x, session) {
-      map(1:2, ~session$input[[ paste0(x$id, "_", .x) ]])
+      map(1:2, ~session$input[[ paste0(x$id, "_", .) ]])
     },
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
@@ -333,6 +364,10 @@ input.handlers <- list(
       value %>% paste(collapse = ", ") %>% paste0("c(", ., ")")
     }
   ),
+
+  #
+  # numeric4
+  #
   numeric4 = inputHandler(
     default.value = c(0, 0, 0, 0),
     params.list = list(
@@ -342,11 +377,14 @@ input.handlers <- list(
 
       slatesNumeric4Input(ns(x$id), label = x$name, value = value, wizards = x$wizards)
     },
-    update.ui = function(session, id, ...) {
-      #updateNumericInput(session, inputId = id, ...)
+    update.ui = function(x, session) {
+      map(1:4, ~updateNumericInput(
+        session,
+        inputId = paste0(x$id, "_", .),
+        value = as.character(x$value[ . ])))
     },
     get.input = function(x, session) {
-      map(1:4, ~session$input[[ paste0(x$id, "_", .x) ]])
+      map(1:4, ~session$input[[ paste0(x$id, "_", .) ]])
     },
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
