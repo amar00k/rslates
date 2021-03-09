@@ -86,7 +86,7 @@ substituteVariable <- function(input, opts, assign = "") {
 
   # result with or without assignment
   if (assign != "")
-    paste0(assign, "=", value.text)
+    value.text <- paste0(assign, "=", value.text)
   else
     value.text
 
