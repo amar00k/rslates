@@ -123,6 +123,16 @@
   overflow-x: hidden;
 }*/
 
+
+
+.slate {
+  /*border-width: 0;*/
+}
+
+.slate.editing {
+  border-width: thick;
+}
+
 .slate > .card-header > p {
   font-size: larger;
   font-weight: lighter;
