@@ -325,6 +325,30 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     })
 
 
+    # click on reset inputs
+    observeEvent(input$slate_reset, {
+      dlog()
+
+      # close the menu
+      shinyjs::click("settings_button")
+
+      inputs <- blueprint$inputs %>%
+        map(~list_modify(., value = .$default))
+
+      for (x in inputs)
+        getHandler(x)$update.ui(x, session)
+    })
+
+
+    observe(label = "reset.inputs", {
+      values <- input.values()
+      all.default <- all(map_lgl(blueprint$inputs, ~identical(values[[ .$name ]], .$default)))
+
+      shinyjs::toggleState("slate_reset", condition = !all.default)
+    })
+
+
+
     # preprocesses the blueprint source, fills in the preprocessor
     # reactiveValues structure and updates the blueprint reactiveValues
     # inputs and outputs structures
