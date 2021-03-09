@@ -39,6 +39,27 @@ slateOptions <- function(envir = new.env(),
 
 
 
+# labels for the "Edit Blueprint" menu item
+edit.blueprint.labels <- list(
+  open = tags$div(
+    icon("screwdriver"), "Edit Blueprint",
+    tags$div(
+      class = "font-weight-light small",
+      "Edit the slate blueprint source code.",
+      tags$br(),
+      tags$i("Warning: this will reset all inputs.")
+    )
+  ),
+  close = tags$div(
+    icon("times"), tags$b("Close Editor"),
+    tags$div(
+      class = "font-weight-light small",
+      "Return to normal view with",
+      "current settings."
+    )
+  )
+)
+
 
 
 slateUI <- function(id, blueprint, slate.options = slateOptions()) {
@@ -46,22 +67,80 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
 
   height <- slate.options$height
 
-  body.ui <- tags$div(
-    tags$div(
-      class = "card-header",
-      #style = "height: 200px",
-      tags$div(
-        class = "container pt-3",
-        #class = "h-100",
-        shinyAce::aceEditor(
-          ns("blueprint_source"),
-          height = "250px",
-          mode = "r",
-          value = blueprint$source
-        ),
-        uiOutput(ns("blueprint_alerts"))
+
+  dropdown.ui <- tags$div(
+    shinyWidgets::dropdownButton(
+      inputId = ns("settings_button"), label = "", icon = icon("cog"),
+      circle = FALSE, inline = FALSE, right = TRUE,
+      actionLink(
+        ns("slate_rename"),
+        label = tags$div(icon("pencil"), "Rename")
+      ),
+      tags$hr(),
+      tags$a(
+        href = "javascript:void(0);",
+        shinyWidgets::prettyToggle(
+          inputId = ns("slate_view_inputs"),
+          label_on = "View Inputs",
+          label_off = "View Inputs",
+          icon_on = icon("eye"),
+          icon_off = icon("eye-slash"),
+          value = TRUE,
+          status_on = "default",
+          status_off = "default",
+          plain = TRUE
+        )
+      ),
+      actionLink(
+        ns("slate_reset"),
+        label = tags$div(
+          icon("undo"), "Reset Inputs",
+          tags$div(
+            class = "font-weight-light small",
+            #style = "white-space: normal;",
+            "Reset all inputs to their default values."
+          )
+        )
+      ),
+      tags$hr(),
+      actionLink(
+        ns("slate_export"),
+        label = tags$div(
+          icon("file-export"), "Export...",
+          tags$div(
+            class = "font-weight-light small",
+            #style = "white-space: normal;",
+            "Export this slate to R source, RMarkdown",
+            tags$br(),
+            "or HTML."
+          )
+        )
+      ),
+      tags$hr(),
+      actionLink(
+        ns("slate_edit"),
+        label = edit.blueprint.labels$open
       )
+    )
+  )
+
+
+  editor.ui <- tags$div(
+    id = ns("blueprint_editor"),
+    class = "container pt-3",
+    shinyAce::aceEditor(
+      ns("blueprint_source"),
+      height = "250px",
+      mode = "r",
+      value = blueprint$source
     ),
+    uiOutput(ns("blueprint_alerts")),
+    tags$hr()
+  )
+
+
+  body.ui <- tags$div(
+    shinyjs::hidden(editor.ui),
     tags$div(
       class = "d-flex mh-100 flex-row justify-content-between align-content-stretch",
       style = if (!is.null(height)) paste0("height: ", height, ";") else "",
@@ -78,7 +157,7 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
       tags$div(
         class = "flex-fill"),
       tags$div(
-        id = ns("slate_inputs_body"),
+        id = ns("slate_inputs_container"),
         class = "slate-inputs-container col-6 show",
         tags$div(
           class = "collapse show",
@@ -92,18 +171,16 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
     )
   )
 
+
   if (slate.options$use.card) {
     if (slate.options$card.header == TRUE) {
       header.ui <- tags$div(
         class="card-header d-flex justify-content-between",
-        tags$p(blueprint$title),
-        actionButton(
-          ns("btn_edit"),
+        textOutput(ns("title"), container = tags$p),
+        tags$div(
           class = "ml-auto",
-          icon = icon("cog"),
-          `data-toggle` = "collapse",
-          href = paste0("#", ns("slate_inputs_body")),
-          label = "")
+          dropdown.ui
+        )
       )
     } else {
       header.ui <- NULL
@@ -135,8 +212,60 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
       )
     }
 
+    if (is.null(global.options)) {
+      global.options <- reactiveValues(
+        ace.theme = getOption("rslates.default.ace.theme")
+      )
+    }
+
     ready <- uiReady(session)
     source.output <- slateOutput("Source", type="source")
+
+    edit.mode <- reactiveVal(FALSE)
+
+
+    # click on edit blueprint
+    observeEvent(input$slate_edit, {
+      dlog()
+
+      # close the menu
+      shinyjs::click("settings_button")
+
+      if (edit.mode() == FALSE) {
+        edit.mode(TRUE)
+
+        updateActionLink(session, "slate_edit",
+          label = as.character(edit.blueprint.labels$close)
+        )
+      } else {
+        edit.mode(FALSE)
+
+        updateActionLink(session, "slate_edit",
+          label = as.character(edit.blueprint.labels$open)
+        )
+      }
+    })
+
+
+    # set edit mode on or off
+    observeEvent(edit.mode(), {
+      dlog()
+
+      shinyjs::toggleElement("blueprint_editor", condition = edit.mode())
+
+      shinyjs::toggleClass("slate_div", class = "editing border-warning", condition = edit.mode())
+
+      shinyjs::toggleState("slate_rename", condition = !edit.mode())
+      shinyjs::toggleState("slate_export", condition = !edit.mode())
+    })
+
+
+    # view / hide inputs
+    observeEvent(input$slate_view_inputs, {
+      shinyjs::toggleElement("slate_inputs_container", condition = input$slate_view_inputs)
+    })
+
+
 
     # Store blueprint
     blueprint <- reactiveValues()
@@ -147,7 +276,7 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
     # provides the values of all inputs
     input.values <- reactive({
-      print("slate.R: update reactive input values")
+      dlog()
 
       blueprint$inputs %>%
         map(~getHandler(.)$as.value(., session))
@@ -156,7 +285,7 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
     # provides the sources for all outputs (with variables substituted)
     output.sources <- reactive({
-      print("slate.R: update output sources")
+      dlog()
 
       inputs <- blueprint$inputs
       outputs <- blueprint$outputs
@@ -186,10 +315,13 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     # preprocesses the blueprint source, fills in the preprocessor
     # reactiveValues structure and updates the blueprint reactiveValues
     # inputs and outputs structures
-    observe({
-      print("slate.R: observe source")
+    observe(label = "source", {
+      dlog()
 
       source <- input$blueprint_source
+
+      #preprocessSource(source)
+
       inputs <- isolate(blueprint$inputs)
       values <- isolate(input.values())
 
@@ -199,19 +331,19 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
         # preprocess the source
         parsed <- preprocessSource(source)
 
+        blueprint$title <- parsed$title
         blueprint$source <- source
         blueprint$pages <- parsed$pages
         blueprint$groups <- parsed$groups
-        blueprint$outputs <- parsed$outputs
         blueprint$blocks <- parsed$blocks
 
         # make slate inputs from the preprocessor input data and
         # restore input values but only if they "were" set to
         # the default value, otherwise we let them as they are
-        inputs <- parsed$inputs %>%
-          assignInputValues(values) %>%
-          modify_if(~!is.null(.$value) && identical(.$value, .$default),
-                    ~list_modify(., value = NULL))
+        inputs <- parsed$inputs # %>%
+          # assignInputValues(values) %>%
+          # modify_if(~!is.null(.$value) && identical(.$value, .$default),
+          #           ~list_modify(., value = NULL))
 
         isolate(blueprint$inputs <- inputs)
 
@@ -219,7 +351,7 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
           parsed$outputs %>%
           append(list(source.output))
 
-        isolate(blueprint$outputs <- outputs) %>% print
+        isolate(blueprint$outputs <- outputs)
       },
       error = function(e) {
         isolate(preprocessor$errors %<>% append(list(e$message)))
@@ -227,9 +359,14 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     })
 
 
+    output$title <- renderText({
+      blueprint$title
+    })
+
+
     # displays error alerts from the preprocessor
     output$blueprint_alerts <- renderUI({
-      print(preprocessor$errors)
+      dlog("blueprint_alerts")
 
       map(preprocessor$errors,
           ~tags$div(
@@ -242,7 +379,7 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
     # displays the main inputs panel
     output$inputs_panel <- renderUI({
-      print("slate.R: rendering input layout.")
+      dlog("inputs_panel")
 
       # remove all tooltips
       shinyjs::runjs("$('.tooltip').remove();")
@@ -260,6 +397,8 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     # displays the outputs panel
     output$outputs_panel <- renderUI({
       req(outputs <- blueprint$outputs)
+
+      dlog("outputs_panel")
 
       selected <- isolate(input$output_tabs)
 
@@ -309,7 +448,9 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
 
     # creates output handlers when output structure changes
-    observe({
+    observe(label = "output.handlers", {
+      dlog()
+
       for (x in blueprint$outputs) {
         getHandler(x)$create.output(
           x, session, output.sources, input.values, slate.envir
@@ -319,8 +460,8 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
 
     # handles the output observers
-    observe({
-      print("slate.R: observe outputs")
+    observe(label = "outputs", {
+      dlog()
 
       global.options$ace.theme
 
@@ -333,8 +474,8 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
 
     # handles the inputs observers
-    observe({
-      print("slate.R: observe inputs")
+    observe(label = "inputs", {
+      dlog()
 
       for (x in blueprint$inputs) {
         getHandler(x)$observer(x, session)
@@ -352,14 +493,6 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
     # list of observers to be destroyed on exit
     # observers <- list()
-
-    # slate reactives
-    if (is.null(global.options)) {
-      global.options <- reactiveValues(
-        ace.theme = "ambiance"
-      )
-    }
-
 
 
     # # extract groups from layout
@@ -387,6 +520,15 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     #
     #   }
     # }
+
+
+
+    # change the ace theme on all aceEditors
+    # except those that are part of outputs
+    observeEvent(global.options$ace.theme, {
+      shinyAce::updateAceEditor(session, "blueprint_source", theme = global.options$ace.theme)
+    })
+
 
 
 
