@@ -18,16 +18,17 @@ disableComments <- function(text, n = 1) {
 
 
 # make regular expression for preprocessor directives
-makePreprocessorDirectiveRE <- function(tokens) {
+makePreprocessorDirectiveRE <- function(tokens, level = 3) {
   tokens.re <-
     paste(tokens, collapse = "|") %>%
     paste0("(", ., ")")
 
-  re.1 <- paste0("\\$@ *", tokens.re, " *[^ \n]+ *\\((.|\n)*?\\) *(?=\n)")
-  re.2 <- paste0("\\$@ *", tokens.re, " *[^ \n]+")
-  re.3 <- paste0("\\$@ *", tokens.re)
+  re <- c(paste0("\\$@ *", tokens.re, " *[^ \n]+ *\\((.|\n)*?\\) *(?=\n)"),
+          paste0("\\$@ *", tokens.re, " *[^\n]+"),
+          paste0("\\$@ *", tokens.re))
+  re <- re[ 1:level ]
 
-  paste(re.1, re.2, re.3, sep = "|")
+  paste(re, collapse = "|")
 }
 
 
@@ -385,7 +386,9 @@ preprocessSource <- function(text) {
   if ("title" %in% matches.type) {
     blueprint.data$title <-
       matches[[ match("title", matches.type) ]] %>%
-      sub("^title *", "", .)
+      sub("^title *", "", .) %>%
+      trimws %>%
+      sub("^\"(.*)\"$", "\\1", .)
   }
 
   # set the pramble
@@ -427,8 +430,9 @@ preprocessSource <- function(text) {
   # Handle outputs
   lines <- strsplit(text, split = "\n")[[1]]
 
-  start.idx <- makePreprocessorDirectiveRE("output") %>%
+  start.idx <- makePreprocessorDirectiveRE("output", 2) %>%
     grep(lines, perl = TRUE)
+
   end.idx <- makePreprocessorDirectiveRE("end-output") %>%
     grep(lines, perl = TRUE)
 
