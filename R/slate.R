@@ -81,10 +81,10 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
         href = "javascript:void(0);",
         shinyWidgets::prettyToggle(
           inputId = ns("slate_view_inputs"),
-          label_on = "View Inputs",
           label_off = "View Inputs",
-          icon_on = icon("eye"),
-          icon_off = icon("eye-slash"),
+          label_on = "Hide Inputs",
+          icon_off = icon("eye"),
+          icon_on = icon("eye-slash"),
           value = TRUE,
           status_on = "default",
           status_off = "default",
@@ -219,9 +219,27 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     }
 
     ready <- uiReady(session)
+    edit.mode <- reactiveVal(FALSE)
+
     source.output <- slateOutput("Source", type="source")
 
-    edit.mode <- reactiveVal(FALSE)
+
+    # Everything that needs to be done AFTER the UI has been created
+    init <- observe({
+      req(ready())
+
+      # view / hide inputs
+      observeEvent(input$slate_view_inputs, {
+        dlog()
+
+        # close the menu
+        shinyjs::click("settings_button")
+
+        shinyjs::toggleElement("slate_inputs_container", condition = input$slate_view_inputs)
+      }, ignoreInit = TRUE)
+
+      init$destroy()
+    })
 
 
     # click on edit blueprint
@@ -259,11 +277,6 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
       shinyjs::toggleState("slate_export", condition = !edit.mode())
     })
 
-
-    # view / hide inputs
-    observeEvent(input$slate_view_inputs, {
-      shinyjs::toggleElement("slate_inputs_container", condition = input$slate_view_inputs)
-    })
 
 
 
