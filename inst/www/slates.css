@@ -243,6 +243,11 @@ input.numeric4-input {
 }
 
 
+/* prevent the off state from having a grey icon */
+.pretty.p-toggle .state.p-off .icon {
+  color: unset;
+}
+
 /* Layouts */
 
 .slates-flow-2 {
