@@ -5,19 +5,33 @@ $@preamble FALSE
 $@input x(expression, expression(1:10), description = "x coordinates for the plot; or structure defining both x and y coordinates.")
 $@input y(expression, description = "y coordinates for the plot.")
 
-$@input type(choices, "p",
-             choices = list("Points"="p", "Lines"="l", "Both"="b", "Empty Points"="c",
-                           "Overplotted"="o", "Stairs (Floor)"="s", "Stairs (Ceiling)"="S"),
-             description = "desired type of plot.")
+$@page Plot Options
 
-$@input main(character, description = "main title for the plot.")
-$@input xlab(character, description = "label for the x-axis.")
-$@input ylab(character, description = "label for the y-axis.")
+  $@input type(choices, "p",
+               choices = list("Points"="p", "Lines"="l", "Both"="b", "Empty Points"="c",
+                             "Overplotted"="o", "Stairs (Floor)"="s", "Stairs (Ceiling)"="S"),
+               description = "desired type of plot.")
 
-$@input xlim(numeric2, c(NA, NA), description = "x limits (x1, x2) for the plot.")
-$@input ylim(numeric2, c(NA, NA), description = "y limits (x1, x2) for the plot.")
+  $@group g1(layout = "flow-3", description = "Shape and color")
 
-$@input mar(numeric4, c(5.1, 4.1, 4.1, 2.1), description = "margins of the bottom, left, top and right sides of the plot in lines.")
+  $@input col(expression, description = "colors for points and lines.")
+  $@input pch(expression, description = "plotting characters or symbols.")
+  $@input cex(expression, description = "size of plotting characters and symbols.")
+
+  $@group g2(layout = "flow-2", description = "Labels")
+
+  $@input main(character, description = "main title for the plot.")
+  $@input xlab(character, description = "label for the x-axis.")
+  $@input ylab(character, description = "label for the y-axis.")
+
+  $@group g3(layout = "flow-2", description = "Limits for the axes")
+
+  $@input xlim(numeric2, c(NA, NA), description = "x limits (x1, x2) for the plot.")
+  $@input ylim(numeric2, c(NA, NA), description = "y limits (y1, y2) for the plot.")
+
+$@page Additional Graphical Options
+
+  $@input mar(numeric4, c(5.1, 4.1, 4.1, 2.1), description = "margins of the bottom, left, top and right sides of the plot in lines.")
 
 $@output Scatterplot(plot)
 
