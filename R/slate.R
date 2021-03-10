@@ -47,7 +47,7 @@ edit.blueprint.labels <- list(
       class = "font-weight-light small",
       "Edit the slate blueprint source code.",
       tags$br(),
-      tags$i("Warning: this will reset all inputs.")
+      tags$i("Warning: you may lose your current settings.")
     )
   ),
   close = tags$div(
