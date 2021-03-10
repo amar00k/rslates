@@ -32,10 +32,31 @@ slateBlueprint <- function(title,
 }
 
 
+#' Define a Slate Input
+#'
+#' @param name the name of the input.
+#' @param type the type of the input. use `names(input.handlers)` for a list of valid
+#'   input types.
+#' @param default the default value for the input.
+#' @param parent the parent of this input. Can be either the name of a group or page, or NULL
+#'   to have the input be a child of root, or "auto" (the default) to infer the parent based
+#'   on the order of page, group and input definitions. See [`inferSlateLayout()`] for details.
+#' @param long.name the name to display in the user interface, or NULL to use the input's name
+#' @param description the description of the input. Usually this is shown via a tooltip.
+#' @param condition an expression that determines the visibility of this input, or NULL to
+#'   always show the input.
+#' @param wizards a list of wizards associated with this input. Wizards will ususally be
+#'   displayed in a dropdown menu above the input. See [`slateWizard()`] for details.
+#' @param input.type *legacy: use `type` instead*
+#' @param ... additional input parameters to be stored in the input structure. These are usually
+#'   type-specific parameters, such as `choices` if the input is of type `select`.
+#'
+#' @return A list of input parameters suitable to be passed along to other `rslates` functions.
+#' @export
 slateInput <- function(name,
                        type = "character",
                        default = NULL,
-                       parent = NULL,
+                       parent = "auto",
                        long.name = "",
                        description = "",
                        condition = NULL,
@@ -100,7 +121,7 @@ slatePage <- function(name, ...,
 
 
 slateGroup <- function(name, ...,
-                       parent = NULL,
+                       parent = "auto",
                        description = "",
                        layout = "flow-2",
                        condition = NULL) {
@@ -117,6 +138,44 @@ slateGroup <- function(name, ...,
   group$id <- paste0("group_", name)
 
   return(group)
+}
+
+
+#' Infer the Parent of Layout Elements By Their Order
+#'
+#' @details This function takes in a list of pages, groups and inputs and
+#' replaces the `parent` of elements with `parent = "auto"` with the name of the
+#' previous group or page.
+#'
+#' @param layout an ordered list of layout elements (pages, groups and inputs).
+#'
+#' @return The same structure passed in `layout` with the appropriate modifications
+#'   to `parent` values
+#' @export
+inferSlateLayout <- function(layout) {
+  last.page <- NULL
+  last.group <- NULL
+
+  for (i in seq_along(layout)) {
+    x <- layout[[ i ]]
+
+    if (!is.null(x$parent) && x$parent == "auto") {
+      if (x$type == "group" || (x$type == "input" && is.null(last.group))) {
+        layout[[ i ]]$parent <- last.page$name
+      } else if (x$type == "input") {
+        layout[[ i ]]$parent <- last.group$name
+      }
+    }
+
+    if (x$type == "page") {
+      last.page <- x
+      last.group <- NULL
+    } else if (x$type == "group") {
+      last.group <- x
+    }
+  }
+
+  return(layout)
 }
 
 

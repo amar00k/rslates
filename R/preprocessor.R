@@ -399,32 +399,24 @@ preprocessSource <- function(text) {
       as.logical
   }
 
-  # parse pages
-  blueprint.data$pages <- makePreprocessorDirectiveRE("page") %>%
+  # process layout elements (pages, groups, inputs)
+  layout <-
+    makePreprocessorDirectiveRE("page|group|input") %>%
     gregexpr(clean.text, perl = TRUE) %>%
     regmatches(clean.text, .) %>%
     unlist() %>%
-    sub("^\\$@page *", "", .) %>%
-    map(preprocessLayoutDefinition, "page") %>%
+    map(~{
+      type <- sub("^\\$@(page|group|input).*", "\\1", .)
+      def <- sub("^\\$@(page|group|input) *", "", .)
+
+      preprocessLayoutDefinition(def, type)
+    }) %>%
+    inferSlateLayout %>%
     set_names(map(., "name"))
 
-  # parse groups
-  blueprint.data$groups <- makePreprocessorDirectiveRE("group") %>%
-    gregexpr(clean.text, perl = TRUE) %>%
-    regmatches(clean.text, .) %>%
-    unlist() %>%
-    sub("^\\$@group *", "", .) %>%
-    map(preprocessLayoutDefinition, "group") %>%
-    set_names(map(., "name"))
-
-  # parse inputs
-  blueprint.data$inputs <- makePreprocessorDirectiveRE("input") %>%
-    gregexpr(clean.text, perl = TRUE) %>%
-    regmatches(clean.text, .) %>%
-    unlist() %>%
-    sub("^\\$@input *", "", .) %>%
-    map(preprocessLayoutDefinition, "input") %>%
-    set_names(map(., "name"))
+  blueprint.data$pages <- keep(layout, ~.$type == "page")
+  blueprint.data$groups <- keep(layout, ~.$type == "group")
+  blueprint.data$inputs <- keep(layout, ~.$type == "input")
 
 
   # Handle outputs
