@@ -437,6 +437,7 @@ preprocessSource <- function(text) {
 
   blueprint.data$outputs <-
     map2(start.idx, end.idx, ~lines[ .x:.y ]) %>%
+    keep(~sub(".*\\$@output *", "", .[1]) != "") %>%
     map(preprocessOutput) %>%
     set_names(map(., "name"))
 
