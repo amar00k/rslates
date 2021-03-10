@@ -7,12 +7,10 @@
 
 
 
+blueprintEditorApp <- function() {
+  blueprint <- getOption("rslates.bp.editor.blueprint")
+  theme <- getOption("rslates.default.theme")
 
-
-
-
-
-slateViewerApp <- function(blueprint = slateBlueprint("untitled")) {
   section.div <- function(...) {
     tags$div(
       style = "filter: drop-shadow(0px 18px 8px #00000011);",
@@ -29,7 +27,7 @@ slateViewerApp <- function(blueprint = slateBlueprint("untitled")) {
 
   ui <- slatesNavbarPage(
     title = "Slates",
-    theme = getOption("rslates.default.theme"),
+    theme = theme,
     header = tagList(
     ),
     tabs = list(
@@ -107,5 +105,5 @@ slateViewerApp <- function(blueprint = slateBlueprint("untitled")) {
   shiny::shinyApp(ui, server)
 }
 
-slateViewerApp(getOption("rslates.viewer.blueprint"))
+blueprintEditorApp()
 
