@@ -2,10 +2,12 @@
 
 export(createInputLayout)
 export(create_new_project_modal)
+export(inferSlateLayout)
 export(inputHandler)
 export(loadBlueprints)
 export(restoreBlueprint)
 export(simplifyBlueprint)
+export(slateInput)
 export(slateOptions)
 export(slatesApp)
 export(slatesFileInput)
