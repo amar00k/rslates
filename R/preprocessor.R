@@ -357,8 +357,6 @@ preprocessSource <- function(text) {
 
   # initialize the return structure
   blueprint.data <- list(
-    title = "Untitled",
-    preamble = FALSE,
     pages = list(),
     groups = list(),
     inputs = list(),
@@ -374,34 +372,6 @@ preprocessSource <- function(text) {
   clean.text <- text %>%
     removeComments(n = 3) %>%
     disableComments(n = 2)
-
-  # get matches
-  matches <- makePreprocessorDirectiveRE(c("title", "preamble")) %>%
-    gregexpr(clean.text, perl = TRUE) %>%
-    regmatches(clean.text, .) %>%
-    unlist() %>%
-    sub("^\\$@ *", "", .)
-
-  # extract the type of definition
-  matches.type <- strsplit(matches, " ") %>%
-    map_chr(~.[[1]])
-
-  # set the title
-  if ("title" %in% matches.type) {
-    blueprint.data$title <-
-      matches[[ match("title", matches.type) ]] %>%
-      sub("^title *", "", .) %>%
-      trimws %>%
-      sub("^\"(.*)\"$", "\\1", .)
-  }
-
-  # set the pramble
-  if ("preamble" %in% matches.type) {
-    blueprint.data$preamble <-
-      matches[[ match("preamble", matches.type) ]] %>%
-      sub("^preamble *", "", .) %>%
-      as.logical
-  }
 
   # process layout elements (pages, groups, inputs)
   layout <-
