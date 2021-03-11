@@ -139,7 +139,7 @@ blueprintEditorServer <- function(id, blueprint, global.options = NULL) {
     output$blueprint_alerts <- renderUI({
       dlog("blueprint_alerts")
 
-      map(errors,
+      map(errors(),
           ~tags$div(
             class = "alert alert-danger",
             . #$message
@@ -328,6 +328,8 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     # Store blueprint
     blueprint <- do.call(reactiveValues, blueprint.ini)
 
+    slate.title <- reactiveVal(blueprint.ini$name)
+
     blueprint.editor <- blueprintEditorServer(
       "editor",
       blueprint = blueprint,
@@ -453,7 +455,7 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
 
     output$title <- renderText({
-      blueprint$title
+      slate.title()
     })
 
 

@@ -320,7 +320,7 @@ blueprintFromJSON <- function(filename=NULL, text=NULL) {
     data <- jsonlite::fromJSON(txt = text, simplifyVector = TRUE)
 
   blueprint <- slateBlueprint(
-    title = data$title,
+    name = data$name,
     author = data$author,
     category = data$category,
     tags = data$tags,
