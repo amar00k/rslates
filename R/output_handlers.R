@@ -97,26 +97,26 @@ output.handlers <- list(
         eval(str2expression(text), envir = new.env(parent = envir()))
       })
     }
-  ),
-  source = outputHandler(
-    create.ui = function(id, title, options) {
-      shinyAce::aceEditor(id,
-                          mode = "r",
-                          height = "300px",
-                          readOnly = TRUE,
-                          showLineNumbers = TRUE,
-                          highlightActiveLine = FALSE)
-    },
-    observer = function(id, session, sources, inputs, envir, global.options) {
-      text <-
-        map(sources(), ~paste0("#-- ", .$name, "\n", .$source)) %>%
-        paste(collapse = "\n\n")
-
-      shinyAce::updateAceEditor(
-        session, editorId = id, value = text, theme = global.options$ace.theme
-      )
-    }
   )
+  # source = outputHandler(
+  #   create.ui = function(id, title, options) {
+  #     shinyAce::aceEditor(id,
+  #                         mode = "r",
+  #                         height = "300px",
+  #                         readOnly = TRUE,
+  #                         showLineNumbers = TRUE,
+  #                         highlightActiveLine = FALSE)
+  #   },
+  #   observer = function(id, session, sources, inputs, envir, global.options) {
+  #     text <-
+  #       map(sources(), ~paste0("#-- ", .$name, "\n", .$source)) %>%
+  #       paste(collapse = "\n\n")
+  #
+  #     shinyAce::updateAceEditor(
+  #       session, editorId = id, value = text, theme = global.options$ace.theme
+  #     )
+  #   }
+  # )
 
 )
 
