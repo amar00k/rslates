@@ -233,22 +233,22 @@ input.handlers <- list(
 
       value <- as.character(value)
 
-      value <- tryCatch({
-        str2expression(value)
-      },
-      error = function(e) {
-        return(as.character(value))
-      })
+      # value <- tryCatch({
+      #   str2expression(value)
+      # },
+      # error = function(e) {
+      #   return(as.character(value))
+      # })
 
       return(value)
     },
     as.source = function(x = NULL, session = NULL, value = NULL) {
       value <- input.handlers$expression$as.value(x, session, value)
 
-      if (class(value) == "expression")
-        value <- as.character(value)
-      else # is an invalid expression
-        value <- paste0("stop(\"Error: invalid expression found in input '", x$name, "'.\")")
+      # if (class(value) == "expression")
+      #   value <- as.character(value) %>% print
+      # else # is an invalid expression
+      #   value <- paste0("stop(\"Error: invalid expression found in input '", x$name, "'.\")")
 
       return(value)
     },
@@ -257,7 +257,17 @@ input.handlers <- list(
 
       value <- input.handlers$expression$as.value(x, session)
 
-      if (!(class(value) == "expression"))
+      valid <- tryCatch({
+        str2expression(value)
+
+        return(TRUE)
+      },
+      error = function(e) {
+        return(FALSE)
+      })
+
+      #if (!(class(value) == "expression"))
+      if (!valid)
         shinyjs::addClass(x$id, "invalid-expression")
     }
   ),
