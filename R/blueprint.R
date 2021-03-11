@@ -5,29 +5,26 @@ INLINE.MAX.CHAR <- 8
 ARG.TYPES <- c("numeric", "logical", "character", "expression", "choices", "file")
 
 
-slateBlueprint <- function(title,
-                           pages = list(),
-                           groups = list(),
-                           inputs = list(),
-                           outputs = list(),
-                           datasets = list(),
-                           imports = list()) {
-  pages %<>% set_names(map(., "name"))
-  groups %<>% set_names(map(., "name"))
-  inputs %<>% set_names(map(., "name"))
-  outputs %<>% set_names(map(., "name"))
-
-  # if (!("default" %in% names(pages)))
-  #   pages %<>% prepend(list(default = slatePage("default")))
+slateBlueprint <- function(name = "Untitled",
+                           author = "",
+                           category = "",
+                           tags = "",
+                           source = "") {
+  preprocessed <- preprocessSource(source)
 
   list(
-    title = title,
-    pages = pages,
-    groups = groups,
-    inputs = inputs,
-    outputs = outputs,
-    datasets = datasets,
-    imports = imports
+    name = name,
+    author = author,
+    category = category,
+    tags = tags,
+    pages = preprocessed$pages,
+    groups = preprocessed$groups,
+    inputs = preprocessed$inputs,
+    blocks = preprocessed$blocks,
+    outputs = preprocessed$outputs,
+    datasets = list(),
+    imports = list(),
+    source = source
   )
 }
 
@@ -302,7 +299,15 @@ restoreBlueprint <- function(blueprint) {
 
 
 blueprintToJSON <- function(blueprint, pretty = FALSE) {
-  jsonlite::toJSON(blueprint, pretty = pretty)
+  data <- list(
+    name = blueprint$name,
+    author = blueprint$author,
+    category = blueprint$category,
+    tags = blueprint$tags,
+    source = blueprint$source
+  )
+
+  jsonlite::toJSON(data, pretty = pretty)
 }
 
 blueprintFromJSON <- function(filename=NULL, text=NULL) {
@@ -310,55 +315,61 @@ blueprintFromJSON <- function(filename=NULL, text=NULL) {
     stop("Only one of filename or text must be supplied.")
 
   if (!is.null(filename))
-    blueprint <- jsonlite::fromJSON(filename, simplifyVector = TRUE)
+    data <- jsonlite::fromJSON(filename, simplifyVector = TRUE)
   else
-    blueprint <- jsonlite::fromJSON(txt = text, simplifyVector = TRUE)
+    data <- jsonlite::fromJSON(txt = text, simplifyVector = TRUE)
 
-  blueprint <- restoreBlueprint(blueprint)
-
-  return(blueprint)
-}
-
-
-
-
-
-
-loadBlueprint <- function(filename, format = c("auto", "txt", "json")) {
-  format <- match.arg(format)
-
-  if (format == "auto") {
-    format <- gsub("^.*\\.(.*?)$", "\\1", filename)
-
-    if (!(format %in% c("txt", "json")))
-      stop("File extension must be txt or json.")
-  }
-
-  if (format == "txt") {
-    source <- readLines(filename) %>% paste(collapse = "\n")
-
-    parsed <- preprocessSource(source)
-
-    inputs <- parsed$inputs %>%
-      map(~do.call(slateInput, .))
-
-    outputs <- parsed$sections %>%
-      map(~do.call(slateOutput, .))
-
-    blueprint <- slateBlueprint(
-      "untitled",
-      inputs = inputs,
-      outputs = outputs
-    )
-
-    blueprint$source <- source
-  } else if (format == "json") {
-    blueprint <- blueprintFromJSON(filename)
-  }
+  blueprint <- slateBlueprint(
+    title = data$title,
+    author = data$author,
+    category = data$category,
+    tags = data$tags,
+    source = data$source
+  )
 
   return(blueprint)
 }
 
+
+
+
+#
+#
+# loadBlueprint <- function(filename,
+#                           format = c("auto", "txt", "json")) {
+#   format <- match.arg(format)
+#
+#   if (format == "auto") {
+#     format <- gsub("^.*\\.(.*?)$", "\\1", filename)
+#
+#     if (!(format %in% c("txt", "json")))
+#       stop("File extension must be txt or json.")
+#   }
+#
+#   if (format == "txt") {
+#     source <- readLines(filename) %>% paste(collapse = "\n")
+#
+#     parsed <- preprocessSource(source)
+#
+#     inputs <- parsed$inputs
+#     outputs <- parsed$outputs
+#
+#     blueprint <- slateBlueprint(
+#       title = "Untitled",
+#       pages = parsed$pages,
+#       groups = parsed$groups,
+#       inputs = parsed$inputs,
+#       outputs = parsed$outputs
+#     )
+#
+#     blueprint$source <- source
+#   } else if (format == "json") {
+#     blueprint <- blueprintFromJSON(filename)
+#   }
+#
+#   return(blueprint)
+# }
+#
 
 
 
