@@ -24,6 +24,12 @@ NULL
   # if(any(toset)) options(op.rslates[toset])
   #
   # invisible()
+
+  options(rslates.default.theme = "Natural (soft light)")
+  options(rslates.default.ace.theme = "dawn")
+
+
+
 }
 
 

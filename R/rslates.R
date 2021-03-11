@@ -385,8 +385,6 @@ loadBlueprints <- function(path) {
     setNames(blueprints, sapply(blueprints, "[[", "title"))
 }
 
-options(rslates.default.ace.theme = "dawn")
-
 runSlatesApp <- function() {
     options(rslates.blueprints = loadBlueprints(system.file("blueprints", package="rslates")))
     runApp(system.file("app_rslates.R", package = "rslates"))
@@ -440,7 +438,7 @@ runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer
 # -------------
 
 runBlueprintEditorApp <- function(
-    blueprint.ini = slateBlueprint("untitled"),
+    blueprint.ini = NULL,
     blueprint.dir = NULL,
     theme = getOption("rslates.default.theme")) {
 

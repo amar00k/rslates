@@ -12,11 +12,15 @@ rslate.themes <- list(
     ) %>%
     bslib::bs_add_variables(
       "theme-colors" = "('light': #f1ede4, 'dark': #0b0d07, 'title': #26403B)"
-
     ) %>%
     bslib::bs_add_rules("
       body { background-image: linear-gradient(
         to bottom, #eae3d7, #DBD1BD 1000px, #B09A6D 2000px, #D64933 100%) ; }
+
+      .slate {
+        background: #F1ede4;
+      }
+
       .jstree-proton .jstree-wholerow-clicked {
         background: $primary;
       }
