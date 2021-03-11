@@ -3,6 +3,17 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 #' Setup Slate Display and Behaviour Options
 #'
 #' @param envir the parent environment where the slate code is executed.
@@ -36,6 +47,112 @@ slateOptions <- function(envir = new.env(),
     inputs.style = inputs.style
   ))
 }
+
+
+blueprintEditorUI  <- function(id, blueprint) {
+  ns <- NS(id)
+
+  tags$div(
+    id = ns("blueprint_editor"),
+    class = "container pt-3",
+    tags$div(
+      class = "slates-flow-2",
+      textInput(ns("blueprint_name"), "Name", value = blueprint$name),
+      textInput(ns("blueprint_author"), "Author(s)", value = blueprint$author),
+      selectInput(ns("blueprint_category"), "Category", choices = "", selected = ""),
+      selectizeInput(ns("blueprint_tags"), label = "Tags", choices = "", multiple = TRUE,
+                     options = list(
+                       delimiter = '',
+                       create = "function(input) { return { value: input, text: input } }"
+                     )
+      )
+    ),
+    shinyAce::aceEditor(
+      ns("blueprint_source"),
+      height = "250px",
+      mode = "r",
+      value = blueprint$source
+    ),
+    uiOutput(ns("blueprint_alerts")),
+    tags$hr()
+  )
+
+}
+
+
+
+blueprintEditorServer <- function(id, blueprint, global.options = NULL) {
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+
+    errors <- reactiveVal(list())
+
+
+    # preprocesses the blueprint source, fills in the preprocessor
+    # reactiveValues structure and updates the blueprint reactiveValues
+    # inputs and outputs structures
+    observe(label = "source", {
+      dlog()
+
+      source <- input$blueprint_source
+
+      #preprocessSource(source)
+
+      inputs <- isolate(blueprint$inputs)
+      #values <- isolate(input.values())
+
+      errors <- list()
+
+      tryCatch({
+        # preprocess the source
+        parsed <- preprocessSource(source)
+
+        blueprint$title <- parsed$title
+        blueprint$source <- source
+        blueprint$pages <- parsed$pages
+        blueprint$groups <- parsed$groups
+        blueprint$blocks <- parsed$blocks
+
+        # make slate inputs from the preprocessor input data and
+        # restore input values but only if they "were" set to
+        # the default value, otherwise we let them as they are
+        inputs <- parsed$inputs # %>%
+        # assignInputValues(values) %>%
+        # modify_if(~!is.null(.$value) && identical(.$value, .$default),
+        #           ~list_modify(., value = NULL))
+
+        isolate(blueprint$inputs <- inputs)
+
+        outputs <- parsed$outputs #%>%
+          #append(list(source.output))
+
+        isolate(blueprint$outputs <- outputs)
+      },
+      error = function(e) {
+        isolate(errors %<>% append(list(paste(toString(e))))) # e$message)))
+        isolate(errors(errors))
+      })
+    })
+
+
+    # displays error alerts from the preprocessor
+    output$blueprint_alerts <- renderUI({
+      dlog("blueprint_alerts")
+
+      map(errors,
+          ~tags$div(
+            class = "alert alert-danger",
+            . #$message
+          )
+      ) %>% tagList()
+    })
+
+
+    list()
+  })
+}
+
+
 
 
 
@@ -124,23 +241,9 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
     )
   )
 
-
-  editor.ui <- tags$div(
-    id = ns("blueprint_editor"),
-    class = "container pt-3",
-    shinyAce::aceEditor(
-      ns("blueprint_source"),
-      height = "250px",
-      mode = "r",
-      value = blueprint$source
-    ),
-    uiOutput(ns("blueprint_alerts")),
-    tags$hr()
-  )
-
-
   body.ui <- tags$div(
-    shinyjs::hidden(editor.ui),
+    #shinyjs::hidden(editor.ui),
+    uiOutput(ns("blueprint_editor_ui")),
     tags$div(
       class = "d-flex mh-100 flex-row justify-content-between align-content-stretch",
       style = if (!is.null(height)) paste0("height: ", height, ";") else "",
@@ -221,7 +324,15 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     ready <- uiReady(session)
     edit.mode <- reactiveVal(FALSE)
 
-    source.output <- slateOutput("Source", type="source")
+
+    # Store blueprint
+    blueprint <- do.call(reactiveValues, blueprint.ini)
+
+    blueprint.editor <- blueprintEditorServer(
+      "editor",
+      blueprint = blueprint,
+      global.options = global.options
+    )
 
 
     # Everything that needs to be done AFTER the UI has been created
@@ -269,22 +380,13 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     observeEvent(edit.mode(), {
       dlog()
 
-      shinyjs::toggleElement("blueprint_editor", condition = edit.mode())
+      #shinyjs::toggleElement("blueprint_editor", condition = edit.mode())
 
       shinyjs::toggleClass("slate_div", class = "editing border-warning", condition = edit.mode())
 
       shinyjs::toggleState("slate_rename", condition = !edit.mode())
       shinyjs::toggleState("slate_export", condition = !edit.mode())
     })
-
-
-
-
-    # Store blueprint
-    blueprint <- reactiveValues()
-    preprocessor <- reactiveValues(
-      errors = list()
-    )
 
 
     # provides the values of all inputs
@@ -312,10 +414,12 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
           substituteVariables(.$source, blocks, inputs)
         },
         error = function(e) {
-          e <- paste0("Error substituting variables in output '",
-                     .$name, "': ", e)
+          #e <- paste0("Error substituting variables in output '",
+          #           .$name, "': ", e)
 
-          isolate(preprocessor$errors %<>% append(list(e)))
+          #isolate(preprocessor$errors %<>% append(list(e)))
+
+          print(e)
 
           return(.$source)
         })
@@ -348,69 +452,8 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     })
 
 
-
-    # preprocesses the blueprint source, fills in the preprocessor
-    # reactiveValues structure and updates the blueprint reactiveValues
-    # inputs and outputs structures
-    observe(label = "source", {
-      dlog()
-
-      source <- input$blueprint_source
-
-      #preprocessSource(source)
-
-      inputs <- isolate(blueprint$inputs)
-      values <- isolate(input.values())
-
-      preprocessor$errors <- list()
-
-      tryCatch({
-        # preprocess the source
-        parsed <- preprocessSource(source)
-
-        blueprint$title <- parsed$title
-        blueprint$source <- source
-        blueprint$pages <- parsed$pages
-        blueprint$groups <- parsed$groups
-        blueprint$blocks <- parsed$blocks
-
-        # make slate inputs from the preprocessor input data and
-        # restore input values but only if they "were" set to
-        # the default value, otherwise we let them as they are
-        inputs <- parsed$inputs # %>%
-          # assignInputValues(values) %>%
-          # modify_if(~!is.null(.$value) && identical(.$value, .$default),
-          #           ~list_modify(., value = NULL))
-
-        isolate(blueprint$inputs <- inputs)
-
-        outputs <-
-          parsed$outputs %>%
-          append(list(source.output))
-
-        isolate(blueprint$outputs <- outputs)
-      },
-      error = function(e) {
-        isolate(preprocessor$errors %<>% append(list(e$message)))
-      })
-    })
-
-
     output$title <- renderText({
       blueprint$title
-    })
-
-
-    # displays error alerts from the preprocessor
-    output$blueprint_alerts <- renderUI({
-      dlog("blueprint_alerts")
-
-      map(preprocessor$errors,
-          ~tags$div(
-            class = "alert alert-danger",
-            . #$message
-          )
-      ) %>% tagList()
     })
 
 
@@ -451,10 +494,32 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
         )
       }))
 
+      output.tabs <- append(output.tabs, list(
+        tabPanel(
+          title = "Source",
+          shinyAce::aceEditor(ns("debug_source"),
+                              mode = "r",
+                              height = "300px",
+                              readOnly = TRUE,
+                              showLineNumbers = TRUE)
+        )
+      ))
+
       output.tabs$id <- ns("output_tabs")
       output.tabs$type <- "pills"
       output.tabs$selected <- selected
       outputs.ui <- do.call(tabsetPanel, output.tabs)
+    })
+
+
+    observe({
+      text <-
+        map(output.sources(), ~paste0("#-- ", .$name, "\n", .$source)) %>%
+        paste(collapse = "\n\n")
+
+      shinyAce::updateAceEditor(
+        session, editorId = "debug_source", value = text, theme = global.options$ace.theme
+      )
     })
 
 
@@ -528,6 +593,18 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     })
 
 
+
+    output$blueprint_editor_ui <- renderUI({
+      if (edit.mode() == FALSE)
+        return(tagList())
+
+      blueprintEditorUI(ns("editor"), blueprint)
+    })
+
+
+
+
+
     # list of observers to be destroyed on exit
     # observers <- list()
 
@@ -560,24 +637,31 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
 
 
-    # change the ace theme on all aceEditors
-    # except those that are part of outputs
-    observeEvent(global.options$ace.theme, {
-      shinyAce::updateAceEditor(session, "blueprint_source", theme = global.options$ace.theme)
-    })
+    # # change the ace theme on all aceEditors
+    # # except those that are part of outputs
+    # observeEvent(global.options$ace.theme, {
+    #   shinyAce::updateAceEditor(session, "blueprint_source", theme = global.options$ace.theme)
+    # })
 
 
 
 
-    load <- function(filename, format = c("auto", "txt", "json")) {
-      blueprint <- loadBlueprint(filename, format)
+    # load <- function(filename, format = c("auto", "txt", "json")) {
+    #   blueprint <- loadBlueprint(filename, format)
+    #
+    #   if (format == "txt") {
+    #     shinyAce::updateAceEditor(session, "blueprint_source",
+    #                               value = blueprint$source)
+    #   }
+    # }
 
-      if (format == "txt") {
-        shinyAce::updateAceEditor(session, "blueprint_source",
-                                  value = blueprint$source)
-      }
-    }
 
+    # blueprint.state <- reactive({
+    #   bp <- reactiveValueToList(blueprint)
+    #   bp$source <- blueprint$source
+    #
+    #   return(bp)
+    # })
 
 
 
@@ -603,7 +687,7 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
     return(
       list(
-        load = loadBlueprint,
+        blueprint = blueprint,
         destroy = destroy
         #blueprint = blueprint,
         #inputs = input.list,
