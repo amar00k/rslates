@@ -317,7 +317,8 @@ preprocessLayoutDefinition <- function(text, type) {
     eval(expr, envir = env)
   },
   error = function(e) {
-    stop(paste0("Error parsing variable definition: ", text))
+    #stop(paste0("Error parsing variable definition: ", text, ". ", toString(e)))
+    stop(e)
   })
 }
 
@@ -365,6 +366,9 @@ preprocessSource <- function(text) {
     datasets = list(),
     blocks = list()
   )
+
+  # sanitize text by removing \r
+  text <- gsub("\r", "", text)
 
   # clear preprocessor-level comments
   clean.text <- text %>%
