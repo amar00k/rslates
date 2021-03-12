@@ -12,7 +12,6 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
 
   editorLoadBlueprint <- function(blueprint.name) {
     path <- file.path(blueprint.dir, blueprint.list)
-
     blueprintFromJSON(filename = path)
   }
 
@@ -63,7 +62,7 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
               "preview_inputs_style",
               label = "Input Panel Style",
               choices = list("tabset", "collapses", "flowing"),
-              selected = "flowing"
+              selected = "tabset"
             ),
             textInput("slate_height", "Slate Height", value = "520px"),
             checkboxGroupInput(
@@ -72,9 +71,11 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
                           "Show Header" = "card.header"),
               selected = c("use.card", "card.header"))
           ),
-          shinyBS::bsTooltip("preview_inputs_style", title = "Style of the inputs panel."),
-          shinyBS::bsTooltip("slate_height", title = "Height of the slate in any valid css unit."),
-          uiOutput("slate_preview")
+          shinyBS::bsTooltip("preview_inputs_style", title = "Style of the inputs panel.",
+                             placement = "top"),
+          shinyBS::bsTooltip("slate_height", title = "Height of the slate in any valid css unit.",
+                             placement = "top"),
+          slateUI("slate")
         )
       )
     ),
@@ -85,15 +86,16 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
   server <- function(input, output, session) {
     global.options <- reactiveValues(ace.theme = getOption("default.ace.theme"))
 
-    slate.options <- reactive({
-      slateOptions(
-        open.inputs = TRUE,
-        open.editor = TRUE,
-        inputs.style = input$preview_inputs_style,
-        height = input$slate_height,
-        use.card = "use.card" %in% input$slate_options,
-        card.header = "card.header" %in% input$slate_options
-      )
+    slate.options <- do.call(
+      reactiveValues,
+      slateOptions(open.inputs = TRUE, open.editor = TRUE)
+    )
+
+    observe({
+      slate.options$inputs.style = input$preview_inputs_style
+      slate.options$height = input$slate_height
+      slate.options$use.card = "use.card" %in% input$slate_options
+      slate.options$card.header = "card.header" %in% input$slate_options
     })
 
 
@@ -113,56 +115,61 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
     })
 
     #
+    # New / Load / Save
+    #
+
+    blueprint.list <- reactiveVal(dir(blueprint.dir, pattern = "\\.json$"))
+
+
+    observeEvent(input$new_blueprint, {
+      options <- c("New Blueprint", blueprint.list() %>% sub("\\.json$", "", .))
+
+      updateSelectInput(
+        session,
+        "active_blueprint",
+        choices = options,
+        selected = "New Blueprint"
+      )
+    })
+
+
+    observe(label = "change.blueprint", {
+      dlog()
+
+      if (input$active_blueprint == "New Blueprint") {
+        new.blueprint <- slateBlueprint()
+      } else {
+        new.blueprint <- editorLoadBlueprint(paste0(input$active_blueprint, ".json"))
+      }
+
+      slate$setBlueprint(new.blueprint)
+    })
+
+
+    #
     # Slate
     #
 
-    blueprint <- reactiveVal(NULL)
-    server <- reactiveVal(NULL)
+    # load the initial blueprint
+    blueprint <- do.call(
+      reactiveValues,
+      editorLoadBlueprint(blueprint.list[1])
+    )
 
-    # observe active blueprint and create new server, destroying
-    # the previous one in the process
-    # also check for unsaved changes and so on
-    observe({
-      blueprint.name <- input$active_blueprint
-      server <- isolate(server())
+    slate <- slateServer(
+      "slate",
+      blueprint = blueprint,
+      slate.options = slate.options,
+      global.options = global.options
+    )
 
-      if (!is.null(server)) {
-        server$destroy()
-      }
-
-      blueprint <- editorLoadBlueprint(blueprint.name)
-
-      server <- slateServer(
-        "slate_preview",
-        blueprint = blueprint,
-        slate.options = slate.options(),
-        global.options = global.options
-      )
-
-      isolate({
-        blueprint(blueprint)
-        server(server)
-      })
-    })
-
-
-    output$slate_preview <- renderUI({
-      req(blueprint())
-
-      slateUI("slate_preview",
-              blueprint = blueprint(),
-              slate.options = slate.options())
-    })
-
+    #blueprint <- slate$blueprint
 
     output$save_state <- renderUI({
-      req(server())
-
-      if (is.null(server()))
-        return(tags$div())
+      req(slate)
 
       # if (identical(blueprint(), server()$blueprint()))
-        tags$span("All changes saved", style = "color: green;")
+      tags$span("All changes saved", style = "color: green;")
       # else
       #   tags$i("Unsaved changes", style = "color: red;")
     })
