@@ -541,7 +541,10 @@ createInputLayout <- function(pages, groups, inputs,
     map(~list_modify(., ui = createPageUI(., groups = groups, inputs = inputs, ns = ns)))
 
   # build the container
-  if (inputs.style == "tabset") {
+  if (length(pages) == 0) {
+    ui <- tagList()
+  } else
+    if (inputs.style == "tabset") {
     # simple tabset
     tabs <- unname(lapply(pages, function(x) tabPanel(title = x$name, x$ui)))
 
