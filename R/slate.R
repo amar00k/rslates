@@ -501,14 +501,21 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
         )
       }))
 
+      text <- isolate({
+        map(output.sources(), ~paste0("#-- ", .$name, "\n", .$source)) %>%
+          paste(collapse = "\n\n")
+      })
       output.tabs <- append(output.tabs, list(
         tabPanel(
           title = "Source",
+          tags$br(),
           shinyAce::aceEditor(ns("debug_source"),
+                              value = text,
                               mode = "r",
                               height = "300px",
                               readOnly = TRUE,
-                              showLineNumbers = TRUE)
+                              showLineNumbers = TRUE,
+                              theme = global.options$ace.theme)
         )
       ))
 
@@ -519,14 +526,23 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     })
 
 
+    # update the ace input when *values* or theme change
     observe({
+      sources <- isolate(output.sources())
+
       text <-
-        map(output.sources(), ~paste0("#-- ", .$name, "\n", .$source)) %>%
+        map(sources, ~paste0("#-- ", .$name, "\n", .$source)) %>%
         paste(collapse = "\n\n")
 
       shinyAce::updateAceEditor(
         session, editorId = "debug_source", value = text, theme = global.options$ace.theme
       )
+    })
+
+    output$debug_source <- renderText({
+      map(output.sources(), ~paste0("#-- ", .$name, "\n", .$source)) %>%
+        paste(collapse = "\n\n")
+
     })
 
 
@@ -606,6 +622,8 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
       if (edit.mode() == FALSE)
         return(tagList())
+
+      blueprint <- isolate(reactiveValuesToList(blueprint))
 
       blueprintEditorUI(ns("editor"), blueprint)
     })
