@@ -53,7 +53,7 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
               label = "Active Blueprint",
               choices = blueprint.list %>% sub("\\.json$", "", .)
             ),
-            actionButton("new_blueprint", "New Blueprint...", class = "ml-2"),
+            actionButton("new_blueprint", "New Blueprint", class = "ml-2"),
             uiOutput("save_state", class = "ml-auto"),
             actionButton("save_blueprint", "Save Changes", icon = icon("save"), class = "ml-2")
           ),
@@ -87,6 +87,8 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
 
     slate.options <- reactive({
       slateOptions(
+        open.inputs = TRUE,
+        open.editor = TRUE,
         inputs.style = input$preview_inputs_style,
         height = input$slate_height,
         use.card = "use.card" %in% input$slate_options,

@@ -32,7 +32,8 @@ slateOptions <- function(envir = new.env(),
                          height = NULL,
                          use.card = TRUE,
                          card.header = TRUE,
-                         open.settings = TRUE,
+                         open.inputs = TRUE,
+                         open.editor = FALSE,
                          inputs.style = c("tabset", "collapses", "flowing")) {
   # envir is a reactiveVal
   if (!("reactiveVal" %in% class(envir)))
@@ -43,7 +44,8 @@ slateOptions <- function(envir = new.env(),
     height = height,
     use.card = use.card,
     card.header = card.header,
-    open.settings = open.settings,
+    open.inputs = open.inputs,
+    open.editor = open.editor,
     inputs.style = inputs.style
   ))
 }
@@ -59,8 +61,11 @@ blueprintEditorUI  <- function(id, blueprint) {
       class = "slates-flow-2",
       textInput(ns("blueprint_name"), "Name", value = blueprint$name),
       textInput(ns("blueprint_author"), "Author(s)", value = blueprint$author),
-      selectInput(ns("blueprint_category"), "Category", choices = "", selected = ""),
-      selectizeInput(ns("blueprint_tags"), label = "Tags", choices = "", multiple = TRUE,
+      selectInput(ns("blueprint_category"), "Category",
+                  choices = "", selected = ""),
+      selectizeInput(ns("blueprint_tags"), label = "Tags", multiple = TRUE,
+                     choices = blueprint$tags,
+                     selected = blueprint$tags,
                      options = list(
                        delimiter = '',
                        create = "function(input) { return { value: input, text: input } }"
@@ -94,7 +99,7 @@ blueprintEditorServer <- function(id, blueprint, global.options = NULL) {
     observe(label = "source", {
       dlog()
 
-      source <- input$blueprint_source
+      req(source <- input$blueprint_source)
 
       #preprocessSource(source)
 
@@ -105,25 +110,23 @@ blueprintEditorServer <- function(id, blueprint, global.options = NULL) {
 
       tryCatch({
         # preprocess the source
-        parsed <- preprocessSource(source)
+        data <- preprocessSource(source)
 
-        blueprint$title <- parsed$title
         blueprint$source <- source
-        blueprint$pages <- parsed$pages
-        blueprint$groups <- parsed$groups
-        blueprint$blocks <- parsed$blocks
+        #blueprint$groups <- parsed$groups
+        #blueprint$blocks <- parsed$blocks
 
         # make slate inputs from the preprocessor input data and
         # restore input values but only if they "were" set to
         # the default value, otherwise we let them as they are
-        inputs <- parsed$inputs # %>%
+        inputs <- data$inputs # %>%
         # assignInputValues(values) %>%
         # modify_if(~!is.null(.$value) && identical(.$value, .$default),
         #           ~list_modify(., value = NULL))
 
         isolate(blueprint$inputs <- inputs)
 
-        outputs <- parsed$outputs #%>%
+        outputs <- data$outputs #%>%
           #append(list(source.output))
 
         isolate(blueprint$outputs <- outputs)
@@ -266,7 +269,7 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
           class = "collapse show",
           style = "width: 100%",
           div(
-            style = "height: 100%; overflow: auto;",
+            style = "height: 100%; overflow-y: auto;",
             uiOutput(ns("inputs_panel")),
           )
         )
@@ -322,8 +325,8 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     }
 
     ready <- uiReady(session)
-    edit.mode <- reactiveVal(FALSE)
 
+    edit.mode <- reactiveVal(NULL)
 
     # Store blueprint
     blueprint <- do.call(reactiveValues, blueprint.ini)
@@ -340,6 +343,8 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
     # Everything that needs to be done AFTER the UI has been created
     init <- observe({
       req(ready())
+
+      edit.mode(slate.options$open.editor)
 
       # view / hide inputs
       observeEvent(input$slate_view_inputs, {
@@ -362,19 +367,7 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
       # close the menu
       shinyjs::click("settings_button")
 
-      if (edit.mode() == FALSE) {
-        edit.mode(TRUE)
-
-        updateActionLink(session, "slate_edit",
-          label = as.character(edit.blueprint.labels$close)
-        )
-      } else {
-        edit.mode(FALSE)
-
-        updateActionLink(session, "slate_edit",
-          label = as.character(edit.blueprint.labels$open)
-        )
-      }
+      edit.mode(!edit.mode())
     })
 
 
@@ -383,6 +376,18 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
       dlog()
 
       #shinyjs::toggleElement("blueprint_editor", condition = edit.mode())
+
+      if (edit.mode() == TRUE) {
+        updateActionLink(
+          session, "slate_edit",
+          label = as.character(edit.blueprint.labels$close)
+        )
+      } else {
+        updateActionLink(
+          session, "slate_edit",
+          label = as.character(edit.blueprint.labels$open)
+        )
+      }
 
       shinyjs::toggleClass("slate_div", class = "editing border-warning", condition = edit.mode())
 
@@ -597,6 +602,8 @@ slateServer <- function(id, blueprint.ini, slate.options = NULL, global.options 
 
 
     output$blueprint_editor_ui <- renderUI({
+      req(!is.null(edit.mode()))
+
       if (edit.mode() == FALSE)
         return(tagList())
 
