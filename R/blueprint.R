@@ -176,7 +176,7 @@ inferSlateLayout <- function(layout) {
 }
 
 
-slateOutput <- function(name, type, source = "", ...) {
+slateOutput <- function(type, name, source = "", ...) {
   output.data <- list(
     name = name,
     type = type,

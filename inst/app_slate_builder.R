@@ -931,7 +931,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         placeholder = "",
         callback = function(name) {
           outputs <- blueprint.outputs()
-          outputs[[ name ]] <- slateOutput(name = name, type="plot")
+          outputs[[ name ]] <- slateOutput(type="plot", name = name)
           names(outputs) <- sapply(outputs, "[[", "name")
           blueprint.outputs(outputs)
           updateSelectInput(session, "select_output", choices = names(outputs),

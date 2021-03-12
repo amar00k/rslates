@@ -265,7 +265,8 @@ preprocessSubstitutionBlock <- function(text) {
   varnames <- sub("\\(.*\\).*$", "", variables)
 
   # preprocess inline definitions
-  inputs <- map(variables, preprocessLayoutDefinition, type = "input")
+  inputs <- map(variables, preprocessLayoutDefinition, type = "input") %>%
+    map(~list_modify(., parent = NULL))
 
   variables <- list(name = varnames, options = opts, assign = assign, input = inputs) %>%
     transpose %>%
@@ -323,28 +324,49 @@ preprocessLayoutDefinition <- function(text, type) {
 }
 
 
+# syntax:
+# $@output <type>, <name>[, option1,
 preprocessOutput <- function(lines) {
   header <- sub("^.*\\$@ *output *", "", lines[1])
-  name <- sub(" *\\(.*", "", header)
 
-  call.text <- sub("^.*?(?=\\()", "", header, perl = TRUE) %>%
-    sub("^\\(", paste0("slateOutput(\"", name, "\", "), .)
+  params <- strsplit(header, split = ",")[[1]]
 
-  types.list <- as.list(names(output.handlers)) %>% set_names(.)
-  env <- list2env(types.list)
+  if (length(params) == 0)
+    stop("Missing output type.")
+
+  type <- params[[1]] %>% trimws
+
+  if (!(type %in% names(output.handlers)))
+    stop("Unknown output type: '", type, "'")
+
+  if (length(params) > 1)
+    name <- params[[2]] %>% trimws
+  else
+    name <- type
+
+  if (length(params) > 2)
+    params <- paste(params[3:length(params)], collapse = ",") %>% paste(",", .)
+  else
+    params <- ""
+
+  call.text <- paste0("slateOutput('", type, "', '", name, "'", params, ")")
+
 
   output <- tryCatch({
     expr <- str2expression(call.text)
-    eval(expr, envir = env)
+    eval(expr) #, envir = env)
   },
   error = function(e) {
     stop(paste0("Error parsing output definition: ", header))
   })
 
-  body <- lines[2:length(lines)]
+  if (length(lines) > 1)
+    body <- lines[2:length(lines)]
+  else
+    body <- ""
 
   output$source <-
-    paste(body, collapse="\n") %>%
+    paste(body, collapse = "\n") %>%
     cleanPreprocessorDirectives
 
   return(output)
