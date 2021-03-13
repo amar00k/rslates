@@ -77,7 +77,10 @@ dlog <- function(..., format = NULL, use.time = TRUE, use.from = TRUE, level = 3
   time <- if (use.time) paste0(format(Sys.time(), usetz = FALSE), " ") else ""
   from <- if (use.from) paste0("[", toString(sys.call(sys.parent())), "] ")
 
-  cat(paste0(time, from, paste(...), "\n"))
+  txt <- map_chr(list(...), toString) %>%
+    paste(collapse = "; ")
+
+  cat(time, from, txt, "\n")
 }
 
 
