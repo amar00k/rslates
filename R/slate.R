@@ -521,12 +521,15 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
     # displays the outputs panel
     output$outputs_panel <- renderUI({
-      req(outputs <- blueprint$outputs)
-      req(sources <- output.sources())
+      outputs <- blueprint$outputs
 
-      dlog("outputs_panel")
+      req(length(outputs) > 0)
+
+      dlog("outputs_panel", blueprint$name, names(blueprint$outputs))
 
       selected <- isolate(input$output_tabs)
+      if (!is.null(selected) && !(selected %in% names(outputs)))
+        selected <- names(outputs)[1]
 
       output.tabs <- unname(lapply(outputs, function(x) {
         stopifnot(x$type %in% names(output.handlers))
@@ -540,20 +543,11 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
         )
       }))
 
-      text <- map(sources, ~paste0("#-- ", .$name, "\n", .$source)) %>%
-        paste(collapse = "\n\n")
-
       output.tabs <- append(output.tabs, list(
         tabPanel(
           title = "Source",
           tags$br(),
-          shinyAce::aceEditor(ns("debug_source"),
-                              value = text,
-                              mode = "r",
-                              height = "300px",
-                              readOnly = TRUE,
-                              showLineNumbers = TRUE,
-                              theme = global.options$ace.theme)
+          uiOutput(ns("source_debug_ui"))
         )
       ))
 
@@ -561,6 +555,22 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       output.tabs$type <- "pills"
       output.tabs$selected <- selected
       outputs.ui <- do.call(tabsetPanel, output.tabs)
+    })
+
+
+    output$source_debug_ui <- renderUI({
+      sources <- output.sources()
+
+      text <- map(sources, ~paste0("#-- ", .$name, "\n", .$source)) %>%
+        paste(collapse = "\n\n")
+
+      shinyAce::aceEditor(ns("debug_source"),
+                          value = text,
+                          mode = "r",
+                          height = "300px",
+                          readOnly = TRUE,
+                          showLineNumbers = TRUE,
+                          theme = global.options$ace.theme)
     })
 
 
