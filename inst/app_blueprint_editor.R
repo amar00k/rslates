@@ -11,7 +11,7 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
                                blueprint.dir = NULL) {
 
   editorLoadBlueprint <- function(blueprint.name) {
-    path <- file.path(blueprint.dir, blueprint.list)
+    path <- file.path(blueprint.dir, blueprint.name)
     blueprintFromJSON(filename = path)
   }
 
@@ -50,11 +50,13 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
             selectInput(
               "active_blueprint",
               label = "Active Blueprint",
-              choices = blueprint.list %>% sub("\\.json$", "", .)
+              choices = c("New Blueprint", blueprint.list %>% sub("\\.json$", "", .))
             ),
-            actionButton("new_blueprint", "New Blueprint", class = "ml-2"),
+            #actionButton("new_blueprint", "New Blueprint", class = "ml-2"),
             uiOutput("save_state", class = "ml-auto"),
-            actionButton("save_blueprint", "Save Changes", icon = icon("save"), class = "ml-2")
+            shinyjs::disabled(
+              actionButton("save_blueprint", "Save Blueprint", icon = icon("save"), class = "ml-2")
+            )
           ),
           tags$hr(),
           flowLayout(
@@ -99,6 +101,34 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
     })
 
 
+    # the blueprint
+    # load the initial blueprint
+    blueprint <- reactiveVal()  # do.call(reactiveValues, slateBlueprint())
+
+
+    # Create the slate server
+    slate <- slateServer(
+      "slate",
+      #blueprint = isolate(blueprint()),
+      slate.options = slate.options,
+      global.options = global.options
+    )
+
+
+    # updateBlueprint <- function(new.blueprint) {
+    #   # for (name in names(blueprint))
+    #   #   blueprint[[ name ]] <- new.blueprint[[ name ]]
+    # }
+
+
+    # list of blueprints in directory
+    # TODO: handle blueprint.dir is NULL
+    blueprint.list <- reactiveVal(dir(blueprint.dir, pattern = "\\.json$"))
+
+    # isolate(
+    #   resetBlueprint(editorLoadBlueprint(blueprint.list()[1]))
+    # )
+
     #
     # Themeing
     #
@@ -108,8 +138,6 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
     })
 
     observeEvent(input$select_theme, {
-      print("select_theme")
-
       theme <- loadTheme(input$select_theme)
       session$setCurrentTheme(theme)
     })
@@ -118,17 +146,16 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
     # New / Load / Save
     #
 
-    blueprint.list <- reactiveVal(dir(blueprint.dir, pattern = "\\.json$"))
-
-
-    observeEvent(input$new_blueprint, {
+    observeEvent(blueprint.list(), { #input$new_blueprint, {
       options <- c("New Blueprint", blueprint.list() %>% sub("\\.json$", "", .))
+
+      selected <- input$active_blueprint
 
       updateSelectInput(
         session,
         "active_blueprint",
         choices = options,
-        selected = "New Blueprint"
+        selected = selected
       )
     })
 
@@ -136,42 +163,76 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
     observe(label = "change.blueprint", {
       dlog()
 
+      # if (!is.null(blueprint()) && blueprint()$name == input$active_blueprint)
+      #   return()
+
       if (input$active_blueprint == "New Blueprint") {
-        new.blueprint <- slateBlueprint()
+        blueprint(slateBlueprint())
       } else {
-        new.blueprint <- editorLoadBlueprint(paste0(input$active_blueprint, ".json"))
+        blueprint(editorLoadBlueprint(paste0(input$active_blueprint, ".json")))
       }
 
-      slate$setBlueprint(new.blueprint)
+      isolate(slate$updateBlueprint(blueprint()))
     })
 
 
-    #
-    # Slate
-    #
-
-    # load the initial blueprint
-    blueprint <- do.call(
-      reactiveValues,
-      editorLoadBlueprint(blueprint.list[1])
-    )
-
-    slate <- slateServer(
-      "slate",
-      blueprint = blueprint,
-      slate.options = slate.options,
-      global.options = global.options
-    )
-
-    #blueprint <- slate$blueprint
-
     output$save_state <- renderUI({
-      req(slate)
+      req(
+        slate, blueprint(), slate$blueprint()
+      )
 
-      # if (identical(blueprint(), server()$blueprint()))
-      tags$span("All changes saved", style = "color: green;")
-      # else
-      #   tags$i("Unsaved changes", style = "color: red;")
+      up.to.date <- names(blueprint()) %>%
+        map_lgl(~identical(blueprint()[[.]], slate$blueprint()[[.]])) %>%
+        all
+
+      shinyjs::toggleState("save_blueprint", condition = !up.to.date)
+
+      if (up.to.date)
+        tags$span("All changes saved", style = "color: green;")
+      else
+        tags$i("Unsaved changes", style = "color: red;")
+    })
+
+
+    save.modal <- slatesModal(
+      id = "save_modal",
+      session = session,
+      ui.fun = function(filename) {
+        tagList(
+          shinyjs::disabled(
+            textInput(session$ns("save_filename"), label = "Filename", value = filename)
+          ),
+          tags$p(
+            "Save changes to ", file.path(blueprint.dir, filename), "?",
+            tags$b("Existing file will be overwritten!")
+          )
+        )
+      },
+      submit.fun <- function() {
+        list(filename = session$input$save_filename)
+      }
+    )
+
+    observeEvent(input$save_blueprint, {
+      req(bp <- slate$blueprint())
+
+      # TODO: more robust filename sanitizer
+      filename <- paste0(gsub(" ", "_", bp$name), ".json")
+
+      save.modal$show(title = "Save Blueprint",
+                      size = "l",
+                      filename = filename,
+                      callback = function(filename) {
+        pathname <- file.path(blueprint.dir, filename)
+        text <- blueprintToJSON(bp)
+
+        writeLines(text, con = pathname)
+
+        blueprint(slate$blueprint())
+        blueprint.list(dir(blueprint.dir, pattern = "\\.json$"))
+
+        options(rslates.tag.list = unique(c(getOption("rslates.tag.list"), bp$tags)))
+      })
     })
 
 
