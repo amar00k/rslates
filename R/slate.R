@@ -64,7 +64,7 @@ blueprintEditorUI  <- function(id, blueprint) {
       selectInput(ns("blueprint_category"), "Category",
                   choices = "", selected = ""),
       selectizeInput(ns("blueprint_tags"), label = "Tags", multiple = TRUE,
-                     choices = blueprint$tags,
+                     choices = getOption("rslates.tag.list"),
                      selected = blueprint$tags,
                      options = list(
                        delimiter = '',
@@ -86,24 +86,22 @@ blueprintEditorUI  <- function(id, blueprint) {
 
 
 
-blueprintEditorServer <- function(id, blueprint, global.options = NULL) {
+blueprintEditorServer <- function(id, blueprint = slateBlueprint(), global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # make a copy of the slate blueprint
+    if (class(blueprint) == "reactiveValues")
+      blueprint <- reactiveVal(reactiveValuesToList(blueprint))
+    else
+      blueprint <- reactiveVal(blueprint)
+
     errors <- reactiveVal(list())
 
-    # preprocesses the blueprint source, fills in the preprocessor
-    # reactiveValues structure and updates the blueprint reactiveValues
-    # inputs and outputs structures
-    observe(label = "source.changed", {
-      dlog()
+    rebuildBlueprint <- function(source) {
+      blueprint <- blueprint()
 
-      req(source <- input$blueprint_source)
-
-      errors <- list()
-      values <- map(isolate(blueprint$inputs), ~getHandler(.)$as.value(., session))
-
-      tryCatch({
+      error <- tryCatch({
         new.blueprint <- slateBlueprint(
           name = blueprint$name,
           author = blueprint$author,
@@ -112,7 +110,10 @@ blueprintEditorServer <- function(id, blueprint, global.options = NULL) {
           source = source
         )
 
-        values <- keep(values, map_lgl(values, ~length(.) != 0))
+        values <- isolate(blueprint$inputs) %>%
+          map(~getHandler(.)$as.value(., session)) %>%
+          keep(map_lgl(., ~length(.) != 0))
+
         new.blueprint$inputs %<>%
           modify_if(~.$name %in% names(values),
                     ~list_modify(., value = values[[ .$name ]]))
@@ -120,35 +121,71 @@ blueprintEditorServer <- function(id, blueprint, global.options = NULL) {
         for (name in names(blueprint)) {
           if (!identical(blueprint[[ name ]], new.blueprint[[ name ]])) {
             dlog("changing", name)
-            #print(new.blueprint[[ name ]])
 
             blueprint[[ name ]] <- new.blueprint[[ name ]]
           }
         }
+
+        blueprint(new.blueprint)
+
+        return(list())
       },
       error = function(e) {
-        isolate(errors %<>% append(list(paste(toString(e))))) # e$message)))
+        list(toString(e))
       })
+
+      return(error)
+    }
+
+
+    # preprocesses the blueprint source, fills in the preprocessor
+    # reactiveValues structure and updates the blueprint reactiveValues
+    # inputs and outputs structures
+    observeEvent(input$blueprint_source, {
+      req(source <- input$blueprint_source)
+      req(source != isolate(blueprint()$source))
+
+      dlog(isolate(blueprint()$name))
+
+      errors <- list()
+
+      errors <- append(errors, rebuildBlueprint(source))
 
       isolate(errors(errors))
     })
 
 
     observe(label = "blueprint.metadata", {
-      req(!is.null(input$blueprint_name))
+      req(
+        !is.null(input$blueprint_name),
+        blueprint <- blueprint(),
+        !all(identical(blueprint$name, input$blueprint_name),
+             identical(blueprint$author, input$blueprint_author),
+             identical(blueprint$category, input$blueprint_category),
+             identical(blueprint$tags, input$blueprint_tags))
+      )
 
       dlog()
 
       blueprint$name <- input$blueprint_name
       blueprint$author <- input$blueprint_author
       blueprint$category <- input$blueprint_category
-      blueprint$tags <- input$blueprint_tags
+
+      if (is.null(input$blueprint_tags))
+        blueprint$tags <- list()
+      else
+        blueprint$tags <- input$blueprint_tags
+
+
+      blueprint(blueprint)
     })
 
 
     # displays error alerts from the preprocessor
     output$blueprint_alerts <- renderUI({
-      dlog("blueprint_alerts")
+      req(length(errors()) > 0)
+
+      dlog("blueprint_alerts", length(errors()))
 
       map(errors(),
           ~tags$div(
@@ -165,19 +202,33 @@ blueprintEditorServer <- function(id, blueprint, global.options = NULL) {
     })
 
 
-    setBlueprint <- function(new.blueprint) {
-      shinyAce::updateAceEditor(session, "blueprint_source", value = new.blueprint$source)
+    updateBlueprint <- function(new.blueprint) {
+      dlog(new.blueprint$name)
+
+      blueprint <- blueprint()
+
+      for (name in names(blueprint))
+        blueprint[[ name ]] <- new.blueprint[[ name ]]
+
+      updateTextInput(session, "blueprint_name", value = blueprint$name)
+      updateTextInput(session, "blueprint_author", value = blueprint$author)
+      updateSelectInput(session, "blueprint_category", selected = blueprint$category)
+      updateSelectizeInput(session, "blueprint_tags",
+                           choices = getOption("rslates.tag.list"),
+                           selected = blueprint$tags)
+
+      shinyAce::updateAceEditor(session, "blueprint_source", value = blueprint$source)
+
+      blueprint(blueprint)
     }
 
-
     list(
-      setBlueprint = setBlueprint
+      blueprint = blueprint,
+      updateBlueprint = updateBlueprint
     )
 
   })
 }
-
-
 
 
 
@@ -334,15 +385,41 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
 
 
 
-slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.options = NULL) {
+slateServer <- function(id, blueprint.ini = NULL, slate.options = NULL, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+
+    updateBlueprint <- function(new.blueprint, update.editor = TRUE) {
+      dlog()
+
+      if (!identical(blueprint$outputs, new.blueprint$outputs)) {
+        for (x in blueprint$outputs) {
+          output[[ x$id ]] <- NULL
+        }
+      }
+
+      for (name in names(blueprint))
+        blueprint[[ name ]] <- new.blueprint[[ name ]]
+
+      if (update.editor == TRUE)
+        blueprint.editor$updateBlueprint(new.blueprint)
+    }
+
+
     # the blueprint
-    if (is.null(blueprint))
-      blueprint <- do.call(reactiveValues, slateBlueprint())
-    else if (class(blueprint) != "reactivevalues")
-      blueprint <- do.call(reactiveValues, blueprint)
+    # if (is.null(blueprint))
+    #   blueprint <- do.call(reactiveValues, slateBlueprint())
+    # else if (class(blueprint) != "reactivevalues")
+    #   blueprint <- do.call(reactiveValues, blueprint)
+
+
+    #
+    # Inititalization
+    #
+
+    # ready utility
+    ready <- uiReady(session)
 
     # the options
     if (is.null(slate.options))
@@ -357,7 +434,22 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       )
     }
 
-    ready <- uiReady(session)
+    # create the blueprint container
+    if (is.null(blueprint.ini)) {
+      blueprint <- do.call(reactiveValues, slateBlueprint())
+    } else if (class(blueprint.ini) == "reactiveValues") {
+      blueprint <- do.call(reactiveValues, reactiveValuesToList(blueprint.ini))
+    } else {
+      blueprint <- do.call(reactiveValues, blueprint.ini)
+    }
+
+    # create the server for the blueprint editor
+    # TODO: don't even create until user requests it
+    blueprint.editor <- blueprintEditorServer(
+      "editor",
+      blueprint = blueprint,
+      global.options = global.options
+    )
 
     # the title
     slate.title <- reactiveVal(isolate(blueprint$name))
@@ -366,13 +458,23 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     # will be destroyed if the slate is removed
     observers <- reactiveValues()
 
-    # the server for the blueprint editor
-    # TODO: don't even create until user requests it
-    blueprint.editor <- blueprintEditorServer(
-      "editor",
-      blueprint = blueprint,
-      global.options = global.options
-    )
+
+    # # Finish initializing by loading in the initial blueprint
+    # isolate(
+    #   resetBlueprint(blueprint.ini)
+    # )
+
+
+    # observe changes in editor
+    observeEvent(blueprint.editor$blueprint(), label = "editor.change", {
+      req(!identical(reactiveValuesToList(blueprint),
+                     blueprint.editor$blueprint())
+      )
+
+      dlog()
+
+      updateBlueprint(blueprint.editor$blueprint(), update.editor = FALSE)
+    })
 
 
     # provides the slate (not blueprint) values of all inputs
@@ -504,7 +606,7 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
     # displays inputs panel
     output$inputs_panel <- renderUI({
-      dlog("inputs_panel")
+      dlog("inputs_panel", isolate(blueprint$name), names(blueprint$inputs))
 
       # remove all tooltips
       shinyjs::runjs("$('.tooltip').remove();")
@@ -525,7 +627,7 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
       req(length(outputs) > 0)
 
-      dlog("outputs_panel", blueprint$name, names(blueprint$outputs))
+      dlog("outputs_panel", isolate(blueprint$name), names(blueprint$outputs))
 
       selected <- isolate(input$output_tabs)
       if (!is.null(selected) && !(selected %in% names(outputs)))
@@ -678,12 +780,6 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     })
 
 
-    setBlueprint <- function(new.blueprint) {
-      #for (name in names(blueprint))
-      #  blueprint[[ name ]] <- new.blueprint[[ name ]]
-
-      blueprint.editor$setBlueprint(new.blueprint)
-    }
 
 
     # Cleanup function
@@ -696,9 +792,9 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       }
 
       # remove outputs
-      for (x in ns(names(output.handlers))) {
-        output[[ x ]] <- NULL
-      }
+      # for (x in ns(names(output.handlers))) {
+      #   output[[ x ]] <- NULL
+      # }
 
       # remove observers
       observers %>%
@@ -708,10 +804,10 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
     return(
       list(
-        blueprint = blueprint,
+        blueprint = reactive(reactiveValuesToList(blueprint)),
         slate.options = slate.options,
         global.options = global.options,
-        setBlueprint = setBlueprint,
+        updateBlueprint = updateBlueprint,
         destroy = destroy
         #blueprint = blueprint,
         #inputs = input.list,
