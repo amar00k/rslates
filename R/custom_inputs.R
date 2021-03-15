@@ -11,6 +11,7 @@ addTagAttribs <- function(tag, class="", style="") {
   return(tag)
 }
 
+
 # removeTagClass <- function(tag, class) {
 #   tag.classes <- trimws(strsplit(tag$attribs$class, split = " ")[[1]])
 #   tag$attribs$class <- paste(tag.classes[ tag.classes != class ], collapse = " ")
@@ -23,171 +24,8 @@ addTagAttribs <- function(tag, class="", style="") {
 # Inputs with wizard
 #
 
-createWizardButton <- function(id, wizards) {
-  # TODO: this is dirty af, find where to pass the wizard list along
-  wizards <- lapply(wizards, function(x) wizard.list[[ x ]])
-
-  wizard.list <- lapply(seq_along(wizards), function(i) {
-    wiz <- wizards[[ i ]]
-    actionLink(paste0(id, "-", i), label = wiz$name)
-  })
-
-  button.params <- list(
-    inputId = paste0(id, "-btn"),
-    label = "",
-    size = "xs",
-    icon = icon("hat-wizard"),
-    circle = FALSE,
-    inline = TRUE
-  )
-
-  btn <- do.call(shinyWidgets::dropdownButton,
-                 append(button.params, unname(wizard.list)))
-
-  addTagAttribs(tag = btn, class = "wizard-btn")
-}
 
 
-slatesExpressionInput <- function(id, ..., wizards = NULL) {
-  input <- textInput(id, ...)
-  input <- addTagAttribs(input, class = "expression-input")
-
-  if (is.null(wizards) || length(wizards) == 0) {
-    return(input)
-  }
-
-  wizard.button <- createWizardButton(paste0(id, "-wizard"), wizards)
-  wizard.button <- addTagAttribs(tag = wizard.button, style = "float: right;")
-
-  input$children <- list(input$children[[1]],
-                         wizard.button,
-                         input$children[[2]])
-
-  return(input)
-}
-
-
-slatesTextInput <- function(id, ..., wizards = NULL) {
-  input <- textInput(id, ...)
-
-  if (is.null(wizards) || length(wizards) == 0) {
-    return(input)
-  }
-
-  wizard.button <- createWizardButton(paste0(id, "-wizard"), wizards)
-  wizard.button <- addTagAttribs(tag = wizard.button, style = "float: right;")
-
-  input$children <- list(input$children[[1]],
-                         wizard.button,
-                         input$children[[2]])
-
-  return(input)
-}
-
-
-slatesSelectInput <- function(id, ..., wizards = NULL) {
-  input <- selectInput(id, ...)
-
-  if (is.null(wizards) || length(wizards) == 0) {
-    return(input)
-  }
-
-  wizard.button <- createWizardButton(paste0(id, "-wizard"), wizards)
-  wizard.button <- addTagAttribs(tag = wizard.button, style = "float: right;")
-
-  input$children <- list(input$children[[1]],
-                         wizard.button,
-                         input$children[[2]])
-
-  return(input)
-}
-
-
-slatesNumericInput <- function(id, ..., wizards = NULL) {
-  input <- numericInput(id, ...) %>%
-    addTagAttribs(class = "numeric-input")
-
-  if (is.null(wizards) || length(wizards) == 0) {
-    return(input)
-  }
-
-  wizard.button <- createWizardButton(paste0(id, "-wizard"), wizards)
-  wizard.button <- addTagAttribs(tag = wizard.button, style = "float: right;")
-
-  input$children <- list(input$children[[1]],
-                         wizard.button,
-                         input$children[[2]])
-
-  return(input)
-}
-
-
-slatesNumeric2Input <- function(id, label, value = c(0,0), ..., wizards = NULL) {
-  input <- tags$div(
-    class = "form-group shiny-input-container",
-    tags$label(
-      class = "control-label",
-      id = paste0(id, "-label"),
-      `for` = id,
-      label
-    ),
-    tags$div(
-      class = "numeric-input",
-      style = "position: relative;",
-      # this tag mimicks a numeric input
-      tags$input(type = "text", class = "form-control", style = "position: absolute;"),
-      # this tag masks the previous one, preventing clicking
-      # TODO: input tag is still able to be selected by tabbing
-      div(style = "position: absolute; width: 100%; height: 100%;"),
-      tags$div(
-        #class = "slates-flow-4",
-        style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
-        tags$input(id = paste0(id, "_1"), type = "number",
-                   class = "form-control numeric4-input", value = value[1]),
-        tags$span(",", style = "z-index: 1;"),
-        tags$input(id = paste0(id, "_2"), type = "number",
-                   class = "form-control numeric4-input", value = value[2]),
-      )
-    )
-  )
-
-  return(input)
-}
-
-
-slatesNumeric4Input <- function(id, label, value = c(0,0,0,0), ..., wizards = NULL) {
-  input <- tags$div(
-    class = "form-group shiny-input-container",
-    tags$label(
-      class = "control-label",
-      id = paste0(id, "-label"),
-      `for` = id,
-      label
-    ),
-    tags$div(
-      class = "numeric-input",
-      style = "position: relative;",
-      # this tag mimicks a numeric input
-      tags$input(type = "text", class = "form-control", style = "position: absolute;"),
-      # this tag masks the previous one, preventing clicking
-      # TODO: input tag is still able to be selected by tabbing
-      div(style = "position: absolute; width: 100%; height: 100%;"),
-      tags$div(
-        #class = "slates-flow-4",
-        style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
-        tags$input(id = paste0(id, "_1"), type = "number", class = "form-control numeric4-input", value = value[1]),
-        tags$span(",", style = "z-index: 1;"),
-        tags$input(id = paste0(id, "_2"), type = "number", class = "form-control numeric4-input", value = value[2]),
-        tags$span(",", style = "z-index: 1;"),
-        tags$input(id = paste0(id, "_3"), type = "number", class = "form-control numeric4-input", value = value[3]),
-        tags$span(",", style = "z-index: 1;"),
-        tags$input(id = paste0(id, "_4"), type = "number", class = "form-control numeric4-input", value = value[4])
-      )
-    )
-  )
-
-  return(input)
-}
 
 
 slatesSwitchInput <- function(id, label, value = FALSE, on.off.labels = c("True", "False"), wizards = NULL) {
@@ -207,6 +45,88 @@ slatesSwitchInput <- function(id, label, value = FALSE, on.off.labels = c("True"
     )
   )
 }
+
+
+#
+# Multi input
+#
+MULTI.INPUT.TYPES <- data.frame(
+  type = c("character", "expression", "logical", "choices", "numeric", "numeric2", "numeric4"),
+  short = c("CHR", "EXP", "LOG", "SEL", "NUM", "N2", "N4")
+  #input.type = c("text", "text", "text", "text", "")
+)
+
+
+slatesMultiInput <- function(id, label, value = "", types = c("character"), wizards = NULL) {
+
+  labels <- MULTI.INPUT.TYPES$short[ match(types, MULTI.INPUT.TYPES$type) ]
+
+  buttons <- shinyWidgets::radioGroupButtons(
+    inputId = paste0(id, "-radio"),
+    choices = labels,
+    status = "primary",
+    size = "sm"
+  ) %>%
+    tagAppendAttributes(class = "slates-multi-button", style = "float: right;")
+
+  input <- tags$div(
+    class = "form-group shiny-input-container",
+    tags$div(
+      tags$label(
+        class = "control-label",
+        id = paste0(id, "-label"),
+        `for` = id,
+        label
+      ),
+      buttons
+    ),
+    tags$input(
+      id = id,
+      type = "text",
+      class = "form-control",
+      value = value[1]
+    )
+  )
+}
+
+
+
+
+
+# slatesMultiInput <- function(id, label, value = "", types = c("character"), wizards = NULL) {
+#   labels <- multi.labels$short[ match(types, multi.labels$type) ]
+#
+#   buttons <- shinyWidgets::radioGroupButtons(
+#     inputId = paste0(id, "-type"),
+#     choices = labels,
+#     status = "primary",
+#     size = "sm"
+#   ) %>%
+#     tagAppendAttributes(class = "slates-multi-button", style = "float: right;")
+#
+#   tagList(
+#     shiny::singleton(
+#       shiny::tags$head(
+#         shiny::tags$script(src = "js/multi-input-binding.js")
+#       )
+#     ),
+#     tags$div(
+#       class = "form-group shiny-input-container",
+#       tags$label(
+#         class = "control-label", `for` = id, label
+#       ),
+#       buttons,
+#       tags$input(
+#         id = id,
+#         type = "text",
+#         class = "form-control",
+#         value = value[1]
+#       )
+#     )
+#   )
+# }
+
+
 
 
 
