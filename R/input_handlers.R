@@ -418,7 +418,79 @@ input.handlers <- list(
 
       value %>% paste(collapse = ", ") %>% paste0("c(", ., ")")
     }
+  ),
+
+  #
+  # multi
+  #
+  multi = inputHandler(
+    default.value = "",
+    params.list = list(
+      types = list(label = "Allowed Types (Ordered)", type = "list", default = list("character")),
+      parameters = list(label = "Parameters for Each Type", type = "list", default = list())
+    ),
+    create.ui = function(x, ns = identity) {
+      value <- if (!is.null(x$value)) x$value else x$default
+
+      slatesMultiInput(ns(x$id), label = x$name,
+                       types = x$types, value = value,
+                       wizards = x$wizards)
+    },
+    update.ui = function(x, session) {
+
+    },
+    get.input = function(x, session) {
+      return(list(session$input[[ x$id ]]))
+    },
+    as.value = function(x, session = NULL, value = NULL) {
+      if (is.null(value))
+        value <- input.handlers$multi$get.input(x, session)[[1]]
+
+      #if (any(map_lgl(value, is.null)))
+      #  return(NULL)
+
+      #value <- as.numeric(value)
+
+      # if (length(value) < 4)
+      #   value <- c(value, rep(NA, 4 - length(value)))
+      # else if (length(value) > 4)
+      #   stop("numeric4 input must have length 4.")
+
+      return(value)
+    },
+    as.source = function(x = NULL, session = NULL, value = NULL) {
+      if (is.null(value))
+        value <- input.handlers$multi$as.value(x, session, value)
+
+      value
+      # value %>% paste(collapse = ", ") %>% paste0("c(", ., ")")
+    },
+    observer = function(x, session) {
+      req(type <- session$input[[ paste0(x$id, "-radio") ]])
+
+      value <- isolate(getHandler(x)$as.value(x, session))
+
+      input.data <- switch(type,
+             "CHR" = list(tag = "input", type = "text", class = ""),
+             "EXP" = list(tag = "input", type = "text", class = "expression-input"),
+             "NUM" = list(tag = "input", type = "numeric", class = "")
+      )
+
+      el <- switch(type,
+                   "CHR" = tags$input(id = session$ns(x$id), type = "text",
+                                      class = "form-control", value = value),
+                   "EXP" = tags$input(id = session$ns(x$id), type = "text",
+                                      class = "form-control expression-input", value = value),
+                   "NUM" = tags$input(id = session$ns(x$id), type = "numeric",
+                                      class = "form-control", value = value)
+                   )
+
+      paste0('$("#', session$ns(x$id), '").replaceWith(\'', as.character(el),'\');') %>%
+        print %>%
+        (shinyjs::runjs)
+    }
   )
+
 )
 
 
