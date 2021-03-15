@@ -29,6 +29,13 @@ NULL
   options(rslates.default.ace.theme = "dawn")
 
 
+  tags <- dir(system.file("blueprints", package = "rslates"), full.names = TRUE) %>%
+    map(~blueprintFromJSON(filename = .)) %>%
+    map("tags") %>%
+    unlist %>%
+    unique
+
+  options(rslates.tag.list = tags)
 
 }
 
