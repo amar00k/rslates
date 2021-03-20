@@ -385,7 +385,7 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
 
 
 
-slateServer <- function(id, blueprint.ini = NULL, slate.options = NULL, global.options = NULL) {
+slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -435,12 +435,12 @@ slateServer <- function(id, blueprint.ini = NULL, slate.options = NULL, global.o
     }
 
     # create the blueprint container
-    if (is.null(blueprint.ini)) {
+    if (is.null(blueprint)) {
       blueprint <- do.call(reactiveValues, slateBlueprint())
-    } else if (class(blueprint.ini) == "reactiveValues") {
-      blueprint <- do.call(reactiveValues, reactiveValuesToList(blueprint.ini))
+    } else if (class(blueprint) == "reactiveValues") {
+      blueprint <- do.call(reactiveValues, reactiveValuesToList(blueprint))
     } else {
-      blueprint <- do.call(reactiveValues, blueprint.ini)
+      blueprint <- do.call(reactiveValues, blueprint)
     }
 
     # create the server for the blueprint editor
@@ -481,8 +481,12 @@ slateServer <- function(id, blueprint.ini = NULL, slate.options = NULL, global.o
     input.values <- reactive({
       dlog()
 
-      blueprint$inputs %>%
+      inputs <- blueprint$inputs %>%
         map(~getHandler(.)$as.value(., session))
+
+      dlog(inputs)
+
+      return(inputs)
     })
 
 
@@ -584,10 +588,10 @@ slateServer <- function(id, blueprint.ini = NULL, slate.options = NULL, global.o
     })
 
 
-    # observe inputs and toggle the state of the
-    # reset inputs button
+    # observe inputs and toggle the state of the reset inputs button
     observers$reset.inputs <- observe(label = "reset.inputs", {
       values <- input.values()
+
       all.default <- all(map_lgl(blueprint$inputs, ~identical(values[[ .$name ]], .$default)))
 
       shinyjs::toggleState("slate_reset", condition = !all.default)
