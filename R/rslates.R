@@ -379,10 +379,25 @@ slatesApp <- function(...) {
 #'
 #' @return
 #' @export
-loadBlueprints <- function(path) {
+loadBlueprints <- function(path, on.error = c("stop", "skip")) {
+    on.error <- match.arg(on.error)
+
     filenames <- dir(path, pattern = ".json$", full.names = TRUE)
-    blueprints <- lapply(filenames, blueprintFromJSON)
-    setNames(blueprints, sapply(blueprints, "[[", "title"))
+
+    map(filenames, ~{
+        tryCatch({
+            blueprintFromJSON(filename = .)
+        },
+        error = function(e) {
+            if (on.error == "stop")
+                stop("Error loading blueprint file: ", .)
+            else
+                warning("Skipping blueprint file: ", .)
+
+            return(NULL)
+        })
+    }) %>%
+        set_names(map(., "name"))
 }
 
 runSlatesApp <- function() {
@@ -413,18 +428,14 @@ runSlateBuilderApp <- function(blueprint = NULL,
 }
 
 
-runProjectEditorApp <- function(project = NULL, input.container = "collapse",
-                                theme = "Natural (soft light)" , run.themer = FALSE) {
-    options(rslates.blueprints = loadBlueprints(system.file("blueprints", package="rslates")))
-    options(rslates.data.blueprints = loadBlueprints(system.file("blueprints/data_blueprints", package="rslates")))
-    options(rslates.input.container = input.container)
+runProjectEditorApp <- function(project = NULL, theme = "Natural (soft light)" , run.themer = FALSE) {
     options(rslates.editor.project = project)
     options(rslates.default.theme = theme)
-    options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
     options(rslates.run.themer = run.themer)
 
     runApp(system.file("app_project_editor.R", package = "rslates"))
 }
+
 
 runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer = FALSE) {
     options(rslates.default.theme = theme)
@@ -438,11 +449,11 @@ runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer
 # -------------
 
 runBlueprintEditorApp <- function(
-    blueprint.ini = NULL,
-    blueprint.dir = NULL,
+    blueprint.dir,
+    blueprint.filename = NULL,
     theme = getOption("rslates.default.theme")) {
 
-    options(rslates.bp.editor.blueprint = blueprint.ini)
+    options(rslates.bp.editor.blueprint.filename = blueprint.filename)
     options(rslates.bp.editor.blueprint.dir = blueprint.dir)
     options(rslates.default.theme = theme)
     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
