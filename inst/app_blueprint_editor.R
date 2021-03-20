@@ -7,18 +7,32 @@
 
 
 
-blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
-                               blueprint.dir = NULL) {
+blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
 
-  editorLoadBlueprint <- function(blueprint.name) {
-    path <- file.path(blueprint.dir, blueprint.name)
-    blueprintFromJSON(filename = path)
+  if (is.null(blueprint.filename) && is.null(blueprint.dir))
+    stop("At least one of blueprint.filename or blueprint.dir must be specified.")
+
+  editorLoadBlueprint <- function(blueprint.filename) {
+    path <- file.path(blueprint.dir, blueprint.filename)
+
+    if (!file.exists(path)) {
+      return(slateBlueprint(
+        name = gsub("_", " ", blueprint.filename) %>%
+          gsub("\\.json$", "", .)
+      ))
+    }
+
+    tryCatch({
+      blueprintFromJSON(filename = path)
+    },
+    error = function(e) {
+      blueprintFromJSON(filename = path, preprocess = FALSE)
+    })
   }
 
-  if (!is.null(blueprint.dir))
-    blueprint.list <- dir(blueprint.dir, pattern = "\\.json$")
-  else
-    blueprint.list <- list()
+  blueprint.list <- dir(blueprint.dir, pattern = "\\.json$")
+  if (!is.null(blueprint.filename))
+    blueprint.list <- unique(c(blueprint.list, blueprint.filename))
 
   theme <- getOption("rslates.default.theme")
 
@@ -50,7 +64,8 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
             selectInput(
               "active_blueprint",
               label = "Active Blueprint",
-              choices = c("New Blueprint", blueprint.list %>% sub("\\.json$", "", .))
+              choices = c("New Blueprint", blueprint.list),
+              selected = blueprint.filename
             ),
             #actionButton("new_blueprint", "New Blueprint", class = "ml-2"),
             uiOutput("save_state", class = "ml-auto"),
@@ -103,22 +118,18 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
 
     # the blueprint
     # load the initial blueprint
-    blueprint <- reactiveVal()  # do.call(reactiveValues, slateBlueprint())
+    blueprint <- reactiveVal(
+      editorLoadBlueprint(isolate(input$active_blueprint))
+    )
 
 
     # Create the slate server
     slate <- slateServer(
       "slate",
-      #blueprint = isolate(blueprint()),
+      blueprint = isolate(blueprint()),
       slate.options = slate.options,
       global.options = global.options
     )
-
-
-    # updateBlueprint <- function(new.blueprint) {
-    #   # for (name in names(blueprint))
-    #   #   blueprint[[ name ]] <- new.blueprint[[ name ]]
-    # }
 
 
     # list of blueprints in directory
@@ -147,7 +158,7 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
     #
 
     observeEvent(blueprint.list(), { #input$new_blueprint, {
-      options <- c("New Blueprint", blueprint.list() %>% sub("\\.json$", "", .))
+      options <- c("New Blueprint", blueprint.list())
 
       selected <- input$active_blueprint
 
@@ -157,19 +168,16 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
         choices = options,
         selected = selected
       )
-    })
+    }, ignoreInit = TRUE)
 
 
     observe(label = "change.blueprint", {
       dlog()
 
-      # if (!is.null(blueprint()) && blueprint()$name == input$active_blueprint)
-      #   return()
-
       if (input$active_blueprint == "New Blueprint") {
         blueprint(slateBlueprint())
       } else {
-        blueprint(editorLoadBlueprint(paste0(input$active_blueprint, ".json")))
+        blueprint(editorLoadBlueprint(input$active_blueprint))
       }
 
       isolate(slate$updateBlueprint(blueprint()))
@@ -241,6 +249,6 @@ blueprintEditorApp <- function(blueprint.ini = slateBlueprint("Untitled"),
   shiny::shinyApp(ui, server)
 }
 
-blueprintEditorApp(blueprint.ini = getOption("rslates.bp.editor.blueprint"),
-                   blueprint.dir = getOption("rslates.bp.editor.blueprint.dir") )
+blueprintEditorApp(blueprint.dir = getOption("rslates.bp.editor.blueprint.dir"),
+                   blueprint.filename = getOption("rslates.bp.editor.blueprint.filename"))
 
