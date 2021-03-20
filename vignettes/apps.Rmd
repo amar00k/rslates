@@ -1,0 +1,26 @@
+---
+title: "Bundled Applications"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{apps}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+
+library(rslates)
+```
+
+This document describes the Shiny applications bundled in the package.
+
+# Blueprint Editor
+
+```{r}
+runBlueprintEditor(blueprint.dir = "path/to/my_blueprints")
+```
+
