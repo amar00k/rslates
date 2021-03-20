@@ -42,13 +42,14 @@ slatesModal <- function(id, session,
     }
   })
 
-  show <- function(callback, title = NULL, ...) {
+  show <- function(callback, title = NULL, size = "m", ...) {
     ns <- session$ns
 
     .callback <<- callback
 
     md <- modalDialog(
       title = title,
+      size = size,
       easyClose = TRUE,
       ui.fun(...),
       footer = tagList(
