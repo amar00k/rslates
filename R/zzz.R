@@ -25,19 +25,26 @@ NULL
   #
   # invisible()
 
+  blueprint.dir <- system.file("blueprints", package = "rslates")
+  blueprints <- loadBlueprints(blueprint.dir, on.error = "skip")
+
+
+  options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
   options(rslates.default.theme = "Natural (soft light)")
   options(rslates.default.ace.theme = "dawn")
 
+  options(rslates.blueprint.dir = blueprint.dir)
+  options(rslates.blueprints = blueprints)
 
-  tags <- dir(system.file("blueprints", package = "rslates"), full.names = TRUE) %>%
-    map(~blueprintFromJSON(filename = .)) %>%
-    map("tags") %>%
-    unlist %>%
-    unique
-
-  options(rslates.tag.list = tags)
+  options(
+    rslates.tag.list = map(blueprints, "tags") %>%
+      unlist %>%
+      unique
+  )
 
 }
+
+
 
 
 #
