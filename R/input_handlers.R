@@ -23,6 +23,13 @@ quote.input <- function(x) {
 }
 
 
+jsBoolean <- function(val) {
+  if (val) "true" else "false"
+}
+
+
+
+
 #' Define behaviour of an input type
 #'
 #' @description This function prepares a structure that defines all aspects of an
@@ -35,8 +42,8 @@ quote.input <- function(x) {
 #'   the parameter), type (one of `character`, `numeric`, `logical`, `choices`),
 #'   `choices` (when type is `choices`, the vector of allowed values), `default`
 #'   (default value).
-#' @param create.ui function used to create the input UI.
-#' @param update.ui function used to update the input UI.
+#' @param createUI function used to create the input UI.
+#' @param updateUI function used to update the input UI.
 #' @param get.input function that returns the raw input(s) from the `session$input`
 #' object as a *list*.
 #' @param as.value function that transforms the value from `get.input()`
@@ -51,50 +58,155 @@ quote.input <- function(x) {
 #'
 #' @return the list of functions to handle the the input type.
 #' @export
-inputHandler <- function(create.ui = function(x, ns = identity, value = NULL) {
-                            tags$div(id = session$ns(x$id))
-                         },
-                         default.value = "",
+inputHandler <- function(
+  default.value = "",
+  params.list = list(),
 
-                         params.list = list(),
-                         update.ui = function(x, session) {},
-                         get.input = function(x, session) {
-                           return(
-                             list(session$input[[ x$id ]])
-                           )
-                         },
-                         set.input = function(x, session, value) {
-                           update.ui(x, session, value)
-                         },
-                         as.value = function(x, session = NULL, value = NULL) {
-                           if (is.null(value))
-                             value <- getHandler(x)$get.input(x, session)[[1]]
+  initInput = function(x) { x },
 
-                           value <- as.character(value)
+  createUI = function(x, ns = identity, value = NULL) {
+    tags$div(id = session$ns(x$id))
+  },
 
-                           if (length(value) > 1)
-                             stop("input must have length 1.")
+  updateUI = function(x, session) {},
 
-                           return(value)
-                         },
-                         as.string = function(x, session, value = NULL) {
-                           getHandler(x)$as.value(x, session, value) %>%
-                             toString
-                         },
-                         as.source = function(x, session = NULL, value = NULL) {
-                           getHandler(x)$as.value(x, session, value) %>%
-                             as.character
-                         },
-                         observer = function(x, session) {}) {
+  setState = function(x, session, enabled, return.js = FALSE) {
+    if (class(x) == "character")
+      id <- x
+    else
+      id <- x$id
+
+    selector <- paste0('$("#', session$ns(id), '")')
+
+    js <- paste0(selector, '.attr("disabled",', jsBoolean(!enabled), ')') %>% print
+
+    if (return.js)
+      return(js)
+    else
+      shinyjs::runjs(js)
+  },
+
+  setVisible = function(x, session, visible, tag.only = FALSE, return.js = FALSE) {
+    if (class(x) == "character")
+      id <- x
+    else
+      id <- x$id
+
+    action <- if (visible) 'removeClass("d-none")' else 'addClass("d-none")'
+
+    if (tag.only)
+      selector <- paste0('$("#', session$ns(id), '")')
+    else
+      selector <- paste0('$("#', session$ns(id), '").parent()')
+
+    js <- paste0(selector, ".", action, ";")
+
+    if (return.js)
+      return(js)
+    else
+      shinyjs::runjs(js)
+  },
+
+  # isNull = function(x, session) {
+  #   #null.input <- session$input[[ paste0(x$id, "-null") ]]
+  #   chooser.input <- session$input[[ paste0(x$id, "-chooser") ]]
+  #
+  #   return(!is.null(chooser.input) && chooser.input == "NULL")
+  # },
+
+  get.input = function(x, session) {
+    return(
+      session$input[[ x$id ]]
+    )
+  },
+
+  set.input = function(x, session, value) {
+    updateUI(x, session, value)
+  },
+
+  as.value = function(x, session = NULL, value = NULL) {
+    if (is.null(value))
+      value <- getHandler(x)$get.input(x, session)
+
+    value <- as.character(value)
+
+    if (length(value) > 1)
+      stop("input must have length 1.")
+
+    return(value)
+  },
+
+  as.string = function(x, session, value = NULL) {
+    getHandler(x)$as.value(x, session, value) %>%
+      toString
+  },
+
+  as.source = function(x, session = NULL, value = NULL) {
+    getHandler(x)$as.value(x, session, value) %>%
+      as.character
+  },
+
+  observer = function(x, session) {
+  }) {
+
+  initInputFun <- function(x) {
+    # insert type-specific params
+    pars <- getHandler(x)$params.list %>%
+      map("default")
+
+    w <- which(!(names(pars) %in% names(x)))
+    x <- modifyList(x, pars[w])
+
+    initInput(x)
+  }
+
+  as.value.fun <- function(x, session = NULL, value = NULL) {
+    if (!is.null(value))
+      return(as.value(x, session, value))
+
+    chooser.input <- session$input[[ paste0(x$id, "-chooser") ]]
+    if (!is.null(chooser.input) && chooser.input == "NULL")
+      return(NULL)
+    else
+      return(as.value(x, session, value))
+  }
+
+  as.source.fun <- function(x, session = NULL, value = NULL) {
+    if (!is.null(value))
+      return(as.source(x, session, value))
+
+    chooser.input <- session$input[[ paste0(x$id, "-chooser") ]]
+    if (!is.null(chooser.input) && chooser.input == "NULL")
+      return("NULL")
+    else
+      return(as.source(x, session, value))
+  }
+
+  observerFun <- function(x, session) {
+    # handle null toggle
+    # null.input <- session$input[[ paste0(x$id, "-null") ]]
+    # getHandler(x)$setVisible(x, session, is.null(null.input), tag.only = TRUE)
+    chooser.input <- session$input[[ paste0(x$id, "-chooser") ]]
+
+    if (!is.null(chooser.input))
+      getHandler(x)$setVisible(x, session, chooser.input != "NULL", tag.only = TRUE)
+
+    # handle type-specific observers
+    observer(x, session)
+  }
+
   list(
+    initInput = initInputFun,
     default.value = default.value,
-    create.ui = create.ui,
     params.list = params.list,
-    update.ui = update.ui,
+    createUI = createUI,
+    setState = setState,
+    setVisible = setVisible,
+    updateUI = updateUI,
     get.input = get.input,
-    as.value = as.value,
-    as.source = as.source,
-    observer = observer
+    as.value = as.value.fun,
+    as.source = as.source.fun,
+    observer = observerFun
   )
 }
 
@@ -105,12 +217,15 @@ input.handlers <- list(
   # logical
   #
   logical = inputHandler(
+
     default.value = FALSE,
+
     params.list = list(
       display.type = list(label = "Display Type", type = "choices",
                           choices = c("select", "checkbox", "switch"), default = "select")
     ),
-    create.ui = function(x, ns = identity) {
+
+    createUI = function(x, ns = identity) {
       value <- if (!is.null(x$value)) x$value else x$default
 
       switch(
@@ -118,7 +233,8 @@ input.handlers <- list(
         "select" = slatesSelectInput(
           ns(x$id), label = x$name,
           choices = c(TRUE, FALSE),
-          selected = as.logical(value),
+          value = as.logical(value),
+          allow.null = x$allow.null,
           wizards = x$wizards
         ),
         "checkbox" = checkboxInput(
@@ -132,12 +248,35 @@ input.handlers <- list(
         )
       )
     },
-    update.ui = function(x, session) {
+
+    updateUI = function(x, session) {
       switch(
         x$display.type,
         "select" = updateSelectInput(session, inputId = x$id, value = as.character(x$value))
       )
     },
+
+    setVisible = function(x, session, visible, tag.only = FALSE, return.js = FALSE) {
+      if (class(x) == "character")
+        id <- x
+      else
+        id <- x$id
+
+      action <- if (visible) 'removeClass("d-none")' else 'addClass("d-none")'
+
+      if (tag.only)
+        selector <- paste0('$("#', session$ns(id), '").parent()')
+      else
+        selector <- paste0('$("#', session$ns(id), '").parent().parent()')
+
+      js <- paste0(selector, ".", action, ";")
+
+      if (return.js)
+        return(js)
+      else
+        shinyjs::runjs(js)
+    },
+
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$logical$get.input(x, session)[[1]]
@@ -155,19 +294,26 @@ input.handlers <- list(
   # character
   #
   character = inputHandler(
+
     default.value = "",
+
     params.list = list(
       quote = list(label = "Quote", type = "logical", default = TRUE)
     ),
-    create.ui = function(x, ns = identity) {
+
+    createUI = function(x, ns = identity) {
       value <- if (!is.null(x$value)) x$value else x$default
 
       slatesTextInput(ns(x$id), label = x$name,
-                      value = value, wizards = x$wizards)
+                      value = value,
+                      allow.null = x$allow.null,
+                      wizards = x$wizards)
     },
-    update.ui = function(x, session) {
+
+    updateUI = function(x, session) {
       updateTextInput(session, inputId = x$id, value = as.character(x$value))
     },
+
     as.source = function(x = NULL, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$character$as.value(x, session, value)
@@ -183,20 +329,27 @@ input.handlers <- list(
   # numeric
   #
   numeric = inputHandler(
+
     default.value = 0,
+
     params.list = list(
       min = list(label = "Min", type = "numeric", default = NULL),
       max = list(label = "Max", type = "numeric", default = NULL)
     ),
-    create.ui = function(x, ns = identity, value = NULL) {
+
+    createUI = function(x, ns = identity, value = NULL) {
       value <- if (!is.null(x$value)) x$value else x$default
 
       slatesNumericInput(ns(x$id), label = x$name,
-                         value = value, wizards = x$wizards)
+                         value = value,
+                         allow.null = x$allow.null,
+                         wizards = x$wizards)
     },
-    update.ui = function(x, session) {
+
+    updateUI = function(x, session) {
       updateNumericInput(session, inputId = x$id, value = x$value)
     },
+
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$numeric$get.input(x, session)[[1]]
@@ -214,19 +367,26 @@ input.handlers <- list(
   # expression
   #
   expression = inputHandler(
+
     default.value = "",
+
     params.list = list(
       check.valid = list(label = "Check Valid Expression", type = "logical", default = TRUE)
     ),
-    create.ui = function(x, ns = identity) {
+
+    createUI = function(x, ns = identity) {
       value <- if (!is.null(x$value)) x$value else x$default
 
       slatesExpressionInput(ns(x$id), label = x$name,
-                            value = value, wizards = x$wizards)
+                            value = value,
+                            allow.null = x$allow.null,
+                            wizards = x$wizards)
     },
-    update.ui = function(x, session) {
+
+    updateUI = function(x, session) {
       updateTextInput(session, inputId = x$id, value = as.character(x$value))
     },
+
     as.value = function(x = NULL, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$expression$get.input(x, session)[[1]]
@@ -242,6 +402,7 @@ input.handlers <- list(
 
       return(value)
     },
+
     as.source = function(x = NULL, session = NULL, value = NULL) {
       value <- input.handlers$expression$as.value(x, session, value)
 
@@ -252,6 +413,7 @@ input.handlers <- list(
 
       return(value)
     },
+
     observer = function(x, session) {
       shinyjs::removeClass(x$id, "invalid-expression")
 
@@ -276,6 +438,7 @@ input.handlers <- list(
   # choices
   #
   choices = inputHandler(
+
     default.value = list(),
     params.list = list(
       quote = list(label = "Quote Values", type = "logical", default = TRUE),
@@ -283,32 +446,45 @@ input.handlers <- list(
       multiple = list(label = "Allow Multiple Values", type = "logical", default = FALSE),
       custom = list(label = "Allow Custom Value(s)", type = "logical", default = FALSE)
     ),
-    create.ui = function(x, ns = identity) {
+
+    createUI = function(x, ns = identity) {
       value <- if (!is.null(x$value)) x$value else x$default
 
-      if (!(x$custom == TRUE)) {
-        slatesSelectInput(ns(x$id), label = x$name, selected = value,
-                          choices = x$choices, multiple = x$multiple,
-                          wizards = x$wizards)
-      } else {
-        options <- list(
-          delimiter = '',
-          create = "function(input) { return { value: input, text: input } }"
-        )
-
-        selectizeInput(
-          inputId = ns(x$id), label = x$name, selected = value,
-          choices = x$choices, multiple = x$multiple,
-          options = options
-        )
-      }
+      slatesSelectInput(ns(x$id), label = x$name, value = value,
+                        choices = x$choices, multiple = x$multiple,
+                        custom = x$custom,
+                        allow.null = x$allow.null,
+                        wizards = x$wizards)
     },
-    update.ui = function(x, session) {
+
+    setVisible = function(x, session, visible, tag.only = FALSE, return.js = FALSE) {
+      if (class(x) == "character")
+        id <- x
+      else
+        id <- x$id
+
+      action <- if (visible) 'removeClass("d-none")' else 'addClass("d-none")'
+
+      if (tag.only)
+        selector <- paste0('$("#', session$ns(id), '").parent()')
+      else
+        selector <- paste0('$("#', session$ns(id), '").parent().parent()')
+
+      js <- paste0(selector, ".", action, ";")
+
+      if (return.js)
+        return(js)
+      else
+        shinyjs::runjs(js)
+    },
+
+    updateUI = function(x, session) {
       if (!(x$custom == TRUE))
         updateSelectInput(session, x$id, selected = as.character(x$value))
       else
         updateSelectizeInput(session, x$id, selected = as.character(x$value))
     },
+
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$expression$get.input(x, session)[[1]]
@@ -317,6 +493,7 @@ input.handlers <- list(
 
       return(value)
     },
+
     as.source = function(x = NULL, session = NULL, value = NULL) {
       value <- input.handlers$choices$as.value(x, session, value)
 
@@ -334,23 +511,31 @@ input.handlers <- list(
   # numeric2
   #
   numeric2 = inputHandler(
+
     default.value = c(0, 0),
+
     params.list = list(
     ),
-    create.ui = function(x, ns = identity) {
+
+    createUI = function(x, ns = identity) {
       value <- if (!is.null(x$value)) x$value else x$default
 
-      slatesNumeric2Input(ns(x$id), label = x$name, value = value, wizards = x$wizards)
+      slatesNumeric2Input(ns(x$id), label = x$name, value = value,
+                          allow.null = x$allow.null,
+                          wizards = x$wizards)
     },
-    update.ui = function(x, session) {
+
+    updateUI = function(x, session) {
       map(1:2, ~updateNumericInput(
         session,
         inputId = paste0(x$id, "_", .),
         value = as.character(x$value[ . ])))
     },
+
     get.input = function(x, session) {
       map(1:2, ~session$input[[ paste0(x$id, "_", .) ]])
     },
+
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$numeric2$get.input(x, session)
@@ -367,6 +552,7 @@ input.handlers <- list(
 
       return(value)
     },
+
     as.source = function(x = NULL, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$numeric2$as.value(x, session, value)
@@ -379,23 +565,32 @@ input.handlers <- list(
   # numeric4
   #
   numeric4 = inputHandler(
+
+
     default.value = c(0, 0, 0, 0),
+
     params.list = list(
     ),
-    create.ui = function(x, ns = identity) {
+
+    createUI = function(x, ns = identity) {
       value <- if (!is.null(x$value)) x$value else x$default
 
-      slatesNumeric4Input(ns(x$id), label = x$name, value = value, wizards = x$wizards)
+      slatesNumeric4Input(ns(x$id), label = x$name, value = value,
+                          allow.null = x$allow.null,
+                          wizards = x$wizards)
     },
-    update.ui = function(x, session) {
+
+    updateUI = function(x, session) {
       map(1:4, ~updateNumericInput(
         session,
         inputId = paste0(x$id, "_", .),
         value = as.character(x$value[ . ])))
     },
+
     get.input = function(x, session) {
       map(1:4, ~session$input[[ paste0(x$id, "_", .) ]])
     },
+
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$numeric4$get.input(x, session)
@@ -412,6 +607,7 @@ input.handlers <- list(
 
       return(value)
     },
+
     as.source = function(x = NULL, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$numeric4$as.value(x, session, value)
@@ -424,74 +620,107 @@ input.handlers <- list(
   # multi
   #
   multi = inputHandler(
-    default.value = "",
+    default.value = "character",
+
     params.list = list(
-      types = list(label = "Allowed Types (Ordered)", type = "list", default = list("character")),
-      parameters = list(label = "Parameters for Each Type", type = "list", default = list())
+      inputs = list(label = "Parameters for Each Type", type = "list",
+                    default = list("character" = list(), "expression" = list()))
     ),
-    create.ui = function(x, ns = identity) {
-      value <- if (!is.null(x$value)) x$value else x$default
 
-      slatesMultiInput(ns(x$id), label = x$name,
-                       types = x$types, value = value,
-                       wizards = x$wizards)
+    initInput = function(x) {
+      # make multi-inputs
+      x$inputs %<>%
+        imap(~list_modify(.x,
+                          input.type = .y,
+                          name = paste0(x$name, "-", .y))) %>%
+        map(~do.call(slateInput, .))
+
+      if (class(x$default) != "character")
+        stop("Default must be a single character string indicating the selected input type.")
+
+      x$default <- list(selected = x$default,
+                        values = map(x$inputs, "default"))
+
+      return(x)
     },
-    update.ui = function(x, session) {
+
+    createUI = function(x, ns = identity) {
+      #value <- if (!is.null(x$value)) x$value else x$default
+
+      makeSlatesMultiInput(
+        ns(x$id), label = x$name,
+        inputs = x$inputs, allow.null = x$allow.null
+      )
+    },
+
+    updateUI = function(x, session) {
 
     },
+
     get.input = function(x, session) {
-      return(list(session$input[[ x$id ]]))
+      selected <- session$input[[ x$id ]]
+
+      values <- x$inputs %>%
+        map(~getHandler(.)$get.input(., session))
+
+      # if (!selected %in% names(x$inputs) ||
+      #     any(map_lgl(values, is.null))) {
+      #   return(x$default)
+      # }
+
+      list(selected = selected, values = values)
     },
+
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
-        value <- input.handlers$multi$get.input(x, session)[[1]]
+        value <- input.handlers$multi$get.input(x, session)
 
-      #if (any(map_lgl(value, is.null)))
-      #  return(NULL)
+      if (length(value) != 2 || class(value) != "list")
+        stop("Value must be a list of length 2.")
 
-      #value <- as.numeric(value)
+      if (is.null(value$selected) || value$selected == "NULL")
+        return(NULL)
 
-      # if (length(value) < 4)
-      #   value <- c(value, rep(NA, 4 - length(value)))
-      # else if (length(value) > 4)
-      #   stop("numeric4 input must have length 4.")
+      value$values %<>%
+        imap(~input.handlers[[ .y ]]$as.value(x = x$inputs[[ .y ]], value = .x))
+
+      dlog(value)
 
       return(value)
     },
+
     as.source = function(x = NULL, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$multi$as.value(x, session, value)
 
-      value
-      # value %>% paste(collapse = ", ") %>% paste0("c(", ., ")")
-    },
-    observer = function(x, session) {
-      req(type <- session$input[[ paste0(x$id, "-radio") ]])
+      if (is.null(value))
+        return("NULL")
 
-      value <- isolate(getHandler(x)$as.value(x, session))
-
-      input.data <- switch(type,
-             "CHR" = list(tag = "input", type = "text", class = ""),
-             "EXP" = list(tag = "input", type = "text", class = "expression-input"),
-             "NUM" = list(tag = "input", type = "numeric", class = "")
+      source <- input.handlers[[ value$selected ]]$as.source(
+        x = x$inputs[[ value$selected ]],
+        value = value$values[[ value$selected ]]
       )
 
-      el <- switch(type,
-                   "CHR" = tags$input(id = session$ns(x$id), type = "text",
-                                      class = "form-control", value = value),
-                   "EXP" = tags$input(id = session$ns(x$id), type = "text",
-                                      class = "form-control expression-input", value = value),
-                   "NUM" = tags$input(id = session$ns(x$id), type = "numeric",
-                                      class = "form-control", value = value)
-                   )
+      return(source)
+    },
 
-      paste0('$("#', session$ns(x$id), '").replaceWith(\'', as.character(el),'\');') %>%
-        print %>%
-        (shinyjs::runjs)
+    observer = function(x, session) {
+      req(selected <- session$input[[ x$id ]])
+
+      # selected input id
+      sel.name <- paste0(x$name, "-", selected)
+
+      js <- map_chr(x$inputs, ~{
+        getHandler(.)$setVisible(., session, visible = (selected != "NULL" && .$name == sel.name),
+                                  tag.only = TRUE, return.js = TRUE)
+      }) %>% paste(collapse = "\n")
+
+      shinyjs::runjs(js)
     }
   )
 
 )
+
 
 
 dataset.handlers <- list(
@@ -522,7 +751,7 @@ getLayoutFun <- function(layout) {
 
 
 createInputUI <- function(input, ns = identity) {
-  elem <- getHandler(input)$create.ui(input, ns)
+  elem <- getHandler(input)$createUI(input, ns)
 
   if (!is.null(input$description) && input$description != "") {
     tooltip <-paste0("<b>", input$input.type, "</b>",
