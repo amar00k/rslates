@@ -8,24 +8,42 @@ ARG.TYPES <- c("numeric", "logical", "character", "expression", "choices", "file
 slateBlueprint <- function(name = "Untitled",
                            author = "",
                            category = "",
-                           tags = "",
-                           source = "") {
-  preprocessed <- preprocessSource(source)
+                           tags = list(),
+                           source = "",
+                           preprocess = TRUE) {
+  if (preprocess == TRUE) {
+    preprocessed <- preprocessSource(source)
 
-  list(
-    name = name,
-    author = author,
-    category = category,
-    tags = tags,
-    pages = preprocessed$pages,
-    groups = preprocessed$groups,
-    inputs = preprocessed$inputs,
-    blocks = preprocessed$blocks,
-    outputs = preprocessed$outputs,
-    datasets = list(),
-    imports = list(),
-    source = source
-  )
+    list(
+      name = name,
+      author = author,
+      category = category,
+      tags = tags,
+      pages = preprocessed$pages,
+      groups = preprocessed$groups,
+      inputs = preprocessed$inputs,
+      blocks = preprocessed$blocks,
+      outputs = preprocessed$outputs,
+      datasets = list(),
+      imports = list(),
+      source = source
+    )
+  } else {
+    list(
+      name = name,
+      author = author,
+      category = category,
+      tags = tags,
+      pages = list(),
+      groups = list(),
+      inputs = list(),
+      blocks = list(),
+      outputs = list(),
+      datasets = list(),
+      imports = list(),
+      source = source
+    )
+  }
 }
 
 
@@ -47,12 +65,14 @@ slateBlueprint <- function(name = "Untitled",
 #' @param input.type *legacy: use `type` instead*
 #' @param ... additional input parameters to be stored in the input structure. These are usually
 #'   type-specific parameters, such as `choices` if the input is of type `select`.
+#' @param null if TRUE, a toggle is displayed to allow the user to select NULL as the input value.
 #'
 #' @return A list of input parameters suitable to be passed along to other `rslates` functions.
 #' @export
 slateInput <- function(name,
                        type = "character",
                        default = NULL,
+                       allow.null = FALSE,
                        parent = "auto",
                        long.name = "",
                        description = "",
@@ -66,8 +86,9 @@ slateInput <- function(name,
   input <- list(
     name = name,
     input.type = input.type,
-    parent = parent,
     default = default,
+    allow.null = allow.null,
+    parent = parent,
     long.name = long.name,
     description = description,
     condition = condition,
@@ -82,19 +103,21 @@ slateInput <- function(name,
   if (!(input$input.type %in% names(input.handlers)))
     stop("\"", input$input.type, "\" is not a valid input type.")
 
-  # include type-specific default values that were not specified
-  pars <- getHandler(input)$params.list %>%
-    map("default")
+  # set default value
+  if (is.null(input$default))
+    input$default <- getHandler(input)$default.value
 
-  w <- which(!(names(pars) %in% names(input)))
-
-  input <- modifyList(input, pars[w])
+  # initialize type specific variables
+  input <- getHandler(input)$initInput(input)
 
   # coerce default value
-  input$default <- getHandler(input)$as.value(value = input$default)
+  input$default <- getHandler(input)$as.value(x = input, value = input$default)
 
   # make sure the id is set
   input$id <- paste0("input_", name)
+
+
+  #input$value <- input$default
 
   return (input)
 }
@@ -310,7 +333,7 @@ blueprintToJSON <- function(blueprint, pretty = FALSE) {
   jsonlite::toJSON(data, pretty = pretty)
 }
 
-blueprintFromJSON <- function(filename=NULL, text=NULL) {
+blueprintFromJSON <- function(filename=NULL, text=NULL, preprocess = TRUE) {
   if (!is.null(filename) && !is.null(text))
     stop("Only one of filename or text must be supplied.")
 
@@ -324,7 +347,8 @@ blueprintFromJSON <- function(filename=NULL, text=NULL) {
     author = data$author,
     category = data$category,
     tags = data$tags,
-    source = data$source
+    source = data$source,
+    preprocess = preprocess
   )
 
   return(blueprint)
