@@ -4,7 +4,7 @@
 
 slatesWidgetGalleryApp <- function() {
   inputs <- list(
-    slateInput("text", "character", default = "Some text",
+    slateInput("text", "character", default = "Some text", null = TRUE,
                description = "A simple text input."),
     slateInput("expr", "expression", default = "rep(1:10, 2)",
                description = "An expression input. It has a slightly different appearance.
@@ -26,7 +26,25 @@ slatesWidgetGalleryApp <- function() {
                description = "A choice select input that allows an arbitrary value."),
     slateInput("multiple_anythings", "choices", choices = c("write", "something", "or choose this", "or this"),
                default = c("write", "something"), multiple = TRUE, custom = TRUE,
-               description = "A multiple-choice select input that allows arbitrary entries.")
+               description = "A multiple-choice select input that allows arbitrary entries."),
+    slateInput("multi_input", type = "multi",
+               default = "character",
+               inputs = list(
+                 character = list(default = "Life"),
+                 expression = list(default = "1:10"),
+                 choices = list(default = "B", choices = c("A", "B", "C"), quote = TRUE),
+                 numeric = list(default = 42)
+               )
+    ),
+    slateInput("multi_input_2", type = "multi",
+               default = "character",
+               allow.null = TRUE,
+               inputs = list(
+                 numeric = list(default = 1),
+                 numeric2 = list(default = c(1,2)),
+                 numeric4 = list(default = c(1,2,3,4))
+               )
+    )
   ) %>% set_names(sapply(., "[[", "name"))
 
   group <- slateGroup(name = "group", layout = "flow-3")
@@ -77,7 +95,7 @@ slatesWidgetGalleryApp <- function() {
     })
 
     observeEvent(input$select_theme, {
-      print("select_theme")
+      dlog()
 
       theme <- loadTheme(input$select_theme)
       session$setCurrentTheme(theme)
