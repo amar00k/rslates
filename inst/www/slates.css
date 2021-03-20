@@ -130,7 +130,7 @@
 }
 
 .slate.editing {
-  border-width: thick;
+  border-width: medium;
 }
 
 .slate > .card-header > p {
@@ -192,15 +192,29 @@
 }
 
 
+.slates-multi-button {
+  margin-bottom: .5rem;
+}
+
+.slates-multi-button > .btn-sm, .btn-group-sm > .btn {
+  font-size: xx-small;
+  padding: 2px 4px;
+}
+
+.slates-multi-button > .btn-sm, .btn-group-sm > .btn:not(.active) {
+  filter: opacity(0.5);
+}
+
+
 /* Inputs */
 
-.expression-input > input {
+.expression-input {
   font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
   border-radius: 0;
   border-bottom-width: 0.25em;
 }
 
-.numeric-input  input {
+.numeric-input {
   border-radius: 1.5em;
 }
 
