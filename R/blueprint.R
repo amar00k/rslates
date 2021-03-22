@@ -24,8 +24,8 @@ slateBlueprint <- function(name = "Untitled",
       inputs = preprocessed$inputs,
       blocks = preprocessed$blocks,
       outputs = preprocessed$outputs,
+      imports = preprocessed$imports,
       datasets = list(),
-      imports = list(),
       source = source
     )
   } else {
@@ -225,13 +225,33 @@ slateDataset <- function(name, type, source = "", export = FALSE, export.name = 
 }
 
 
-slateImport <- function(name, type, value = "", description = "") {
+import.handlers <- list(
+  file = list(
+    name = "file",
+    make.source = function(x, data) {
+      data <- list(
+        name = data$name,
+        path = data$datapath,
+        size = data$size,
+        md5 = digest::digest(data$datapath, file = TRUE, algo = "md5")
+      )
+
+      paste(x$name, "<-", toString(list(data)))
+    }
+  ),
+  RData = list(
+    name = "RData"
+  )
+)
+
+
+slateImport <- function(name, type, description = "") {
+  stopifnot(type %in% names(import.handlers))
+
   list(
     name = name,
-    type = "file",
-    description = description,
-    value = "",
-    data = NULL
+    type = type,
+    description = description
   )
 }
 
