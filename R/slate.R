@@ -58,7 +58,7 @@ blueprintEditorUI  <- function(id, blueprint) {
     id = ns("blueprint_editor"),
     class = "container pt-3",
     tags$div(
-      class = "slates-flow-2",
+      class = "slates-flow slates-flow-2",
       textInput(ns("blueprint_name"), "Name", value = blueprint$name),
       textInput(ns("blueprint_author"), "Author(s)", value = blueprint$author),
       selectInput(ns("blueprint_category"), "Category",
@@ -498,28 +498,40 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
     # provides the sources for all outputs (with variables substituted)
     # TODO: display errors somewhere...
-    output.sources <- reactive({
+    sources <- reactive({
       dlog()
 
       inputs <- blueprint$inputs
       outputs <- blueprint$outputs
+      toplevel <- blueprint$toplevel
       blocks <- blueprint$blocks
       values <- input.values()
 
       inputs <- assignInputValues(inputs, values)
 
-      map(outputs, ~{
-        new.source <- tryCatch({
-          substituteVariables(.$source, blocks, inputs)
-        },
-        error = function(e) {
-          print(e)
+      sources <- list()
 
-          return(.$source)
+      sources$output <-
+        map(outputs, ~{
+          new.source <- tryCatch({
+            substituteVariables(.$source, blocks, inputs)
+          },
+          error = function(e) {
+            return(.$source)
+          })
+
+          list_modify(., source = new.source)
         })
 
-        list_modify(., source = new.source)
-      })
+      sources$toplevel <-
+        tryCatch({
+          substituteVariables(toplevel, blocks, inputs)
+        },
+        error = function(e) {
+          return(toplevel)
+        })
+
+      return(sources)
     })
 
 
@@ -534,14 +546,14 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
     # this is the main source output of the slate
     source.code <- reactive({
-      sources <- output.sources()
+      sources <- sources()
       import.sources <- import.sources()
 
       #import.code <- map(reactiveValuesToList(import.data),
       import.code <- import.sources %>%
         paste(collapse = "\n")
 
-      output.code <- map(sources, ~paste0("#-- ", .$name, "\n", .$source)) %>%
+      output.code <- map(sources$output, ~paste0("#-- ", .$name, "\n", .$source)) %>%
         paste(collapse = "\n\n")
 
       if (import.code != "")
@@ -675,6 +687,8 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       if (!is.null(selected) && !(selected %in% names(outputs)))
         selected <- names(outputs)[1]
 
+      dlog(selected)
+
       output.tabs <- unname(lapply(outputs, function(x) {
         stopifnot(x$type %in% names(output.handlers))
 
@@ -682,7 +696,7 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
           title = x$name,
           tags$div(
             tags$br(),
-            getHandler(x)$create.ui(ns(x$id), x$name)
+            getHandler(x)$createUI(x, session)
           )
         )
       }))
@@ -717,10 +731,10 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
     # updates the source debug output when values or theme change
     observers$debug.source <- observe(label = "debug.source", {
-      sources <- isolate(output.sources())
+      sources <- isolate(sources())
 
       text <-
-        map(sources, ~paste0("#-- ", .$name, "\n", .$source)) %>%
+        map(sources$output, ~paste0("#-- ", .$name, "\n", .$source)) %>%
         paste(collapse = "\n\n")
 
       shinyAce::updateAceEditor(
@@ -730,9 +744,11 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
 
     # provides the environment where outputs will be evaluated
-    # imports are evaluated here
+    # imports are evaluated first, then toplevel source code,
+    # and eventually user-provided slate code
     slate.envir <- reactive({
       import.sources <- import.sources()
+      toplevel <- sources()$toplevel
 
       env <- new.env(parent = slate.options$envir)
 
@@ -740,6 +756,8 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
         for (x in import.sources) {
           eval(parse(text = x), envir = env)
         }
+
+        eval(parse(text = toplevel), envir = env)
 
         return(env)
       },
@@ -757,8 +775,8 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       dlog()
 
       for (x in blueprint$outputs) {
-        getHandler(x)$create.output(
-          x, session, output.sources, input.values, slate.envir
+        output[[ x$id ]] <- getHandler(x)$createRenderer(
+          x, session, sources, input.values, slate.envir
         )
       }
     })
@@ -773,7 +791,7 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
       for (x in blueprint$outputs) {
         getHandler(x)$observer(
-          x$id, session, output.sources, input.values, slate.envir, global.options
+          x$id, session, sources, input.values, slate.envir, global.options
         )
       }
     })
