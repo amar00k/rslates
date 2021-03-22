@@ -26,12 +26,12 @@ autoReactableTheme <- function(bslib.theme = getCurrentTheme(), options = list()
 # Outputs
 #
 
-outputHandler <- function(create.ui = function(...) { tagList() },
-                          create.output = function(...) {},
+outputHandler <- function(createUI = function(...) { tagList() },
+                          createRenderer = function(...) {},
                           observer = function(...) {}) {
   list(
-    create.ui = create.ui,
-    create.output = create.output,
+    createUI = createUI,
+    createRenderer = createRenderer,
     observer = observer
   )
 }
@@ -39,39 +39,43 @@ outputHandler <- function(create.ui = function(...) { tagList() },
 
 output.handlers <- list(
   plot = outputHandler(
-    create.ui = function(id, title) {
-      plotOutput(id)
+    createUI = function(x, session) {
+      plotOutput(session$ns(x$id))
     },
-    create.output = function(x, session, sources, inputs, envir) {
-      session$output[[ x$id ]] <- renderPlot({
-        text <- sources()[[ x$name ]]$source
+    createRenderer = function(x, session, sources, inputs, envir) {
+      renderPlot({
+        text <- sources()$output[[ x$name ]]$source
 
         eval(str2expression(text), envir = new.env(parent = envir()))
       })
     }
   ),
   table = outputHandler(
-    create.ui = function(id, title) {
+    createUI = function(x, session) {
       tags$div(
         style="overflow: auto; max-height: 400px;",
-        tableOutput(id)
+        tableOutput(session$ns(x$id))
       )
     },
-    create.output = function(x, session, sources, inputs, envir) {
-      session$output[[ x$id ]] <- renderTable({
-        text <- sources()[[ x$name ]]$source
+    createRenderer = function(x, session, sources, inputs, envir) {
+      name <- x$name
+
+      renderTable({
+        text <- sources()$output[[ x$name ]]$source
 
         eval(str2expression(text), envir = new.env(parent = envir()))
       })
     }
   ),
   reactable = outputHandler(
-    create.ui = function(id, title) {
-      reactable::reactableOutput(id)
+    createUI = function(x, session) {
+      reactable::reactableOutput(session$ns(x$id))
     },
-    create.output = function(x, session, sources, inputs, envir) {
-      session$output[[ x$id ]] <- reactable::renderReactable({
-        text <- sources()[[ x$name ]]$source
+    createRenderer = function(x, session, sources, inputs, envir) {
+      name <- x$name
+
+      reactable::renderReactable({
+        text <- sources()$output[[ x$name ]]$source
 
         reactable::reactable(
           eval(str2expression(text), envir = new.env(parent = envir()))
@@ -81,20 +85,37 @@ output.handlers <- list(
     }
   ),
   print = outputHandler(
-    create.ui = function(id, title) {
+    createUI = function(x, session) {
       tags$div(
         # TODO: make the height adapt to the slate height
         style="overflow: auto; max-height: 400px;",
-        verbatimTextOutput(id)
+        verbatimTextOutput(session$ns(x$id))
       )
     },
-    create.output = function(x, session, sources, inputs, envir) {
+    createRenderer = function(x, session, sources, inputs, envir) {
       name <- x$name
 
-      session$output[[ x$id ]] <- renderPrint({
-        text <- sources()[[ name ]]$source
+      renderPrint({
+        text <- sources()$output[[ name ]]$source
 
         eval(str2expression(text), envir = new.env(parent = envir()))
+      })
+    }
+  ),
+  markdown = outputHandler(
+    createUI = function(x, session) {
+      uiOutput(session$ns(x$id))
+    },
+    createRenderer = function(x, session, sources, inputs, envir) {
+      name <- x$name
+
+      renderUI({
+        text <- sources()$output[[ name ]]$source
+        # text <- eval(str2expression(source), envir = new.env(parent = envir()))
+
+        knitr::knit(text = text, envir = envir(), quiet = TRUE) %>%
+          markdown::markdownToHTML(text = ., fragment.only = TRUE) %>%
+          HTML
       })
     }
   )
