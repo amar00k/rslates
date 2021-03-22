@@ -23,6 +23,7 @@ slateBlueprint <- function(name = "Untitled",
       groups = preprocessed$groups,
       inputs = preprocessed$inputs,
       blocks = preprocessed$blocks,
+      toplevel = preprocessed$toplevel,
       outputs = preprocessed$outputs,
       imports = preprocessed$imports,
       datasets = list(),
@@ -38,9 +39,10 @@ slateBlueprint <- function(name = "Untitled",
       groups = list(),
       inputs = list(),
       blocks = list(),
+      toplevel = character(0),
       outputs = list(),
-      datasets = list(),
       imports = list(),
+      datasets = list(),
       source = source
     )
   }
@@ -123,23 +125,48 @@ slateInput <- function(name,
 }
 
 
-slatePage <- function(name, ...,
-                      description = "",
-                      layout = "flow-2") {
+#' Define a Page For Slate Inputs
+#'
+#' @param name
+#' @param title
+#' @param layout
+#' @param description
+#'
+#' @return
+#' @export
+#'
+#' @examples
+slatePage <- function(name,
+                      title = name,
+                      layout = "flow-2",
+                      description = "") {
   page <- list(
     name = name,
+    title = title,
     description = description,
     layout = layout,
     type = "page"
   )
 
-  page <- c(page, list(...))
   page$id <- paste0("page_", name)
 
   return(page)
 }
 
 
+#' Define a Group For Slate Inputs
+#'
+#' @param name
+#' @param ...
+#' @param parent
+#' @param description
+#' @param layout
+#' @param condition
+#'
+#' @return
+#' @export
+#'
+#' @examples
 slateGroup <- function(name, ...,
                        parent = "auto",
                        description = "",
@@ -199,7 +226,7 @@ inferSlateLayout <- function(layout) {
 }
 
 
-slateOutput <- function(type, name, source = "", ...) {
+slateOutput <- function(name, type, source = "", ...) {
   output.data <- list(
     name = name,
     type = type,

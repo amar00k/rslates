@@ -40,15 +40,23 @@ makePreprocessorDirectiveRE <- function(tokens, level = 3) {
 cleanPreprocessorDirectives <- function(text) {
   stopifnot("Text must be a single string." = (length(text) == 1))
 
-  tokens <- c("title", "tags", "preamble",
-              "page", "group", "input",
+  tokens <- c("page", "group", "input",
               "output", "end-output",
-              "dataset", "end-dataset",
+              "import",
               "if", "end-if")
 
   re <- makePreprocessorDirectiveRE(tokens)
 
   gsub(re, "", text, perl = TRUE)
+}
+
+
+cleanEmptyLines <- function(text) {
+  strsplit(text, split = "\n") %>%
+    pluck(1) %>%
+    trimws %>%
+    keep(map_lgl(., ~. != "")) %>%
+    paste(collapse = "\n")
 }
 
 
@@ -286,11 +294,24 @@ preprocessSubstitutionBlock <- function(text) {
 
 
 # x(type, default, ...)
-preprocessLayoutDefinition <- function(text, type) {
+preprocessLayoutDefinition <- function(text, type = NULL) {
   stopifnot("Text must be a single string." = (length(text) == 1))
 
+  text <- trimws(text)
+
+  if (is.null(type))
+    type <- sub("^\\$@(page|group|input).*", "\\1", text)
+
+  def.text <- sub("^\\$@(page|group|input) *", "", text)
+
   # extract name of input
-  name <- strsplit(text, "\\(")[[1]][1]
+  name <- strsplit(def.text, "\\(|,")[[1]][1] %>%
+    trimws %>%
+    sub("^\"(.*)\"$", "\\1", .) %>%
+    sub("^'(.*)'$", "\\1", .)
+
+  # trim name
+  def.text <- sub(paste0("^", name, "[ \t,]*"), "", def.text)
 
   call.fun <- switch(type,
                      "input" = "slateInput",
@@ -299,11 +320,10 @@ preprocessLayoutDefinition <- function(text, type) {
 
   # insert the name as the first argument inside the parenthesis
   # and add call to call.fun function
-  if (!grepl("\\(.*\\)", text)) {
-    call.text <- paste0(call.fun, "(\"", name, "\")")
+  if (!grepl("^\\(.*\\)$", def.text)) {
+    def.text <- paste0(call.fun, "(\"", name, "\", ", def.text, ")")
   } else {
-    call.text <- sub("^.*?(?=\\()", "", text, perl = TRUE) %>%
-      sub("^\\(", paste0(call.fun, "(\"", name, "\", "), .)
+    def.text <- sub("^\\(", paste0(call.fun, "(\"", name, "\", "), def.text)
   }
 
   # handle input type using a
@@ -312,19 +332,26 @@ preprocessLayoutDefinition <- function(text, type) {
     types.list <- as.list(names(input.handlers)) %>% set_names(.)
     env <- list2env(types.list)
   } else {
-    env <- parent.frame()
+    env <- NULL
   }
 
   input <- tryCatch({
     # create the expression (may throw error)
-    expr <- str2expression(call.text)
+    expr <- str2expression(def.text)
 
     # evaluate the slateInput(...) call
     eval(expr, envir = env)
   },
   error = function(e) {
     #stop(paste0("Error parsing variable definition: ", text, ". ", toString(e)))
-    stop(e)
+    syntax <- switch(
+      type,
+      "input" = "$@input <name>, <type>, <default> [, description=<description>, ... ]",
+      "page" = "$@page <name> [, title=<title>, layout=<layout>, description=<description>]",
+      "group" = "$@group <name> [, title=<title>, layout=<layout>, description=<description>]"
+    )
+
+    stop("Error preprocessing definition. Syntax: ", syntax)
   })
 }
 
@@ -336,26 +363,21 @@ preprocessOutput <- function(lines) {
 
   params <- strsplit(header, split = ",")[[1]]
 
-  if (length(params) == 0)
-    stop("Missing output type.")
+  if (length(params) < 2)
+    stop("Need name and type.")
 
-  type <- params[[1]] %>% trimws
+  name <- params[[1]] %>% trimws
+  type <- params[[2]] %>% trimws
 
   if (!(type %in% names(output.handlers)))
     stop("Unknown output type: '", type, "'")
 
-  if (length(params) > 1)
-    name <- params[[2]] %>% trimws
-  else
-    name <- type
-
   if (length(params) > 2)
-    params <- paste(params[3:length(params)], collapse = ",") %>% paste(",", .)
+    params <- paste(params[3:length(params)], collapse = ",") %>% paste(", ", .)
   else
     params <- ""
 
-  call.text <- paste0("slateOutput('", type, "', '", name, "'", params, ")")
-
+  call.text <- paste0("slateOutput('", name, "', '", type, "'", params, ")")
 
   output <- tryCatch({
     expr <- str2expression(call.text)
@@ -455,8 +477,7 @@ splitIntoDefinitionBlocks <- function(text) {
 
       list(
         type = type,
-        header = header,
-        body = .[2:length(.)]
+        body = .
       )
     })
 }
@@ -486,16 +507,11 @@ preprocessSource <- function(text) {
 
   # process layout elements (pages, groups, inputs)
   layout <-
-    makePreprocessorDirectiveRE("page|group|input") %>%
+    makePreprocessorDirectiveRE("input|page|group") %>%
     gregexpr(clean.text, perl = TRUE) %>%
     regmatches(clean.text, .) %>%
     unlist() %>%
-    map(~{
-      type <- sub("^\\$@(page|group|input).*", "\\1", .)
-      def <- sub("^\\$@(page|group|input) *", "", .)
-
-      preprocessLayoutDefinition(def, type)
-    }) %>%
+    map(preprocessLayoutDefinition) %>%
     inferSlateLayout %>%
     set_names(map(., "name"))
 
@@ -533,11 +549,20 @@ preprocessSource <- function(text) {
   # prepare blocks
   source.blocks <- splitIntoDefinitionBlocks(text)
 
+  # Handle top-level code
+  blueprint.data$toplevel <-
+    source.blocks %>%
+    keep(map(., "type") == "top-level") %>%
+    map(~paste(.$body, collapse = "\n")) %>%
+    map(cleanPreprocessorDirectives) %>%
+    map(cleanEmptyLines) %>%
+    paste(collapse = "\n\n")
+
   # Handle outputs
   blueprint.data$outputs <-
     source.blocks %>%
     keep(map(., "type") == "output") %>%
-    map(~c(.$header, .$body)) %>%
+    map("body") %>%
     map(preprocessOutput) %>%
     set_names(map(., "name"))
 
@@ -545,34 +570,45 @@ preprocessSource <- function(text) {
 }
 
 
-
-
 text <- '
+$@input varname(character, description = "Name of the variable holding the data.frame or data.table.")
+
+### $@page Import Settings(description = "Settings used to parse the CSV file.")
+
+$@page Import Settings, description = "Settings used to parse the CSV file.")
+
 $@input header(logical, FALSE, description = "header")
-$@input sep(choices, ",", choices=list("Comma (,)"=",", "Semicolon (;)"=";", "Space"=" ", "Tab"="	"))
+### $@input header, logical, FALSE, description = "header"
+
+$@input sep(choices, ",", choices=list("Comma (,)"=",", "Semicolon (;)"=";", "Space"=" ", "Tab"="\t"))
 $@input dec(choices, ".", choices=list(".", ","))
 $@input skip(numeric, 0)
 
-$@import csvfile, file, description = "CSV file to import."
+$@import csvfile, file
 
-csv.table <- read.table(csvfile, ${d:: header=header, sep=sep})
+df <- read.csv(csvfile$path, ${d:: x:header=header, skip=skip, sep=sep, dec=dec})
 
-$@output BLABLA(plot)
+$@output table, Table
 
-  $@if blablabla
-
-  $@end-if
-
-$@end-output
-
-$@output table, Preview
-
-head(csvtable, 10)
+df %>% head(10)
 
 $@output print, Debug
 
-# print(csvfile)
+print(ncol(df))
+print(nrow(df))
 
+$@output markdown, Summary
+
+##### File
+
+* **Filename:** `r csvfile$name`
+
+##### Settings
+
+* **Header:** ${header}
+* **Separator character:** ${sep}
+* **Decimal character:** ${dec}
 '
 
+text <- blueprintFromJSON(filename = "inst/importer_blueprints/CSV_Import.json", preprocess = FALSE)$source
 
