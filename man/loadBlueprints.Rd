@@ -4,7 +4,7 @@
 \alias{loadBlueprints}
 \title{Load JSON blueprints from file or folder}
 \usage{
-loadBlueprints(path)
+loadBlueprints(path, on.error = c("stop", "skip"))
 }
 \arguments{
 \item{path}{}

@@ -180,9 +180,9 @@ Inputs, groups and pages are defined through the `$@input`, `$@group` and `$@pag
 
 > `$@input name(type, default, ...)`
 
-Inputs are defined using the syntax `$@input name(type, default, ...)` where `name` is the variable name associated with the input, `type` is the input type, and `default` is the default value of the input.
+Inputs are defined using the syntax `$@input name(type, default, ...)` where `name` is the variable name associated with the input, `type` is the input type, and `default` is the default value of the input. 
 
-Input types include `character`, `numeric`, `logical`, `choices`, `expression`, `numeric2` and `numeric4`. See ??? for a list of supported input types.
+Input types include `character`, `numeric`, `logical`, `choices`, `expression`, `numeric2` and `numeric4`. 
 
 ### Usage
 
@@ -237,8 +237,18 @@ Additional parameters must be specified by name. Common user-interface options i
 > ... 
 > `$@end-if`
 
+# Imports
 
+Import types: 
 
+* *file*: a file on the local computer.
+* *rdata*: a Rdata file to be loaded.
+
+```
+$@import file filename [end]
+
+$@end-import
+```
 
 
 

@@ -5,17 +5,29 @@
 \title{Define behaviour of an input type}
 \usage{
 inputHandler(
-  create.ui = function(x, ns = identity, value = NULL) {     tags$div(id =
-    session$ns(x$id)) },
   default.value = "",
   params.list = list(),
-  update.ui = function(x, session) { },
-  get.input = function(x, session) {     return(list(session$input[[x$id]])) },
-  set.input = function(x, session, value) {     update.ui(x, session, value) },
+  initInput = function(x) {     x },
+  createUI = function(x, ns = identity, value = NULL) {     tags$div(id =
+    session$ns(x$id)) },
+  updateUI = function(x, session) { },
+  setState = function(x, session, enabled, return.js = FALSE) {     if (class(x) ==
+    "character")          id <- x     else id <- x$id     selector <- paste0("$(\\"#",
+    session$ns(id), "\\")")     js <- paste0(selector, ".attr(\\"disabled\\",",
+    jsBoolean(!enabled), ")") \%>\% print     if (return.js)          return(js)     else
+    shinyjs::runjs(js) },
+  setVisible = function(x, session, visible, tag.only = FALSE, return.js = FALSE) {    
+    if (class(x) == "character")          id <- x     else id <- x$id     action <- if
+    (visible)          "removeClass(\\"d-none\\")"     else "addClass(\\"d-none\\")"    
+    if (tag.only)          selector <- paste0("$(\\"#", session$ns(id), "\\")")     else
+    selector <- paste0("$(\\"#", session$ns(id), "\\").parent()")     js <-
+    paste0(selector, ".", action, ";")     if (return.js)          return(js)     else
+    shinyjs::runjs(js) },
+  get.input = function(x, session) {     return(session$input[[x$id]]) },
+  set.input = function(x, session, value) {     updateUI(x, session, value) },
   as.value = function(x, session = NULL, value = NULL) {     if (is.null(value))       
-      value <- getHandler(x)$get.input(x, session)[[1]]     value <- as.character(value) 
-       if (length(value) > 1)          stop("input must have length 1.")    
-    return(value) },
+      value <- getHandler(x)$get.input(x, session)     value <- as.character(value)    
+    if (length(value) > 1)          stop("input must have length 1.")     return(value) },
   as.string = function(x, session, value = NULL) {     getHandler(x)$as.value(x,
     session, value) \%>\% toString },
   as.source = function(x, session = NULL, value = NULL) {     getHandler(x)$as.value(x,
@@ -24,8 +36,6 @@ inputHandler(
 )
 }
 \arguments{
-\item{create.ui}{function used to create the input UI.}
-
 \item{default.value}{default value of this input type}
 
 \item{params.list}{list of parameters used by the input type. Each element of the list
@@ -34,7 +44,9 @@ the parameter), type (one of \code{character}, \code{numeric}, \code{logical}, \
 \code{choices} (when type is \code{choices}, the vector of allowed values), \code{default}
 (default value).}
 
-\item{update.ui}{function used to update the input UI.}
+\item{createUI}{function used to create the input UI.}
+
+\item{updateUI}{function used to update the input UI.}
 
 \item{get.input}{function that returns the raw input(s) from the \code{session$input}
 object as a \emph{list}.}

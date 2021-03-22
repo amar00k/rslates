@@ -8,6 +8,7 @@ slateInput(
   name,
   type = "character",
   default = NULL,
+  allow.null = FALSE,
   parent = "auto",
   long.name = "",
   description = "",
@@ -43,6 +44,8 @@ displayed in a dropdown menu above the input. See \code{\link[=slateWizard]{slat
 
 \item{...}{additional input parameters to be stored in the input structure. These are usually
 type-specific parameters, such as \code{choices} if the input is of type \code{select}.}
+
+\item{null}{if TRUE, a toggle is displayed to allow the user to select NULL as the input value.}
 }
 \value{
 A list of input parameters suitable to be passed along to other \code{rslates} functions.
