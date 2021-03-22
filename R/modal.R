@@ -55,8 +55,7 @@ slatesModal <- function(id, session,
       footer = tagList(
         modalButton("Cancel"),
         actionButton(ns(ID("btn_ok")), "OK")
-      ),
-      ...
+      )
     )
 
     showModal(md, session)

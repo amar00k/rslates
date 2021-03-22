@@ -62,6 +62,8 @@ widgetGalleryServer <- function(id, inputs, global.options = NULL) {
     })
 
     output$input_table <- renderTable({
+      dlog()
+
       inputs.table()
     })
 

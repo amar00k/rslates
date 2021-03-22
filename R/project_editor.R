@@ -28,11 +28,10 @@ getFileType <- function(extension) {
   return("")
 }
 
+
 getValidExtensions <- function() {
   sapply(getFileTypes(), "[[", "extentions") %>% unlist()
 }
-
-
 
 
 detectTabularFormat <- function(filename, nlines = 50, comment.char = "") {

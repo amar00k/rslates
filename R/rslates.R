@@ -390,9 +390,9 @@ loadBlueprints <- function(path, on.error = c("stop", "skip")) {
         },
         error = function(e) {
             if (on.error == "stop")
-                stop("Error loading blueprint file: ", .)
+                stop("Error loading blueprint file: ", ., " ", e)
             else
-                warning("Skipping blueprint file: ", .)
+                warning("Skipping blueprint file: ", ., " ", e)
 
             return(NULL)
         })
