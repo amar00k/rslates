@@ -272,34 +272,32 @@ input.numeric4-input {
 
 /* Layouts */
 
-.slates-flow-2 {
+.slates-flow {
   display: flex;
   flex-wrap: wrap;
+  margin-bottom: 1rem;
 }
 
-.slates-flow-2 > * {
+.slates-flow .selectize-control {
+  margin-bottom: 0;
+}
+
+.slates-flow-2 > .form-group {
   flex: 0 0 50%;
   padding-right: 12px;
+  margin-bottom: 0.2rem;
 }
 
-.slates-flow-3 {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.slates-flow-3 > * {
+.slates-flow-3 > .form-group {
   flex: 0 0 33%;
   padding-right: 12px;
+  margin-bottom: 0.2rem;
 }
 
-.slates-flow-4 {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.slates-flow-4 > * {
+.slates-flow-4 > .form-group {
   flex: 0 0 25%;
   padding-right: 12px;
+  margin-bottom: 0.2rem;
 }
 
 /* Other stuff */

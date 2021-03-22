@@ -743,9 +743,9 @@ dataset.handlers <- list(
 
 getLayoutFun <- function(layout) {
   switch(layout,
-         "flow-2" = function(...) tags$div(class = "slates-flow-2", ...),
-         "flow-3" = function(...) tags$div(class = "slates-flow-3", ...),
-         "flow-4" = function(...) tags$div(class = "slates-flow-4", ...),
+         "flow-2" = function(...) tags$div(class = "slates-flow slates-flow-2", ...),
+         "flow-3" = function(...) tags$div(class = "slates-flow slates-flow-3", ...),
+         "flow-4" = function(...) tags$div(class = "slates-flow slates-flow-4", ...),
          "vertical" = shiny::verticalLayout)
 }
 
@@ -756,7 +756,7 @@ createInputUI <- function(input, ns = identity) {
   if (!is.null(input$description) && input$description != "") {
     tooltip <-paste0("<b>", input$input.type, "</b>",
                      "<br>", input$description) %>%
-      shinyBS::bsTooltip(ns(input$id), .)
+      shinyBS::bsTooltip(ns(input$id), ., placement = "top")
 
     return(tagList(elem, tooltip))
   } else {
@@ -847,9 +847,11 @@ createInputLayout <- function(pages, groups, inputs,
   } else
     if (inputs.style == "tabset") {
     # simple tabset
-    tabs <- unname(lapply(pages, function(x) tabPanel(title = x$name, x$ui)))
+    ui <- pages %>%
+      map(~tabPanel(title = .$title, .$ui)) %>%
+      unname %>%
+      do.call(tabsetPanel, .)
 
-    ui <- do.call(tabsetPanel, tabs)
   } else if (inputs.style == "collapses") {
     # bs4 accordion
     accordion.id <- seq.uid("accordion")
