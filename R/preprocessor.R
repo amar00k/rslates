@@ -1,6 +1,11 @@
 
 
-
+quoteString <- function(text, single = FALSE) {
+  if (single)
+    paste0("'", text, "'")
+  else
+    paste0('"', text, '"')
+}
 
 
 removeComments <- function(text, n = 1) {
@@ -373,6 +378,89 @@ preprocessOutput <- function(lines) {
 }
 
 
+# syntax:
+# $@import <name>, <type> [, option1 = value1, option2 = value2, ...]
+preprocessImport <- function(text) {
+  text <- sub("^.*\\$@ *import *", "", text)
+
+  import <- tryCatch({
+    params <- strsplit(text, split = " *, *")[[1]]
+
+    if (length(params) < 2)
+      stop()
+
+    call.text <-
+      c(quoteString(params[1]), params[2:length(params)]) %>%
+      paste(collapse = ",") %>%
+      paste0("slateImport(", ., ")")
+
+    env <- as.list(names(import.handlers)) %>%
+      set_names(.) %>%
+      list2env
+
+    expr <- str2expression(call.text)
+    import <- eval(expr, envir = env)
+  },
+  error = function(e) {
+    stop("
+    Error parsing import definition.
+    Syntax: $@import <name>, <file|url|RData> [, description  = \"description\"]
+    ")
+  })
+
+  return(import)
+}
+
+
+
+splitIntoDefinitionBlocks <- function(text) {
+  stopifnot("Text must be a single string." = (length(text) == 1))
+
+  lines <- strsplit(text, split = "\n")[[1]]
+
+  if (length(lines) == 0)
+    return(list())
+
+  # split the lines into blocks, each associated with
+  # a specific definition, or belonging to the top-level
+  start.tokens <- c("\\$@output") # , "\\$@import")
+  end.tokens <- c("\\$@end-output") #, "\\$@end-import")
+
+  end.idx <- paste(end.tokens, collapse = "|") %>%
+    grep(lines) %>%
+    append(length(lines) + 1)
+
+  start.idx <- paste(start.tokens, collapse = "|") %>%
+    grep(lines) %>%
+    prepend(1) %>%
+    unique
+
+  if (max(end.idx) < length(lines) + 1)
+    start.idx <- append(start.idx, max(end.idx) + 1)
+
+  idx <- sort(c(start.idx, end.idx, length(lines)+1))
+
+  # last line of each output
+  end.idx <- map_dbl(start.idx, ~{
+    min(idx[ which(idx > .)]) - 1
+  })
+
+  map2(start.idx, end.idx, ~lines[ .x:.y ]) %>%
+    map(~{
+      header <- .[1]
+      if (grepl("\\$@output", header))
+        type <- "output"
+      else
+        type <- "top-level"
+
+      list(
+        type = type,
+        header = header,
+        body = .[2:length(.)]
+      )
+    })
+}
+
 
 preprocessSource <- function(text) {
   stopifnot("Text must be a single string." = (length(text) == 1))
@@ -383,8 +471,9 @@ preprocessSource <- function(text) {
     groups = list(),
     inputs = list(),
     outputs = list(),
-    datasets = list(),
-    blocks = list()
+    blocks = list(),
+    imports = list(),
+    datasets = list()
   )
 
   # sanitize text by removing \r
@@ -414,50 +503,76 @@ preprocessSource <- function(text) {
   blueprint.data$groups <- keep(layout, ~.$type == "group")
   blueprint.data$inputs <- keep(layout, ~.$type == "input")
 
-
-  # Handle outputs
-  lines <- strsplit(text, split = "\n")[[1]]
-
-  start.idx <- makePreprocessorDirectiveRE("output", 2) %>%
-    grep(lines, perl = TRUE)
-
-  end.idx <- makePreprocessorDirectiveRE("end-output") %>%
-    grep(lines, perl = TRUE)
-
-  idx <- sort(c(start.idx, end.idx, length(lines)+1))
-
-  # last line of each output
-  end.idx <- map_dbl(start.idx, ~{
-    min(idx[ which(idx > .)]) - 1
-  })
-
-  blueprint.data$outputs <-
-    map2(start.idx, end.idx, ~lines[ .x:.y ]) %>%
-    keep(~sub(".*\\$@output *", "", .[1]) != "") %>%
-    map(preprocessOutput) %>%
-    set_names(map(., "name"))
-
-
-  # Handle substitution blocks
-  block.matches <-
+  # Handle substitutions
+  blueprint.data$blocks <-
     gregexpr("\\$\\{.*?\\}", text) %>%
     regmatches(text, .) %>%
-    unlist
-
-  blueprint.data$blocks <- block.matches %>%
+    unlist %>%
     map(preprocessSubstitutionBlock)
 
   # resolve conficts with inputs
-  block.inputs <- map(blueprint.data$blocks, "variables") %>%
+  sub.inputs <- map(blueprint.data$blocks, "variables") %>%
     unlist(recursive = FALSE) %>%
     map("input") %>%
     keep(~!is.null(.)) %>%
     discard(~.$name %in% names(blueprint.data$inputs)) %>%
     set_names(map(., "name"))
 
-  if (length(block.inputs) > 0)
-    blueprint.data$inputs %<>% append(block.inputs)
+  if (length(sub.inputs) > 0)
+    blueprint.data$inputs %<>% append(sub.inputs)
+
+  # Handle imports
+  blueprint.data$imports <-
+    makePreprocessorDirectiveRE("import") %>%
+    gregexpr(clean.text, perl = TRUE) %>%
+    regmatches(clean.text, .) %>%
+    unlist() %>%
+    map(preprocessImport) %>%
+    set_names(map(., "name"))
+
+  # prepare blocks
+  source.blocks <- splitIntoDefinitionBlocks(text)
+
+  # Handle outputs
+  blueprint.data$outputs <-
+    source.blocks %>%
+    keep(map(., "type") == "output") %>%
+    map(~c(.$header, .$body)) %>%
+    map(preprocessOutput) %>%
+    set_names(map(., "name"))
 
   return(blueprint.data)
 }
+
+
+
+
+text <- '
+$@input header(logical, FALSE, description = "header")
+$@input sep(choices, ",", choices=list("Comma (,)"=",", "Semicolon (;)"=";", "Space"=" ", "Tab"="	"))
+$@input dec(choices, ".", choices=list(".", ","))
+$@input skip(numeric, 0)
+
+$@import csvfile, file, description = "CSV file to import."
+
+csv.table <- read.table(csvfile, ${d:: header=header, sep=sep})
+
+$@output BLABLA(plot)
+
+  $@if blablabla
+
+  $@end-if
+
+$@end-output
+
+$@output table, Preview
+
+head(csvtable, 10)
+
+$@output print, Debug
+
+# print(csvfile)
+
+'
+
 
