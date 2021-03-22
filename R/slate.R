@@ -131,7 +131,7 @@ blueprintEditorServer <- function(id, blueprint = slateBlueprint(), global.optio
         return(list())
       },
       error = function(e) {
-        list(toString(e))
+        list(e)
       })
 
       return(error)
@@ -183,14 +183,14 @@ blueprintEditorServer <- function(id, blueprint = slateBlueprint(), global.optio
 
     # displays error alerts from the preprocessor
     output$blueprint_alerts <- renderUI({
-      req(length(errors()) > 0)
+      #req(length(errors()) > 0)
 
       dlog("blueprint_alerts", length(errors()))
 
       map(errors(),
           ~tags$div(
             class = "alert alert-danger",
-            . #$message
+            .$message
           )
       ) %>% tagList()
     })
@@ -407,6 +407,11 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     }
 
 
+    # setImport <- function(name, data) {
+    #   dlog()
+    # }
+
+
     # the blueprint
     # if (is.null(blueprint))
     #   blueprint <- do.call(reactiveValues, slateBlueprint())
@@ -454,6 +459,9 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     # the title
     slate.title <- reactiveVal(isolate(blueprint$name))
 
+    # impor data
+    import.data <- reactiveValues()
+
     # observers created by this slate
     # will be destroyed if the slate is removed
     observers <- reactiveValues()
@@ -477,14 +485,12 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     })
 
 
-    # provides the slate (not blueprint) values of all inputs
+    # provides the state of all inputs
     input.values <- reactive({
       dlog()
 
       inputs <- blueprint$inputs %>%
         map(~getHandler(.)$as.value(., session))
-
-      dlog(inputs)
 
       return(inputs)
     })
@@ -515,6 +521,38 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
         list_modify(., source = new.source)
       })
     })
+
+
+    import.sources <- reactive({
+      blueprint$imports %>%
+        keep(~!is.null(import.data[[ .$name ]])) %>%
+        map_chr(~{
+          import.handlers[[ .$type ]]$make.source(., import.data[[ .$name ]])
+        })
+    })
+
+
+    # this is the main source output of the slate
+    source.code <- reactive({
+      sources <- output.sources()
+      import.sources <- import.sources()
+
+      #import.code <- map(reactiveValuesToList(import.data),
+      import.code <- import.sources %>%
+        paste(collapse = "\n")
+
+      output.code <- map(sources, ~paste0("#-- ", .$name, "\n", .$source)) %>%
+        paste(collapse = "\n\n")
+
+      if (import.code != "")
+        code <- paste(import.code, "\n\n", output.code)
+      else
+        code <- output.code
+
+      code
+      #formatR::tidy_source(text = code, output = FALSE, width.cutoff = 80)$text.tidy
+    })
+
 
 
     # Everything that needs to be done AFTER the UI has been created.
@@ -665,10 +703,7 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
 
 
     output$source_debug_ui <- renderUI({
-      sources <- output.sources()
-
-      text <- map(sources, ~paste0("#-- ", .$name, "\n", .$source)) %>%
-        paste(collapse = "\n\n")
+      text <- source.code()
 
       shinyAce::aceEditor(ns("debug_source"),
                           value = text,
@@ -693,34 +728,25 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       )
     })
 
-    #
-    # output$debug_source <- renderText({
-    #   map(output.sources(), ~paste0("#-- ", .$name, "\n", .$source)) %>%
-    #     paste(collapse = "\n\n")
-    # })
-
 
     # provides the environment where outputs will be evaluated
+    # imports are evaluated here
     slate.envir <- reactive({
-      # inputs <- input.list()
-      # env <- new.env(parent = slate.options$envir())
-      #
-      # env <- tryCatch({
-      #   for (d in blueprint$datasets) {
-      #     if (!is.null(d$source)) {
-      #       src <- buildSource(d$source, input.list())
-      #       env[[ d$name ]] <- eval(parse(text = src), envir = new.env(parent = env))
-      #     }
-      #   }
-      #
-      #   return(env)
-      # },
-      # error = function(e) {
-      #   # ignore errors
-      #   return(env)
-      # })
+      import.sources <- import.sources()
 
       env <- new.env(parent = slate.options$envir)
+
+      env <- tryCatch({
+        for (x in import.sources) {
+          eval(parse(text = x), envir = env)
+        }
+
+        return(env)
+      },
+      error = function(e) {
+        # ignore errors
+        return(env)
+      })
 
       return(env)
     })
@@ -809,6 +835,7 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     return(
       list(
         blueprint = reactive(reactiveValuesToList(blueprint)),
+        import.data = import.data,
         slate.options = slate.options,
         global.options = global.options,
         updateBlueprint = updateBlueprint,
