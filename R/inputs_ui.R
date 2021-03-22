@@ -64,25 +64,27 @@ slatesWizardButton <- function(id, wizards) {
 
 
 
-slatesTextInputTag <- function(id, value = "", visible = TRUE, ...) {
+slatesTextInputTag <- function(id, value = "", visible = TRUE, size = "m", ...) {
   textInput(id, label = "", value = value)$children[[2]] %>%
-    tagAppendAttributes(class = "form-control-sm") %>%
+    tagAppendAttributes(class = paste0("form-control-", size)) %>%
     tagAppendAttributes(class = if (visible) "" else "d-none")
 }
 
-slatesExpressionInputTag <- function(id, value = "", visible = TRUE, ...) {
+slatesExpressionInputTag <- function(id, value = "", visible = TRUE, size = "m", ...) {
   textInput(id, label = "", value = value)$children[[2]] %>%
-    tagAppendAttributes(class = "form-control-sm expression-input") %>%
+    tagAppendAttributes(class = "expression-input") %>%
+    tagAppendAttributes(class = paste0("form-control-", size)) %>%
     tagAppendAttributes(class = if (visible) "" else "d-none")
 }
 
-slatesNumericInputTag <- function(id, value = "", visible = TRUE, ...) {
+slatesNumericInputTag <- function(id, value = "", visible = TRUE, size = "m", ...) {
   numericInput(id, label = "", value = value)$children[[2]] %>%
-    tagAppendAttributes(class = "form-control-sm numeric-input") %>%
+    tagAppendAttributes(class = "numeric-input") %>%
+    tagAppendAttributes(class = paste0("form-control-", size)) %>%
     tagAppendAttributes(class = if (visible) "" else "d-none")
 }
 
-slatesChoicesInputTag <- function(id, choices, value = NULL,
+slatesChoicesInputTag <- function(id, choices, value = NULL, size = "m",
                                   multiple = FALSE, custom = FALSE, visible = TRUE, ...) {
   if (custom == TRUE) {
     options <- list(
@@ -101,18 +103,18 @@ slatesChoicesInputTag <- function(id, choices, value = NULL,
     options = options)$children[[2]] %>%
     tagAppendAttributes(class = if (visible) "" else "d-none")
 
-  tag$children[[1]] <- tagAppendAttributes(tag$children[[1]], class = "form-control-sm")
+  tag$children[[1]] %<>% tagAppendAttributes(class = paste0("form-control-", size))
 
   return(tag)
 }
 
-slatesNumeric2InputTag <- function(id, value = c(0, 0), visible = TRUE, ...) {
+slatesNumeric2InputTag <- function(id, value = c(0, 0), visible = TRUE, size = "m", ...) {
   tags$div(
     id = id,
     style = "position: relative;",
     # this tag mimicks a numeric input
     tags$input(type = "text",
-               class = "form-control form-control-sm numeric-input",
+               class = paste0("form-control numeric-input form-control-", size),
                style = "position: absolute;"),
     # this tag masks the previous one, preventing clicking
     # TODO: input tag is still able to be selected by tabbing
@@ -121,34 +123,40 @@ slatesNumeric2InputTag <- function(id, value = c(0, 0), visible = TRUE, ...) {
       #class = "slates-flow-4",
       style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
       tags$input(id = paste0(id, "_1"), type = "number",
-                 class = "form-control form-control-sm numeric4-input", value = value[1]),
+                 class = paste0("form-control numeric2-input form-control-", size), value = value[1]),
       tags$span(",", style = "z-index: 1;"),
       tags$input(id = paste0(id, "_2"), type = "number",
-                 class = "form-control form-control-sm numeric4-input", value = value[2]),
+                 class = paste0("form-control numeric2-input form-control-", size), value = value[2]),
     )
   ) %>%
     tagAppendAttributes(class = if (visible) "" else "d-none")
 }
 
-slatesNumeric4InputTag <- function(id, value = c(0, 0, 0, 0), visible = TRUE, ...) {
+slatesNumeric4InputTag <- function(id, value = c(0, 0, 0, 0), visible = TRUE, size = "m", ...) {
   tags$div(
     id = id,
     style = "position: relative;",
     # this tag mimicks a numeric input
-    tags$input(type = "text", class = "form-control form-control-sm numeric-input", style = "position: absolute;"),
+    tags$input(type = "text",
+               class = paste0("form-control numeric-input form-control-", size),
+               style = "position: absolute;"),
     # this tag masks the previous one, preventing clicking
     # TODO: input tag is still able to be selected by tabbing
     div(style = "position: absolute; width: 100%; height: 100%;"),
     tags$div(
       #class = "slates-flow-4",
       style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
-      tags$input(id = paste0(id, "_1"), type = "number", class = "form-control form-control-sm numeric4-input", value = value[1]),
+      tags$input(id = paste0(id, "_1"), type = "number",
+                 class = paste0("form-control numeric4-input form-control-", size), value = value[1]),
       tags$span(",", style = "z-index: 1;"),
-      tags$input(id = paste0(id, "_2"), type = "number", class = "form-control form-control-sm numeric4-input", value = value[2]),
+      tags$input(id = paste0(id, "_2"), type = "number",
+                 class = paste0("form-control numeric4-input form-control-", size), value = value[2]),
       tags$span(",", style = "z-index: 1;"),
-      tags$input(id = paste0(id, "_3"), type = "number", class = "form-control form-control-sm numeric4-input", value = value[3]),
+      tags$input(id = paste0(id, "_3"), type = "number",
+                 class = paste0("form-control numeric4-input form-control-", size), value = value[3]),
       tags$span(",", style = "z-index: 1;"),
-      tags$input(id = paste0(id, "_4"), type = "number", class = "form-control form-control-sm numeric4-input", value = value[4])
+      tags$input(id = paste0(id, "_4"), type = "number",
+                 class = paste0("form-control numeric4-input form-control-", size), value = value[4]),
     )
   ) %>%
     tagAppendAttributes(class = if (visible) "" else "d-none")
