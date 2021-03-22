@@ -4,19 +4,6 @@
 
 
 
-test <- list(
-  tabular = list(
-    name = "Tabular",
-    extensions = c("txt", "csv", "tsv"),
-    module = system.file("data_blueprints/CSV_Import.json", package = "rslate")
-  ),
-  spreadsheet = list(
-    name = "Spreadsheet",
-    extensions = c("xlsx", "xls")
-  )
-)
-
-
 
 # file type information
 getFileTypes <- function() {
@@ -24,7 +11,7 @@ getFileTypes <- function() {
     tabular = list(
       name = "Tabular",
       extensions = c("txt", "csv", "tsv"),
-      module = system.file("data_blueprints/CSV_Import.json", package = "rslates")
+      module = "CSV Import"
     ),
     spreadsheet = list(
       name = "Spreadsheet",
@@ -94,18 +81,19 @@ importDatasetModal <- function(id, session) {
   slate.server <- reactiveVal(NULL)
 
 
-  observe({
-    req(data <- data())
-
-    server <- isolate(slate.server())
-
-    if (!is.null(server))
-      server$destroy()
-
-    blueprint <- blueprintFromJSON(getFileTypes()$tabular$module)
-    slate.options <- list(envir = new.env())
-    server <- slateServer(ID("slate"), blueprint, slate.options)
-  })
+  # observe({
+  #   req(data <- data())
+  #
+  #   server <- isolate(slate.server())
+  #
+  #   if (!is.null(server))
+  #     server$destroy()
+  #
+  #   blueprint.name <- blueprintFromJSON(getFileTypes()$tabular$module)
+  #   blueprint <- getOption("rslates.importer.blueprints")[[ blueprint.name ]]
+  #   slate.options <- slateOptions()
+  #   server <- slateServer(ID("slate"), blueprint, slate.options)
+  # })
 
 
   data <- reactive({
@@ -491,16 +479,17 @@ projectEditorServer <- function(id, project, session.data, global.options) {
 
     modals <- list(
       #select.input = create_select_input_modal("select_input_modal", session),
-      select.modal = slatesSelectModal(ns("select_modal"), session),
       file.import = create_file_import_modal("file_import_modal", session)
     )
 
-    global.envir <- reactiveVal(new.env())
+    #session.data$project.envir <- new.env()
+    #global.envir <- reactiveVal(new.env())
+
     code.changed <- reactiveVal(FALSE)
 
     # list of slates
-    slates <- reactiveValues()
     datasets <- reactiveValues()
+    slates <- reactiveValues()
 
     # keep track of the time of last modification
     # TODO: avoid setting it while initializing the module
@@ -558,21 +547,8 @@ projectEditorServer <- function(id, project, session.data, global.options) {
     # Datasets
     #
 
-
     # Modal dialog to import a dataset
     import.modal <- importDatasetModal("import_dataset", session)
-
-
-    addDataset <- function(blueprint, ask.title = TRUE) {
-      dataset.list <- reactiveValuesToList(datasets)
-      id <- seq.uid("dataset")
-
-      insertUI(selector = "#data_slates_end",
-               where = "beforeBegin",
-               ui = dataSlateUI(ns(id), blueprint))
-
-      datasets[[ id ]] <- callModule(dataSlateServer, id, blueprint, global.envir, open.settings = TRUE)
-    }
 
 
     # observe Add Slab buttons
@@ -596,15 +572,59 @@ projectEditorServer <- function(id, project, session.data, global.options) {
     # outputOptions(output, "output_global", suspendWhenHidden = FALSE)
 
 
+    addDataset <- function(blueprint, ask.title = TRUE) {
+      dataset.list <- reactiveValuesToList(datasets)
+      id <- seq.uid("dataset")
+
+      insertUI(selector = "#data_slates_end",
+               where = "beforeBegin",
+               ui = dataSlateUI(ns(id), blueprint))
+
+      datasets[[ id ]] <- callModule(dataSlateServer, id, blueprint, global.envir, open.settings = TRUE)
+    }
+
 
 
 
     #
-    # Slates
+    # Analysis
     #
-    addSlate <- function(blueprint, input.values = NULL, open.settings = TRUE) {
+
+    add.slate.modal <- slatesSelectModal(ns("add_slate_modal"), session)
+
+    # observe add slate button
+    observeEvent(input$add_slate, {
+      dlog()
+
+      blueprints <- session.data$blueprints
+
+      dlog(names(blueprints))
+
+      #modals$select.input$show("Select blueprint", names(blueprints), function(value) {
+      add.slate.modal$show(
+        label = "Select Blueprint:",
+        choices = names(blueprints),
+        callback = function(value) {
+          addSlate(blueprints[[ value ]])
+        })
+    })
+
+
+    addSlate <- function(blueprint) {
       slate.list <- reactiveValuesToList(slates)
-      id <- seq.uid("slate")
+      id <- seq.uid("slate")  # TODO: substitute this
+
+      slate.options <- slateOptions(
+        envir = session.data$project.envir,
+        open.inputs = TRUE
+      )
+
+      server <- slateServer(
+        id,
+        blueprint,
+        slate.options = slate.options,
+        global.options = global.options
+      )
 
       # if (!is.null(input.values)) {
       #   blueprint$input.list <- lapply(blueprint$input.list, function(x) {
@@ -619,37 +639,18 @@ projectEditorServer <- function(id, project, session.data, global.options) {
       # }
       #
 
-      insertUI(selector = "#slates_end",
-               where = "beforeBegin",
-               ui = slateUI(ns(id),
-                            blueprint,
-                            input.container = options()$rslates.input.container))
-
-
-      slates[[ id ]] <- slateServer(
-        id,
-        blueprint,
-        slate.options = list(
-          envir = global.envir,
-          open.settings = open.settings
-        ),
-        global.options = global.options
+      insertUI(
+        selector = "#slates_end",
+        where = "beforeBegin",
+        ui = slateUI(
+          ns(id),
+          blueprint,
+          slate.options = slate.options
+        )
       )
+
+      slates[[ id ]] <- server
     }
-
-
-    # observe add slate button
-    observeEvent(input$add_slate, {
-      blueprints <- session.data$blueprints
-
-      #modals$select.input$show("Select blueprint", names(blueprints), function(value) {
-      modals$select.modal$show(
-        label = "Select Blueprint:",
-        choices = names(blueprints),
-        callback = function(value) {
-          addSlate(blueprints[[ value ]], input.values = NULL, open.settings = TRUE)
-        })
-    })
 
 
 
