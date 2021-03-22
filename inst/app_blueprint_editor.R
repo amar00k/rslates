@@ -88,6 +88,7 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
                           "Show Header" = "card.header"),
               selected = c("use.card", "card.header"))
           ),
+          uiOutput("slate_imports"),
           shinyBS::bsTooltip("preview_inputs_style", title = "Style of the inputs panel.",
                              placement = "top"),
           shinyBS::bsTooltip("slate_height", title = "Height of the slate in any valid css unit.",
@@ -151,6 +152,28 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
     observeEvent(input$select_theme, {
       theme <- loadTheme(input$select_theme)
       session$setCurrentTheme(theme)
+    })
+
+
+    # Slate imports
+
+    output$slate_imports <- renderUI({
+      imports <- blueprint()$imports
+
+      observers <- map(imports, ~{
+        input.id <- paste0(.$name, "_import")
+        name <- .$name
+
+        observeEvent(input[[ input.id ]], {
+          data <- input[[ input.id ]]
+
+          slate$import.data[[ name ]] <- data
+        })
+      })
+
+      map(imports, ~{
+        fileInput(paste0(.$name, "_import"), label = .$name)
+      })
     })
 
     #
