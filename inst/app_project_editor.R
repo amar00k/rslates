@@ -8,9 +8,6 @@
 
 
 projectEditorApp <- function(project = NULL) {
-  default.theme <- "solar"
-  default.ace.theme <- "twilight"
-
   if (is.null(project)) {
     project <- slatesProject("Untitled Project")
   }
@@ -64,10 +61,14 @@ projectEditorApp <- function(project = NULL) {
 
 
   server <- function(input, output, session) {
-    global.options <- reactiveValues(ace.theme = default.ace.theme)
+    global.options <- reactiveValues(
+      ace.theme = getOption("rslates.default.ace.theme"),
+      bslib.theme = getOption("rslates.default.theme")
+    )
     session.data <- reactiveValues(
-      blueprints = options()$rslates.blueprints,
-      data.blueprints = options()$rslates.data.blueprints
+      blueprints = getOption("rslates.blueprints"),
+      importer.blueprints = getOption("rslates.importer.blueprints"),
+      project.envir = new.env()
     )
 
     #
@@ -79,7 +80,7 @@ projectEditorApp <- function(project = NULL) {
     })
 
     observeEvent(input$select_theme, {
-      print("select_theme")
+      dlog()
 
       theme <- loadTheme(input$select_theme)
       session$setCurrentTheme(theme)
