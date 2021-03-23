@@ -26,6 +26,7 @@ slateBlueprint <- function(name = "Untitled",
       toplevel = preprocessed$toplevel,
       outputs = preprocessed$outputs,
       imports = preprocessed$imports,
+      exports = preprocessed$exports,
       datasets = list(),
       source = source
     )
@@ -42,6 +43,7 @@ slateBlueprint <- function(name = "Untitled",
       toplevel = character(0),
       outputs = list(),
       imports = list(),
+      exports = list(),
       datasets = list(),
       source = source
     )
@@ -279,6 +281,21 @@ slateImport <- function(name, type, description = "") {
     name = name,
     type = type,
     description = description
+  )
+}
+
+
+slateExport <- function(varname,
+                        out.name = NULL,
+                        use.input = NULL,
+                        use.title = FALSE) {
+  stopifnot(!is.null(out.name) | !is.null(use.input) | use.title == TRUE)
+
+  list(
+    varname = varname,
+    out.name = out.name,
+    use.input = use.input,
+    use.title = use.title
   )
 }
 
