@@ -123,10 +123,10 @@ slatesNumeric2InputTag <- function(id, value = c(0, 0), visible = TRUE, size = "
       #class = "slates-flow-4",
       style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
       tags$input(id = paste0(id, "_1"), type = "number",
-                 class = paste0("form-control numeric2-input form-control-", size), value = value[1]),
+                 class = paste0("form-control numeric-x-input form-control-", size), value = value[1]),
       tags$span(",", style = "z-index: 1;"),
       tags$input(id = paste0(id, "_2"), type = "number",
-                 class = paste0("form-control numeric2-input form-control-", size), value = value[2]),
+                 class = paste0("form-control numeric-x-input form-control-", size), value = value[2]),
     )
   ) %>%
     tagAppendAttributes(class = if (visible) "" else "d-none")
@@ -147,16 +147,16 @@ slatesNumeric4InputTag <- function(id, value = c(0, 0, 0, 0), visible = TRUE, si
       #class = "slates-flow-4",
       style = "display: flex; flex-wrap: nowrap; align-items: baseline; padding: 3px 6px;",
       tags$input(id = paste0(id, "_1"), type = "number",
-                 class = paste0("form-control numeric4-input form-control-", size), value = value[1]),
+                 class = paste0("form-control numeric-x-input form-control-", size), value = value[1]),
       tags$span(",", style = "z-index: 1;"),
       tags$input(id = paste0(id, "_2"), type = "number",
-                 class = paste0("form-control numeric4-input form-control-", size), value = value[2]),
+                 class = paste0("form-control numeric-x-input form-control-", size), value = value[2]),
       tags$span(",", style = "z-index: 1;"),
       tags$input(id = paste0(id, "_3"), type = "number",
-                 class = paste0("form-control numeric4-input form-control-", size), value = value[3]),
+                 class = paste0("form-control numeric-x-input form-control-", size), value = value[3]),
       tags$span(",", style = "z-index: 1;"),
       tags$input(id = paste0(id, "_4"), type = "number",
-                 class = paste0("form-control numeric4-input form-control-", size), value = value[4]),
+                 class = paste0("form-control numeric-x-input form-control-", size), value = value[4]),
     )
   ) %>%
     tagAppendAttributes(class = if (visible) "" else "d-none")
