@@ -43,7 +43,7 @@ cleanPreprocessorDirectives <- function(text) {
 
   tokens <- c("page", "group", "input",
               "output", "end-output",
-              "import",
+              "import", "export",
               "if", "end-if")
 
   re <- makePreprocessorDirectiveRE(tokens)
@@ -58,6 +58,15 @@ cleanEmptyLines <- function(text) {
     trimws %>%
     keep(map_lgl(., ~. != "")) %>%
     paste(collapse = "\n")
+}
+
+
+syntaxText <- function(type) {
+  switch(
+    type,
+    "export" = "$@export <var.name>, <out.name>",
+    ""
+  )
 }
 
 
@@ -293,73 +302,6 @@ preprocessSubstitutionBlock <- function(text) {
   )
 }
 
-#
-#
-#
-# # x(type, default, ...)
-# preprocessLayoutDefinition <- function(text, type = NULL) {
-#   stopifnot("Text must be a single string." = (length(text) == 1))
-#
-#   text <- trimws(text)
-#
-#   if (is.null(type))
-#     type <- sub("^\\$@(page|group|input).*", "\\1", text)
-#
-#   def.text <- sub("^\\$@(page|group|input) *", "", text)
-#
-#   # extract name of input
-#   name <- strsplit(def.text, "\\(|,")[[1]][1] %>%
-#     trimws %>%
-#     sub("^\"(.*)\"$", "\\1", .) %>%
-#     sub("^'(.*)'$", "\\1", .)
-#
-#   # trim name
-#   def.text <- sub(paste0("^", name, "[ \t,]*"), "", def.text)
-#
-#   call.fun <- switch(type,
-#                      "input" = "slateInput",
-#                      "group" = "slateGroup",
-#                      "page" = "slatePage")
-#
-#   # insert the name as the first argument inside the parenthesis
-#   # and add call to call.fun function
-#   if (!grepl("^\\(.*\\)$", def.text)) {
-#     def.text <- paste0(call.fun, "(\"", name, "\", ", def.text, ")")
-#   } else {
-#     def.text <- sub("^\\(", paste0(call.fun, "(\"", name, "\", "), def.text)
-#   }
-#
-#   # handle input type using a
-#   # trick to allow unquoted input types
-#   if (type == "input") {
-#     types.list <- as.list(names(input.handlers)) %>% set_names(.)
-#     env <- list2env(types.list)
-#   } else {
-#     env <- NULL
-#   }
-#
-#   input <- tryCatch({
-#     # create the expression (may throw error)
-#     expr <- str2expression(def.text)
-#
-#     # evaluate the slateInput(...) call
-#     eval(expr, envir = env)
-#   },
-#   error = function(e) {
-#     #stop(paste0("Error parsing variable definition: ", text, ". ", toString(e)))
-#     syntax <- switch(
-#       type,
-#       "input" = "$@input <name>, <type>, <default> [, description=<description>, ... ]",
-#       "page" = "$@page <name> [, title=<title>, layout=<layout>, description=<description>]",
-#       "group" = "$@group <name> [, title=<title>, layout=<layout>, description=<description>]"
-#     )
-#
-#     stop("Error preprocessing definition. Syntax: ", syntax)
-#   })
-# }
-#
-
-
 
 #' Preprocess an Inline Input Directive
 #'
@@ -379,9 +321,9 @@ preprocessInlineInputDirective <- function(text) {
 
   if (grepl("^.*\\(.*\\)$", text)) {
     parameters <- sub("^.*?\\((.*)\\)$", ", \\1", text)
-    preprocessDirective(paste(name, parameters), type = "input")
+    preprocessDirective(paste(name, parameters), type = "input")$object
   } else {
-    preprocessDirective(text, type = "input")
+    preprocessDirective(text, type = "input")$object
   }
 }
 
@@ -424,7 +366,7 @@ preprocessDirective <- function(text, type = NULL) {
                      "import" = "slateImport",
                      "export" = "slateExport")
 
-  def.text <- paste0(call.fun, "(", def.text, ")")
+  def.text <- paste0("rslates::", call.fun, "(", def.text, ")")
 
   # trick to allow unquoted input types
   env <- c(names(input.handlers), names(import.handlers)) %>%
@@ -432,7 +374,7 @@ preprocessDirective <- function(text, type = NULL) {
     set_names(.) %>%
     list2env
 
-  input <- tryCatch({
+  object <- tryCatch({
     # create the expression (may throw error)
     expr <- str2expression(def.text)
 
@@ -440,8 +382,13 @@ preprocessDirective <- function(text, type = NULL) {
     eval(expr, envir = env)
   },
   error = function(e) {
-    stop("Error preprocessing directive: ", text, ".")
+    stop("Error preprocessing directive: ", text, ". ", e)
   })
+
+  return(list(
+    type = type,
+    object = object
+  ))
 }
 
 
@@ -487,74 +434,6 @@ preprocessOutput <- function(lines) {
 
   return(output)
 }
-
-#
-# # syntax:
-# # $@import <name>, <type> [, option1 = value1, option2 = value2, ...]
-# preprocessImport <- function(text) {
-#   text <- sub("^.*\\$@ *import *", "", text)
-#
-#   import <- tryCatch({
-#     params <- strsplit(text, split = " *, *")[[1]]
-#
-#     if (length(params) < 2)
-#       stop()
-#
-#     call.text <-
-#       c(quoteString(params[1]), params[2:length(params)]) %>%
-#       paste(collapse = ",") %>%
-#       paste0("slateImport(", ., ")")
-#
-#     env <- as.list(names(import.handlers)) %>%
-#       set_names(.) %>%
-#       list2env
-#
-#     expr <- str2expression(call.text)
-#     import <- eval(expr, envir = env)
-#   },
-#   error = function(e) {
-#     stop("
-#     Error parsing import definition.
-#     Syntax: $@import <name>, <file|url|RData> [, description  = \"description\"]
-#     ")
-#   })
-#
-#   return(import)
-# }
-#
-#
-# # syntax:
-# # $@import <name>, <type> [, option1 = value1, option2 = value2, ...]
-# preprocessExport <- function(text) {
-#   text <- sub("^.*\\$@ *export *", "", text)
-#
-#   import <- tryCatch({
-#     params <- strsplit(text, split = " *, *")[[1]]
-#
-#     if (length(params) < 2)
-#       stop()
-#
-#     call.text <-
-#       c(quoteString(params[1]), params[2:length(params)]) %>%
-#       paste(collapse = ",") %>%
-#       paste0("slateImport(", ., ")")
-#
-#     env <- as.list(names(import.handlers)) %>%
-#       set_names(.) %>%
-#       list2env
-#
-#     expr <- str2expression(call.text)
-#     import <- eval(expr, envir = env)
-#   },
-#   error = function(e) {
-#     stop("
-#     Error parsing import definition.
-#     Syntax: $@import <name>, <file|url|RData> [, description  = \"description\"]
-#     ")
-#   })
-#
-#   return(import)
-# }
 
 
 splitIntoDefinitionBlocks <- function(text) {
@@ -629,20 +508,29 @@ preprocessSource <- function(text) {
     disableComments(n = 2)
 
   # process layout elements (pages, groups, inputs)
-  layout <-
+  directives <-
     makePreprocessorDirectiveRE("input|page|group|import|export") %>%
     gregexpr(clean.text, perl = TRUE) %>%
     regmatches(clean.text, .) %>%
     unlist() %>%
-    map(preprocessDirective) %>%
+    map(preprocessDirective)
+
+  layout <-
+    keep(directives, ~.$type %in% c("page", "group", "input")) %>%
+    map("object") %>%
     inferSlateLayout %>%
     set_names(map(., "name"))
 
   blueprint.data$pages <- keep(layout, ~.$type == "page")
   blueprint.data$groups <- keep(layout, ~.$type == "group")
   blueprint.data$inputs <- keep(layout, ~.$type == "input")
-  blueprint.data$imports <- keep(layout, ~.$type == "import")
-  blueprint.data$exports <- keep(layout, ~.$type == "export")
+
+  blueprint.data$imports <- keep(directives, ~.$type == "import") %>%
+    map("object") %>%
+    set_names(map(., "name"))
+  blueprint.data$exports <- keep(directives, ~.$type == "export") %>%
+    map("object") %>%
+    set_names(map(., "name"))
 
   # Handle substitutions
   blueprint.data$blocks <-
@@ -661,24 +549,6 @@ preprocessSource <- function(text) {
 
   if (length(sub.inputs) > 0)
     blueprint.data$inputs %<>% append(sub.inputs)
-
-  # # Handle imports
-  # blueprint.data$imports <-
-  #   makePreprocessorDirectiveRE("import") %>%
-  #   gregexpr(clean.text, perl = TRUE) %>%
-  #   regmatches(clean.text, .) %>%
-  #   unlist() %>%
-  #   map(preprocessImport) %>%
-  #   set_names(map(., "name"))
-
-  # # Handle imports
-  # blueprint.data$imports <-
-  #   makePreprocessorDirectiveRE("export") %>%
-  #   gregexpr(clean.text, perl = TRUE) %>%
-  #   regmatches(clean.text, .) %>%
-  #   unlist() %>%
-  #   map(preprocessExport) %>%
-  #   set_names(map(., "name"))
 
   # prepare blocks
   source.blocks <- splitIntoDefinitionBlocks(text)
