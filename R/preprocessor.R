@@ -28,7 +28,8 @@ makePreprocessorDirectiveRE <- function(tokens, level = 3) {
     paste(tokens, collapse = "|") %>%
     paste0("(", ., ")")
 
-  re <- c(paste0("\\$@ *", tokens.re, " *[^ \n]+ *\\((.|\n)*?\\) *(?=\n)"),
+  re <- c(#paste0("\\$@ *", tokens.re, " *[^ \n]+ *\\((.|\n)*?\\) *(?=\n)"),
+          paste0("\\$@ *", tokens.re, " *[^ ,\n]+ *(.|\n)*?[^(, ?)(\\( ?)]\n"),
           paste0("\\$@ *", tokens.re, " *[^\n]+"),
           paste0("\\$@ *", tokens.re))
   re <- re[ 1:level ]
