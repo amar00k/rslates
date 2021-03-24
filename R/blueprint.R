@@ -285,17 +285,10 @@ slateImport <- function(name, type, description = "") {
 }
 
 
-slateExport <- function(varname,
-                        out.name = NULL,
-                        use.input = NULL,
-                        use.title = FALSE) {
-  stopifnot(!is.null(out.name) | !is.null(use.input) | use.title == TRUE)
-
+slateExport <- function(var.name, out.name = var.name) {
   list(
-    varname = varname,
-    out.name = out.name,
-    use.input = use.input,
-    use.title = use.title
+    var.name = var.name,
+    out.name = out.name
   )
 }
 
