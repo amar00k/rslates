@@ -101,6 +101,21 @@ projectEditorApp <- function(project = NULL) {
     shiny::shinyApp(ui, server)
 }
 
+blueprint.dir <- getOption("rslates.blueprint.dir")
+importer.blueprint.dir <- getOption("rslates.importer.blueprint.dir")
+
+blueprints <- loadBlueprints(blueprint.dir, on.error = "skip")
+importer.blueprints <- loadBlueprints(importer.blueprint.dir, on.error = "skip")
+
+blueprint.tags <- c(blueprints, importer.blueprints) %>%
+  map("tags") %>%
+  unlist %>%
+  unique
+
+options(rslates.blueprints = blueprints)
+options(rslates.importer.blueprints = loadBlueprints(importer.blueprint.dir, on.error = "skip"))
+options(rslates.tag.list = blueprint.tags)
+
 project <- getOption("rslates.editor.project")
 
 projectEditorApp(project)

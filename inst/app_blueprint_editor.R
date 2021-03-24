@@ -269,8 +269,26 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
 
   }
 
-  shiny::shinyApp(ui, server)
+  if (getOption("rslates.run.themer") == TRUE)
+    bslib::run_with_themer(shiny::shinyApp(ui, server))
+  else
+    shiny::shinyApp(ui, server)
 }
+
+blueprint.dir <- getOption("rslates.blueprint.dir")
+importer.blueprint.dir <- getOption("rslates.importer.blueprint.dir")
+
+blueprints <- loadBlueprints(blueprint.dir, on.error = "skip")
+importer.blueprints <- loadBlueprints(importer.blueprint.dir, on.error = "skip")
+
+blueprint.tags <- c(blueprints, importer.blueprints) %>%
+  map("tags") %>%
+  unlist %>%
+  unique
+
+options(rslates.blueprints = blueprints)
+options(rslates.importer.blueprints = loadBlueprints(importer.blueprint.dir, on.error = "skip"))
+options(rslates.tag.list = blueprint.tags)
 
 blueprintEditorApp(blueprint.dir = getOption("rslates.bp.editor.blueprint.dir"),
                    blueprint.filename = getOption("rslates.bp.editor.blueprint.filename"))
