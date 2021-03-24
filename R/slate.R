@@ -54,45 +54,79 @@ slateOptions <- function(envir = new.env(),
 blueprintEditorUI  <- function(id, blueprint) {
   ns <- NS(id)
 
+  metadata.tab <- tabPanel(
+    title = "Metadata",
+    tags$div(
+      class = "container pt-3",
+      tags$div(
+        class = "slates-flow slates-flow-2",
+        textInput(ns("blueprint_name"), "Name", value = blueprint$name),
+        textInput(ns("blueprint_author"), "Author(s)", value = blueprint$author),
+        selectInput(ns("blueprint_category"), "Category",
+                    choices = "", selected = ""),
+        selectizeInput(ns("blueprint_tags"), label = "Tags", multiple = TRUE,
+                       choices = getOption("rslates.tag.list"),
+                       selected = blueprint$tags,
+                       options = list(
+                         delimiter = '',
+                         create = "function(input) { return { value: input, text: input } }"
+                       )
+        )
+      )
+    )
+  )
+
+  code.tab <- tabPanel(
+    title = "Source Code",
+    tags$div(
+      class = "container pt-3",
+      shinyAce::aceEditor(
+        ns("blueprint_source"),
+        height = "350px",
+        mode = "r",
+        value = blueprint$source
+      ),
+      uiOutput(ns("blueprint_alerts"))
+    )
+  )
+
+  debug.tab <- tabPanel(
+    title = "Debug",
+    tags$div(
+      class = "container pt-3",
+      tags$div(
+        class = "slates-flow slates-flow-3",
+        selectInput(ns("debug_type"), label = "Debug",
+                     choices = c("Blueprint", "State")),
+        selectInput(ns("debug_element"),
+                    label = "Element", choices = "")
+      ),
+      verbatimTextOutput(ns("blueprint_debug")) %>%
+        tagAppendAttributes(style = "overflow: auto; height: 250px;")
+    )
+  )
+
   tags$div(
     id = ns("blueprint_editor"),
     class = "container pt-3",
-    tags$div(
-      class = "slates-flow slates-flow-2",
-      textInput(ns("blueprint_name"), "Name", value = blueprint$name),
-      textInput(ns("blueprint_author"), "Author(s)", value = blueprint$author),
-      selectInput(ns("blueprint_category"), "Category",
-                  choices = "", selected = ""),
-      selectizeInput(ns("blueprint_tags"), label = "Tags", multiple = TRUE,
-                     choices = getOption("rslates.tag.list"),
-                     selected = blueprint$tags,
-                     options = list(
-                       delimiter = '',
-                       create = "function(input) { return { value: input, text: input } }"
-                     )
-      )
+    tabsetPanel(
+      metadata.tab,
+      code.tab,
+      debug.tab
     ),
-    shinyAce::aceEditor(
-      ns("blueprint_source"),
-      height = "250px",
-      mode = "r",
-      value = blueprint$source
-    ),
-    uiOutput(ns("blueprint_alerts")),
     tags$hr()
   )
-
 }
 
 
 
-blueprintEditorServer <- function(id, blueprint = slateBlueprint(), global.options = NULL) {
+blueprintEditorServer <- function(id, blueprint, slate, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     # make a copy of the slate blueprint
-    if (class(blueprint) == "reactiveValues")
-      blueprint <- reactiveVal(reactiveValuesToList(blueprint))
+    if (class(blueprint) == "reactivevalues")
+      blueprint <- reactiveVal(isolate(reactiveValuesToList(blueprint)))
     else
       blueprint <- reactiveVal(blueprint)
 
@@ -183,8 +217,6 @@ blueprintEditorServer <- function(id, blueprint = slateBlueprint(), global.optio
 
     # displays error alerts from the preprocessor
     output$blueprint_alerts <- renderUI({
-      #req(length(errors()) > 0)
-
       dlog("blueprint_alerts", length(errors()))
 
       map(errors(),
@@ -199,6 +231,49 @@ blueprintEditorServer <- function(id, blueprint = slateBlueprint(), global.optio
     # change the ace theme on aceEditors
     observeEvent(global.options$ace.theme, {
       shinyAce::updateAceEditor(session, "blueprint_source", theme = global.options$ace.theme)
+    })
+
+
+    observe({
+      shinyjs::toggle("debug_blueprint", condition = (input$debug_type == "Blueprint"))
+      shinyjs::toggle("debug_state", condition = (input$debug_type == "State"))
+    })
+
+
+    observe({
+      req(input$debug_type)
+
+      selected <- input$debug_blueprint_element
+
+      if (input$debug_type == "Blueprint")
+        choices <-  names(blueprint())
+      else
+        choices <- names(slate)
+
+      dlog()
+
+      updateSelectInput(session, "debug_element",
+                        choices = choices, selected = selected)
+    })
+
+    output$blueprint_debug <- renderText({
+      str.str <- function(x) capture.output(str(x)) %>% paste(collapse = "\n")
+
+      if (input$debug_type == "Blueprint") {
+        blueprint()[[ input$debug_element ]] %>% str.str
+      } else {
+        obj <- slate[[ input$debug_element ]]
+
+        if ("reactivevalues" %in% class(obj))
+          obj <- reactiveValuesToList(obj)
+        else if ("reactive" %in% class(obj))
+          obj <- obj()
+
+        if (class(obj) == "environment")
+          obj <- as.list(obj)
+
+        str.str(obj)
+      }
     })
 
 
@@ -448,18 +523,10 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       blueprint <- do.call(reactiveValues, blueprint)
     }
 
-    # create the server for the blueprint editor
-    # TODO: don't even create until user requests it
-    blueprint.editor <- blueprintEditorServer(
-      "editor",
-      blueprint = blueprint,
-      global.options = global.options
-    )
-
     # the title
     slate.title <- reactiveVal(isolate(blueprint$name))
 
-    # impor data
+    # import data: where the caller may "place" data to be imported by the slate
     import.data <- reactiveValues()
 
     # observers created by this slate
@@ -489,10 +556,8 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     input.values <- reactive({
       dlog()
 
-      inputs <- blueprint$inputs %>%
+      blueprint$inputs %>%
         map(~getHandler(.)$as.value(., session))
-
-      return(inputs)
     })
 
 
@@ -549,20 +614,65 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       sources <- sources()
       import.sources <- import.sources()
 
-      #import.code <- map(reactiveValuesToList(import.data),
       import.code <- import.sources %>%
         paste(collapse = "\n")
+
+      toplevel.code <- sources$toplevel
 
       output.code <- map(sources$output, ~paste0("#-- ", .$name, "\n", .$source)) %>%
         paste(collapse = "\n\n")
 
-      if (import.code != "")
-        code <- paste(import.code, "\n\n", output.code)
-      else
-        code <- output.code
-
-      code
+      paste(import.code, toplevel.code, output.code, sep = "\n\n")
       #formatR::tidy_source(text = code, output = FALSE, width.cutoff = 80)$text.tidy
+    })
+
+
+    # provides the environment where outputs will be evaluated
+    # imports are evaluated first, then toplevel source code,
+    # and eventually user-provided slate code
+    slate.envir <- reactive({
+      import.sources <- import.sources()
+      toplevel <- sources()$toplevel
+
+      env <- new.env(parent = slate.options$envir)
+
+      env <- tryCatch({
+        for (x in import.sources) {
+          eval(parse(text = x), envir = env)
+        }
+
+        eval(parse(text = toplevel), envir = env)
+
+        return(env)
+      },
+      error = function(e) {
+        # ignore errors
+        return(env)
+      })
+
+      return(env)
+    })
+
+
+    # export data: exposes exported variables to the caller so they
+    # can be fetched
+    export.data <- reactive({
+      envir <- slate.envir()
+
+      map(blueprint$exports, ~{
+        value <- envir[[ .$var.name ]]
+
+        if (!grepl("^\\.", .$out.name))
+          out.name <- .$out.name
+        else if (.$out.name == ".title")
+          out.name <- slate.title()
+        else
+          out.name <-
+            input.values()[[ sub("^\\.", "", .$out.name) ]] %>%
+            as.character
+
+        list(name = out.name, value = value)
+      })
     })
 
 
@@ -743,33 +853,6 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     })
 
 
-    # provides the environment where outputs will be evaluated
-    # imports are evaluated first, then toplevel source code,
-    # and eventually user-provided slate code
-    slate.envir <- reactive({
-      import.sources <- import.sources()
-      toplevel <- sources()$toplevel
-
-      env <- new.env(parent = slate.options$envir)
-
-      env <- tryCatch({
-        for (x in import.sources) {
-          eval(parse(text = x), envir = env)
-        }
-
-        eval(parse(text = toplevel), envir = env)
-
-        return(env)
-      },
-      error = function(e) {
-        # ignore errors
-        return(env)
-      })
-
-      return(env)
-    })
-
-
     # creates output handlers when output structure changes
     observers$output.handlers <- observe(label = "output.handlers", {
       dlog()
@@ -818,7 +901,6 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     })
 
 
-
     output$blueprint_editor_ui <- renderUI({
       if (slate.options$open.editor == FALSE)
         return(tagList())
@@ -828,6 +910,26 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     })
 
 
+
+    # create the server for the blueprint editor
+    # TODO: don't even create until user requests it
+    blueprint.editor <- blueprintEditorServer(
+      "editor",
+      blueprint = blueprint,
+      slate = list(
+        slate.title = slate.title,
+        import.data = import.data,
+        input.values = input.values,
+        sources = sources,
+        import.sources = import.sources ,
+        source.code = source.code,
+        slate.envir = slate.envir,
+        export.data = export.data,
+        global.options = global.options,
+        slate.options = slate.options
+      ),
+      global.options = global.options
+    )
 
 
     # Cleanup function
@@ -854,6 +956,7 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       list(
         blueprint = reactive(reactiveValuesToList(blueprint)),
         import.data = import.data,
+        export.data = export.data,
         slate.options = slate.options,
         global.options = global.options,
         updateBlueprint = updateBlueprint,
