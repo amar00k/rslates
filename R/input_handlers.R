@@ -868,7 +868,7 @@ createInputLayout <- function(pages, groups, inputs,
             class = "card-link stretched-link",
             `data-toggle` = "collapse",
             href = paste0("#", tab.id),
-            x$name
+            x$title
           )
         ),
         tags$div(
@@ -885,17 +885,16 @@ createInputLayout <- function(pages, groups, inputs,
       tabs
     )
   } else if (inputs.style == "flowing") {
-    ui.list <- lapply(pages, function(x) {
+    map(pages, ~{
       tags$div(
         tags$h5(
           class = "slates-page-title-flowing",
-          x$name
+          .x$title
         ),
-        x$ui
+        .x$ui
       )
-    })
-
-    ui <- do.call(verticalLayout, ui.list)
+    }) %>%
+      do.call(verticalLayout, .)
   }
 
   # build and prepend default page
