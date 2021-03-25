@@ -93,7 +93,8 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
                              placement = "top"),
           shinyBS::bsTooltip("slate_height", title = "Height of the slate in any valid css unit.",
                              placement = "top"),
-          slateUI("slate")
+          uiOutput("slate_ui")
+          #slateUI("slate")
         )
       )
     ),
@@ -126,7 +127,7 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
 
     # Create the slate server
     slate <- slateServer(
-      "slate",
+      "the_slate",
       blueprint = isolate(blueprint()),
       slate.options = slate.options,
       global.options = global.options
@@ -174,6 +175,13 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
       map(imports, ~{
         fileInput(paste0(.$name, "_import"), label = .$name)
       })
+    })
+
+
+    # slate ui
+
+    output$slate_ui <- renderUI({
+      slateUI("the_slate", slate.options = slate.options)
     })
 
     #
