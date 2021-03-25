@@ -887,7 +887,7 @@ createInputLayout <- function(pages, groups, inputs,
       tabs
     )
   } else if (inputs.style == "flowing") {
-    map(pages, ~{
+    ui <- map(pages, ~{
       tags$div(
         tags$h5(
           class = "slates-page-title-flowing",
