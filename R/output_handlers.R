@@ -53,7 +53,7 @@ output.handlers <- list(
   table = outputHandler(
     createUI = function(x, session) {
       tags$div(
-        style="overflow: auto; max-height: 400px;",
+        class = "slates-output slates-output-table",
         tableOutput(session$ns(x$id))
       )
     },
@@ -64,7 +64,7 @@ output.handlers <- list(
         text <- sources()$output[[ x$name ]]$source
 
         eval(str2expression(text), envir = new.env(parent = envir()))
-      })
+      }, spacing = "s")
     }
   ),
   reactable = outputHandler(

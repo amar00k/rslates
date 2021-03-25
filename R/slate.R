@@ -330,12 +330,12 @@ edit.blueprint.labels <- list(
 
 
 
-slateUI <- function(id, blueprint, slate.options = slateOptions()) {
+slateUI <- function(id, slate.options = slateOptions()) {
   ns <- NS(id)
 
   #height <- slate.options$height
   #if (is.null(height))
-  height <- "520px"
+  height <- slate.options$height
 
   dropdown.ui <- tags$div(
     shinyWidgets::dropdownButton(
@@ -403,10 +403,10 @@ slateUI <- function(id, blueprint, slate.options = slateOptions()) {
         class = "flex-fill"),
       tags$div(
         class = "col-6",
-        style = "overflow: auto;",
+        #style = "overflow: auto;",
         tags$div(
-          class = "card-body",
-          uiOutput(ns("outputs_panel"))
+          class = "card-body h-100",
+          uiOutput(ns("outputs_panel"), class = "h-100")
         )
       ),
       tags$div(
@@ -822,7 +822,13 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
       output.tabs$id <- ns("output_tabs")
       output.tabs$type <- "pills"
       output.tabs$selected <- selected
-      outputs.ui <- do.call(tabsetPanel, output.tabs)
+
+      outputs.ui <- do.call(tabsetPanel, output.tabs) %>%
+        tagAppendAttributes(class = "h-100 d-flex flex-column")
+
+      outputs.ui$children[[2]] %<>% tagAppendAttributes(class = "overflow-auto")
+
+      outputs.ui
     })
 
 
