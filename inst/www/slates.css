@@ -127,6 +127,7 @@
 
 .slate {
   /*border-width: 0;*/
+  margin-bottom: 1rem;
 }
 
 .slate.editing {
@@ -152,6 +153,14 @@
 }
 
 
+
+.slates-output {
+
+}
+
+.slates-output-table {
+
+}
 
 
 /* Flex containers */
@@ -218,7 +227,7 @@
   border-radius: 1.5em;
 }
 
-
+/*
 input.numeric4-input::-webkit-outer-spin-button,
 input.numeric4-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -227,8 +236,9 @@ input.numeric4-input::-webkit-inner-spin-button {
 input[type=number].numeric4-input {
   -moz-appearance: textfield;
 }
+*/
 
-input.numeric4-input {
+input.numeric-x-input {
   border: 0;
   border-radius: 0;
   box-shadow: none;
