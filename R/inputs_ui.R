@@ -184,15 +184,19 @@ tagFromType <- list(
 )
 
 
-slatesMultiInputRadio <- function(id, types, allow.null = FALSE) {
+slatesMultiInputRadio <- function(id, types, value = NULL, allow.null = FALSE) {
   button.labels <- set_names(types, shortFromType[ types ])
 
   if (allow.null)
     button.labels <- c(button.labels, "NULL"="NULL")
 
+  if (is.null(value))
+    value <- "NULL"
+
   shinyWidgets::radioGroupButtons(
     inputId = id,
     choices = button.labels,
+    selected = value,
     status = "primary",
     size = "sm"
   ) %>%
@@ -210,16 +214,6 @@ makeSlatesInput <- function(type, id, label, ..., wizards = NULL, allow.null = F
   }
 
   if (allow.null == TRUE) {
-    # null.button <- shinyWidgets::checkboxGroupButtons(
-    #   inputId = paste0(id, "-null"),
-    #   choices = list("NULL"="NULL"),
-    #   selected = NULL,
-    #   size = "sm",
-    #   status = "primary"
-    # ) %>%
-    #   tagAppendAttributes(style = "display: inline-block;") %>%
-    #   tagRemoveClass("form-group")
-
     multi.radio <- slatesMultiInputRadio(paste0(id, "-chooser"), type, allow.null = TRUE)
   } else {
     multi.radio <- tagList()
@@ -231,7 +225,6 @@ makeSlatesInput <- function(type, id, label, ..., wizards = NULL, allow.null = F
     class = "form-group shiny-input-container",
     slatesInputLabel(label, id),
     wizard.button,
-    # multi switcher
     multi.radio,
     tagFun(id, ...)
   )
@@ -241,10 +234,10 @@ makeSlatesInput <- function(type, id, label, ..., wizards = NULL, allow.null = F
 
 
 
-makeSlatesMultiInput <- function(id, label,
-                             inputs,
-                             allow.null = FALSE,
-                             wizards = NULL) {
+makeSlatesMultiInput <- function(id, label, inputs,
+                                 value = NULL,
+                                 allow.null = FALSE,
+                                 wizards = NULL) {
   if (length(inputs) < 1)
     stop("Need at least 1 type.")
 
@@ -264,7 +257,11 @@ makeSlatesMultiInput <- function(id, label,
     do.call(fun, .)
   })
 
-  multi.radio <- slatesMultiInputRadio(id, map_chr(inputs, "input.type"), allow.null)
+  multi.radio <- slatesMultiInputRadio(
+    id = id,
+    types = map_chr(inputs, "input.type"),
+    value = value,
+    allow.null = allow.null)
 
   div(
     class = "form-group shiny-input-container",

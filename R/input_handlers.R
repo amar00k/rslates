@@ -645,11 +645,13 @@ input.handlers <- list(
     },
 
     createUI = function(x, ns = identity) {
-      #value <- if (!is.null(x$value)) x$value else x$default
+      value <- if (!is.null(x$value)) x$value else x$default
 
       makeSlatesMultiInput(
         ns(x$id), label = x$name,
-        inputs = x$inputs, allow.null = x$allow.null
+        value = value$selected,
+        inputs = x$inputs,
+        allow.null = x$allow.null
       )
     },
 
