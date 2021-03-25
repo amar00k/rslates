@@ -8,14 +8,20 @@ rslate.themes <- list(
     bootswatch = "minty", version = "4",
     bg = "#F1ede4", fg = "#000000",
     primary = "#092B36", secondary = "#2A7F62",
+    base_font = "Noto Sans JP, sans-serif",
     "input-border-color" = "#6c757d"
     ) %>%
     bslib::bs_add_variables(
       "theme-colors" = "('light': #f1ede4, 'dark': #0b0d07, 'title': #26403B)"
     ) %>%
     bslib::bs_add_rules("
-      body { background-image: linear-gradient(
-        to bottom, #eae3d7, #DBD1BD 1000px, #B09A6D 2000px, #D64933 100%) ; }
+      /*body { background-image: linear-gradient(
+        to bottom, #eae3d7, #DBD1BD 1000px, #B09A6D 2000px, #D64933 100%) ;
+      }*/
+
+      body {
+       background: #eae3d7;
+      }
 
       .slate {
         background: #F1ede4;
