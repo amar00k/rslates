@@ -77,22 +77,34 @@ importDatasetModal <- function(id, session) {
   input <- session$input
   output <- session$output
 
-  slate.server <- reactiveVal(NULL)
+  observers <- list()
+
+  slate.options <- slateOptions(
+    height = "60vh",
+    use.card = FALSE,
+    inputs.style = "flowing"
+  )
+
+  slate.server <- slateServer(
+    ID("preview_slate"),
+    blueprint = getOption("rslates.importer.blueprints")[[ "CSV Import" ]],
+    slate.options = slate.options
+  )
 
 
-  # observe({
-  #   req(data <- data())
-  #
-  #   server <- isolate(slate.server())
-  #
-  #   if (!is.null(server))
-  #     server$destroy()
-  #
-  #   blueprint.name <- blueprintFromJSON(getFileTypes()$tabular$module)
-  #   blueprint <- getOption("rslates.importer.blueprints")[[ blueprint.name ]]
-  #   slate.options <- slateOptions()
-  #   server <- slateServer(ID("slate"), blueprint, slate.options)
-  # })
+  observeEvent(data(), {
+    req(data <- data())
+
+    dlog(data)
+
+    blueprint.name <- getFileTypes()$tabular$module
+    blueprint <- getOption("rslates.importer.blueprints")[[ blueprint.name ]]
+
+    dlog(blueprint$name)
+
+    slate.server$updateBlueprint(blueprint)
+    slate.server$import.data$fileinfo <- data
+  })
 
 
   data <- reactive({
@@ -118,9 +130,9 @@ importDatasetModal <- function(id, session) {
     list(origin = "local",
          name = "WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv",
          size = file.size("C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"),
-         type = "application/vnd.ms-excel",
+         #type = "application/vnd.ms-excel",
          extention = "csv",
-         path = "C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"
+         datapath = "C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"
     )
 
   })
@@ -136,24 +148,6 @@ importDatasetModal <- function(id, session) {
     file.type <- getFileType(ext)
 
     !is.null(file.type)
-  })
-
-
-  output[[ ID("slate_ui") ]] <- renderUI({
-    data <- data()
-
-    if (is.null(data))
-      return()
-
-    blueprint <- blueprintFromJSON(getFileTypes()$tabular$module)
-
-    slate.options <- slateOptions(
-      height = "60vh",
-      use.card = FALSE,
-      inputs.style = "flowing"
-    )
-
-    slateUI(ns(ID("slate")), blueprint, slate.options)
   })
 
 
@@ -237,7 +231,7 @@ importDatasetModal <- function(id, session) {
 
     # Auto-detection results
     if (file.type == "Tabular") {
-      format <- detectTabularFormat(data$path)
+      format <- detectTabularFormat(data$datapath)
 
       details.df <- data.frame(
         row.names = c("Separator:", "Quote Type:"),
@@ -292,7 +286,8 @@ importDatasetModal <- function(id, session) {
     function() {
       tags$div(
         style = "min-height: 60vh;",
-        uiOutput(ns(ID("slate_ui")))
+        slateUI(ns(ID("preview_slate")), slate.options = slate.options)
+        #uiOutput(ns(ID("slate_ui")))
       )
     }
   )
@@ -323,7 +318,8 @@ importDatasetModal <- function(id, session) {
                        pages.ui = pages.ui,
                        submit.fun = submit.fun,
                        validators = validators,
-                       default.size = "xl"
+                       default.size = "xl",
+                       observers = observers
   )
 }
 
@@ -385,7 +381,7 @@ projectEditorUI <- function(id, project) {
     tags$div(
       class = "bg-light px-5 py-4",
       #uiOutput(ns("header_ui"))
-      div(class = "slates-flow-3",
+      div(class = "slates-flow slates-flow-3",
         textInput(ns("project_title"), label = "Title", value = project$title),
         textInput(ns("project_authors"), label = "Author(s)", value = project$authors),
         dateInput(ns("project_date"), label = "Date", value = project$data.created)
