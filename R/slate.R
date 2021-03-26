@@ -333,8 +333,6 @@ edit.blueprint.labels <- list(
 slateUI <- function(id, slate.options = slateOptions()) {
   ns <- NS(id)
 
-  #height <- slate.options$height
-  #if (is.null(height))
   height <- slate.options$height
 
   dropdown.ui <- tags$div(
@@ -631,10 +629,11 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     # imports are evaluated first, then toplevel source code,
     # and eventually user-provided slate code
     slate.envir <- reactive({
+      base.envir <- slate.options$envir
       import.sources <- import.sources()
       toplevel <- sources()$toplevel
 
-      env <- new.env(parent = slate.options$envir)
+      env <- new.env(parent = base.envir)
 
       env <- tryCatch({
         for (x in import.sources) {
@@ -672,9 +671,9 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
             as.character
 
         list(name = out.name, value = value)
-      })
+      }) %>%
+        set_names(map(., "name"))
     })
-
 
 
     # Everything that needs to be done AFTER the UI has been created.

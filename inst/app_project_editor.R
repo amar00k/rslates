@@ -67,8 +67,8 @@ projectEditorApp <- function(project = NULL) {
     )
     session.data <- reactiveValues(
       blueprints = getOption("rslates.blueprints"),
-      importer.blueprints = getOption("rslates.importer.blueprints"),
-      project.envir = new.env()
+      importer.blueprints = getOption("rslates.importer.blueprints")#,
+      #project.envir = new.env()
     )
 
     #

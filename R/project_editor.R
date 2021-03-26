@@ -93,9 +93,7 @@ importDatasetModal <- function(id, session) {
 
 
   observeEvent(data(), {
-    req(data <- data())
-
-    dlog(data)
+    req(file.info <- file.info())
 
     blueprint.name <- getFileTypes()$tabular$module
     blueprint <- getOption("rslates.importer.blueprints")[[ blueprint.name ]]
@@ -103,11 +101,11 @@ importDatasetModal <- function(id, session) {
     dlog(blueprint$name)
 
     slate.server$updateBlueprint(blueprint)
-    slate.server$import.data$fileinfo <- data
+    slate.server$import.data$fileinfo <- file.info
   })
 
 
-  data <- reactive({
+  file.info <- reactive({
     # import.from <- input[[ ID("import_from") ]]
     # file.data <- input[[ ID("file_input") ]]
     #
@@ -134,17 +132,16 @@ importDatasetModal <- function(id, session) {
          extention = "csv",
          datapath = "C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"
     )
-
   })
 
 
   isFileSupported <- reactive({
-    data <- data()
+    file.info <- file.info()
 
-    if (is.null(data))
+    if (is.null(file.info))
       return(FALSE)
 
-    ext <- gsub(".*\\.(.*$)", "\\1", data$name)
+    ext <- gsub(".*\\.(.*$)", "\\1", file.info$name)
     file.type <- getFileType(ext)
 
     !is.null(file.type)
@@ -153,9 +150,9 @@ importDatasetModal <- function(id, session) {
 
   # summary table
   output[[ ID("data_summary") ]] <- renderUI({
-    data <- data()
+    file.info <- file.info()
 
-    if (is.null(data)) {
+    if (is.null(file.info)) {
       return(
         div(class = "d-flex h-100",
           div(
@@ -207,7 +204,7 @@ importDatasetModal <- function(id, session) {
     }
 
     # get extension and file type
-    ext <- data$extention
+    ext <- file.info$extention
     file.type <- getFileType(ext)
 
     if (file.type != "") {
@@ -220,8 +217,8 @@ importDatasetModal <- function(id, session) {
 
     file.df <- data.frame(
       row.names = c("Filename:", "Size:", "File Type:"),
-      Value = c(data$name,
-                utils:::format.object_size(data$size, units = "auto"),
+      Value = c(file.info$name,
+                utils:::format.object_size(file.info$size, units = "auto"),
                 type.description),
       Status = c("ok", "ok", type.status)
     )
@@ -231,7 +228,7 @@ importDatasetModal <- function(id, session) {
 
     # Auto-detection results
     if (file.type == "Tabular") {
-      format <- detectTabularFormat(data$datapath)
+      format <- detectTabularFormat(file.info$datapath)
 
       details.df <- data.frame(
         row.names = c("Separator:", "Quote Type:"),
@@ -306,12 +303,23 @@ importDatasetModal <- function(id, session) {
       }
     },
     function() {
-      TRUE
+      data <- slate.server$export.data()
+
+      !is.null(data) && length(data) > 0 && data[[1]]$name != ""
     }
   )
 
   submit.fun <- function() {
-    list(data = data())
+    data <- slate.server$export.data()
+
+    dataset <- list(
+      name = data[[1]]$name,
+      type = "local",
+      file.info = file.info(),
+      data = data
+    )
+
+    return(list(dataset = dataset))
   }
 
   slatesModalMultiPage(id, session,
@@ -416,11 +424,12 @@ projectEditorUI <- function(id, project) {
                          class="ml-3"))
         ),
         tags$hr(),
-        tags$div(
-          tags$p(
-            class = "text-muted",
-            "No data. Use the buttons above to import a dataset!"),
-        ),
+        # tags$div(
+        #   tags$p(
+        #     class = "text-muted",
+        #     "No data. Use the buttons above to import a dataset!"),
+        # ),
+        uiOutput(ns("datasets_summary")),
         div(id = "datasets_begin"),
         div(id = "datasets_end")
       )
@@ -477,7 +486,10 @@ projectEditorServer <- function(id, project, session.data, global.options) {
       file.import = create_file_import_modal("file_import_modal", session)
     )
 
-    #session.data$project.envir <- new.env()
+    project.data <- reactiveValues(
+      envir = new.env()
+    )
+
     #global.envir <- reactiveVal(new.env())
 
     code.changed <- reactiveVal(FALSE)
@@ -526,6 +538,26 @@ projectEditorServer <- function(id, project, session.data, global.options) {
     #   shinydashboardPlus::updateBox("box_global", action = "update", options = list(status = status))
     # })
 
+
+    output$datasets_summary <- renderUI({
+      datasets <- reactiveValuesToList(datasets)
+
+      if (length(datasets) == 0) {
+        return(
+          tags$p(
+            class = "text-muted",
+            "No data. Use the buttons above to import a dataset!"
+          )
+        )
+      }
+
+      tags$p(
+        class = "text-muted",
+        paste(ls(project.data$envir), collapse = ", ")
+      )
+    })
+
+
     output$output_global <- renderPrint({
       input$eval_global
       input$ace_global_run_key
@@ -552,31 +584,42 @@ projectEditorServer <- function(id, project, session.data, global.options) {
 
       import.modal$show(
         title = "Import Dataset",
-        callback = function(data) {
-          print(data)
-
+        callback = function(dataset) {
+          addDataset(dataset)
         }
       )
-
-      # modals$file.import$show(function(res) {
-      #   print(res)
-      #   #add_data_slate(blueprints[[ value ]], ask.title = FALSE)
-      # })
     })
 
-    # outputOptions(output, "output_global", suspendWhenHidden = FALSE)
+    addDataset <- function(dataset) {
+      if (is.null(dataset) || dataset$name == "")
+        return()
 
+      datasets[[ dataset$name ]] <- dataset
 
-    addDataset <- function(blueprint, ask.title = TRUE) {
-      dataset.list <- reactiveValuesToList(datasets)
-      id <- seq.uid("dataset")
+      dlog(dataset$data)
 
-      insertUI(selector = "#data_slates_end",
-               where = "beforeBegin",
-               ui = dataSlateUI(ns(id), blueprint))
+      data <- dataset$data %>%
+        keep(map_chr(., "name") != "")
 
-      datasets[[ id ]] <- callModule(dataSlateServer, id, blueprint, global.envir, open.settings = TRUE)
+      dlog(data)
+
+      for (x in data) {
+        project.data$envir[[ x$name ]] <- x$value
+      }
+
+      dlog()
     }
+
+    # addDataset <- function(blueprint, ask.title = TRUE) {
+    #   dataset.list <- reactiveValuesToList(datasets)
+    #   id <- seq.uid("dataset")
+    #
+    #   insertUI(selector = "#data_slates_end",
+    #            where = "beforeBegin",
+    #            ui = dataSlateUI(ns(id), blueprint))
+    #
+    #   datasets[[ id ]] <- callModule(dataSlateServer, id, blueprint, global.envir, open.settings = TRUE)
+    # }
 
 
 
@@ -610,7 +653,7 @@ projectEditorServer <- function(id, project, session.data, global.options) {
       id <- seq.uid("slate")  # TODO: substitute this
 
       slate.options <- slateOptions(
-        envir = session.data$project.envir,
+        envir = project.data$envir,
         open.inputs = TRUE
       )
 
@@ -639,7 +682,6 @@ projectEditorServer <- function(id, project, session.data, global.options) {
         where = "beforeBegin",
         ui = slateUI(
           ns(id),
-          blueprint,
           slate.options = slate.options
         )
       )
