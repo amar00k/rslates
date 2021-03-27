@@ -458,7 +458,8 @@ slateUI <- function(id, slate.options = slateOptions()) {
 
 
 
-slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.options = NULL) {
+slateServer <- function(id, blueprint = NULL, #init.input.values = NULL,
+                        slate.options = NULL, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -520,6 +521,14 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     } else {
       blueprint <- do.call(reactiveValues, blueprint)
     }
+
+    # # initialize inputs if values are provided
+    # if (!is.null(init.input.values)) {
+    #   for (name in names(blueprint$inputs)) {
+    #     if (name %in% names(init.input.values))
+    #       blueprint$inputs[[ name ]] <- init.input.values[[ name ]]
+    #   }
+    # }
 
     # the title
     slate.title <- reactiveVal(isolate(blueprint$name))
@@ -658,9 +667,7 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
     export.data <- reactive({
       envir <- slate.envir()
 
-      map(blueprint$exports, ~{
-        value <- envir[[ .$var.name ]]
-
+      varnames <- map(blueprint$exports, ~{
         if (!grepl("^\\.", .$out.name))
           out.name <- .$out.name
         else if (.$out.name == ".title")
@@ -669,10 +676,12 @@ slateServer <- function(id, blueprint = NULL, slate.options = NULL, global.optio
           out.name <-
             input.values()[[ sub("^\\.", "", .$out.name) ]] %>%
             as.character
+      })
 
-        list(name = out.name, value = value)
+      map(blueprint$exports, ~{
+        envir[[ .$var.name ]]
       }) %>%
-        set_names(map(., "name"))
+        set_names(varnames)
     })
 
 

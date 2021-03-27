@@ -30,7 +30,7 @@ getFileType <- function(extension) {
 
 
 getValidExtensions <- function() {
-  sapply(getFileTypes(), "[[", "extentions") %>% unlist()
+  sapply(getFileTypes(), "[[", "extensions") %>% unlist()
 }
 
 
@@ -58,11 +58,11 @@ detectTabularFormat <- function(filename, nlines = 50, comment.char = "") {
     discard(is.null)
 
   if (length(format) == 0) {
-    format <- list(sep = "", quote = "")
+    format <- list(sep = NULL, quote = NULL)
   } else if (length(format) == 1) {
     format <- list(sep = names(format[[1]]), quote = names(format))
   } else {
-    format <- list(sep = names(format[[1]]), quote = "")
+    format <- list(sep = names(format[[1]]), quote = NULL)
   }
 
   return(format)
@@ -92,46 +92,70 @@ importDatasetModal <- function(id, session) {
   )
 
 
-  observeEvent(data(), {
-    req(file.info <- file.info())
+  file.info <- reactive({
+    import.from <- input[[ ID("import_from") ]]
+    file.data <- input[[ ID("file_input") ]]
 
-    blueprint.name <- getFileTypes()$tabular$module
-    blueprint <- getOption("rslates.importer.blueprints")[[ blueprint.name ]]
+    if (is.null(import.from))
+      return(NULL)
 
-    dlog(blueprint$name)
-
-    slate.server$updateBlueprint(blueprint)
-    slate.server$import.data$fileinfo <- file.info
+    if (import.from == "local" && !is.null(file.data)) {
+      list(origin = "local",
+           name = file.data$name,
+           size = file.data$size,
+           extension = sub(".*\\.(.*$)", "\\1", file.data$name),
+           type = file.data$type,
+           datapath = file.data$datapath
+      )
+    } else {
+      return(NULL)
+    }
   })
 
 
-  file.info <- reactive({
-    # import.from <- input[[ ID("import_from") ]]
-    # file.data <- input[[ ID("file_input") ]]
-    #
-    # if (is.null(import.from))
-    #   return(NULL)
-    #
-    # if (import.from == "local" && !is.null(file.data)) {
-    #   list(origin = "local",
-    #        name = file.data$name,
-    #        size = file.data$size,
-    #        extention = gsub(".*\\.(.*$)", "\\1", name)
-    #        type = file.data$type,
-    #        path = file.data$datapath
-    #   )
-    # } else {
-    #   return(NULL)
-    # }
+  autodetection.info <- reactive({
+    req(file.info <- file.info())
 
-    # test data
-    list(origin = "local",
-         name = "WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv",
-         size = file.size("C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"),
-         #type = "application/vnd.ms-excel",
-         extention = "csv",
-         datapath = "C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"
-    )
+    if (file.info$extension == "csv")
+      return(detectTabularFormat(file.info$datapath))
+    else
+      return(NULL)
+  })
+
+
+  observeEvent(file.info(), {
+    req(file.info <- file.info())
+
+    dlog()
+
+    # get the importer blueprint
+    blueprint.name <- getFileTypes()$tabular$module
+    blueprint <- getOption("rslates.importer.blueprints")[[ blueprint.name ]]
+
+    # generate a proposed dataset name
+    name.parts <- sub("\\..*$", "", file.info$name) %>%
+      strsplit(split = "[^a-zA-Z0-9]") %>%
+      pluck(1)
+
+    idx <- nchar(name.parts) %>% { which(cumsum(.) <= 15) }
+    if (length(idx) != 0) {
+      dataset.name <- name.parts[idx] %>% paste(collapse="_")
+    } else {
+      dataset.name <- substr(fileinfo$name, 1, 15)
+    }
+
+    # setup the blueprint initial values
+    if (file.info$extension == "csv") {
+      auto <- autodetection.info()
+
+      auto$name <- dataset.name
+
+      blueprint$inputs %<>% assignInputValues(auto)
+    }
+
+    # update the slate
+    slate.server$updateBlueprint(blueprint)
+    slate.server$import.data$fileinfo <- file.info
   })
 
 
@@ -204,7 +228,7 @@ importDatasetModal <- function(id, session) {
     }
 
     # get extension and file type
-    ext <- file.info$extention
+    ext <- file.info$extension
     file.type <- getFileType(ext)
 
     if (file.type != "") {
@@ -232,10 +256,10 @@ importDatasetModal <- function(id, session) {
 
       details.df <- data.frame(
         row.names = c("Separator:", "Quote Type:"),
-        Value = c(if (format$sep != "") format$sep else "Undetermined",
-                  if (format$quote != "") format$quote else "Undetermined"),
-        Status = c(if (format$sep != "") "ok" else "error",
-                   if (format$quote != "") "ok" else "question"))
+        Value = c(if (!is.null(format$sep)) format$sep else "Undetermined",
+                  if (!is.null(format$quote)) format$quote else "Undetermined"),
+        Status = c(if (!is.null(format$sep)) "ok" else "error",
+                   if (!is.null(format$quote)) "ok" else "question"))
 
       details.reactable <- makeTable(details.df)
     }
@@ -305,7 +329,7 @@ importDatasetModal <- function(id, session) {
     function() {
       data <- slate.server$export.data()
 
-      !is.null(data) && length(data) > 0 && data[[1]]$name != ""
+      !is.null(data) && length(data) == 1 && names(data)[1] != ""
     }
   )
 
@@ -313,10 +337,10 @@ importDatasetModal <- function(id, session) {
     data <- slate.server$export.data()
 
     dataset <- list(
-      name = data[[1]]$name,
-      type = "local",
+      name = names(data)[1],
+      type = "tabular",
       file.info = file.info(),
-      data = data
+      data = data[[1]]
     )
 
     return(list(dataset = dataset))
@@ -494,8 +518,19 @@ projectEditorServer <- function(id, project, session.data, global.options) {
 
     code.changed <- reactiveVal(FALSE)
 
-    # list of slates
+    # dataset:
+    #   - name
+    #   - type ()
+    #   - file.info
+    #     * origin
+    #     * name
+    #     * size
+    #     * extension
+    #     * datapath
+    #  - data
     datasets <- reactiveValues()
+
+    # list of slates
     slates <- reactiveValues()
 
     # keep track of the time of last modification
@@ -538,6 +573,64 @@ projectEditorServer <- function(id, project, session.data, global.options) {
     #   shinydashboardPlus::updateBox("box_global", action = "update", options = list(status = status))
     # })
 
+    datasetSummary <- function(dataset) {
+      data <- dataset$data
+
+      if (class(data) == "data.frame") {
+        paste0("data.frame (", nrow(data), " obs. of ", ncol(data), " variables)")
+      } else {
+        class(data)
+      }
+    }
+
+
+    datasetCard <- function(dataset) {
+      icn <- switch(
+        dataset$type,
+        "tabular" = {
+          "file-csv"
+        },
+        "dice-d6"
+      )
+
+      status <- "primary"
+      #bg <- paste0("bg-", status)
+
+      # tags$div(
+      #   class = "card dataset-card",
+      #   tags$div(
+      #     class = "card-header",
+      #     icon(icn, class = "fa-2x"),
+      #     dataset$name
+      #   ),
+      #   tags$div(
+      #     class = "card-body",
+      #     datasetSummary(dataset)
+      #   )
+      # )
+
+      tags$div(
+        class = "card dataset-card d-flex flex-row",
+        tags$div(
+          class = paste("dataset-icon card-img", paste0("text-", status)),
+          icon(icn)
+          #tags$span(class="badge badge-secondary", "URL")
+        ),
+        tags$div(
+          class = "p-2",
+          tags$div(
+            class = "dataset-title",
+            dataset$name
+          ),
+          tags$div(
+            class = "dataset-summary",
+            datasetSummary(dataset)
+          )
+        )
+      )
+
+    }
+
 
     output$datasets_summary <- renderUI({
       datasets <- reactiveValuesToList(datasets)
@@ -551,23 +644,46 @@ projectEditorServer <- function(id, project, session.data, global.options) {
         )
       }
 
-      tags$p(
+      dataset.tags <- tags$div(
+        class = "d-flex flex-wrap justify-content-between",
+        map(datasets, datasetCard)
+      )
+
+      # dataset.tags <- map(datasets, ~{
+      #   type <- .x$file.info$extension
+      #   name <- .x$name
+      #
+      #   tags$a(
+      #     icon("file-csv"), name
+      #   )
+      # })
+
+      envir.tags <- tags$p(
         class = "text-muted",
-        paste(ls(project.data$envir), collapse = ", ")
+        map_chr(ls(project.data$envir), ~{
+          paste0(., " (", class(project.data$envir[[.]]), ")")
+        }) %>%
+          paste(collapse = "; ")
+      )
+
+      tagList(
+        dataset.tags,
+        tags$hr(),
+        envir.tags
       )
     })
 
 
-    output$output_global <- renderPrint({
-      input$eval_global
-      input$ace_global_run_key
-
-      code.changed(FALSE)
-
-      global.envir(new.env())
-
-      eval(parse(text = isolate(input$ace_global)), env = global.envir())
-    })
+    # output$output_global <- renderPrint({
+    #   input$eval_global
+    #   input$ace_global_run_key
+    #
+    #   code.changed(FALSE)
+    #
+    #   global.envir(new.env())
+    #
+    #   eval(parse(text = isolate(input$ace_global)), env = global.envir())
+    # })
 
 
     #
@@ -596,32 +712,15 @@ projectEditorServer <- function(id, project, session.data, global.options) {
 
       datasets[[ dataset$name ]] <- dataset
 
-      dlog(dataset$data)
+      project.data$envir[[ dataset$name ]] <- dataset$data
 
-      data <- dataset$data %>%
-        keep(map_chr(., "name") != "")
+      # data <- dataset$data %>%
+      #   keep(names(dataset$data) != "")
 
-      dlog(data)
-
-      for (x in data) {
-        project.data$envir[[ x$name ]] <- x$value
-      }
-
-      dlog()
+      # for (name in names(data)) {
+      #   project.data$envir[[ name ]] <- data[[name]]
+      # }
     }
-
-    # addDataset <- function(blueprint, ask.title = TRUE) {
-    #   dataset.list <- reactiveValuesToList(datasets)
-    #   id <- seq.uid("dataset")
-    #
-    #   insertUI(selector = "#data_slates_end",
-    #            where = "beforeBegin",
-    #            ui = dataSlateUI(ns(id), blueprint))
-    #
-    #   datasets[[ id ]] <- callModule(dataSlateServer, id, blueprint, global.envir, open.settings = TRUE)
-    # }
-
-
 
 
     #
@@ -790,6 +889,56 @@ projectEditorServer <- function(id, project, session.data, global.options) {
       )
     })
 
+
+    #
+    # TEST
+    #
+    covid.19 <- list(
+      origin = "local",
+      name = "WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv",
+      size = file.size("C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"),
+      extension = "csv",
+      datapath = "C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"
+    )
+
+    tab1 <- list(
+      origin = "local",
+      name = "test_tabular_1.csv",
+      size = file.size(system.file("test/test_tabular_1.csv", package = "rslates")),
+      extension = "txt",
+      datapath = system.file("test/test_tabular_1.csv", package = "rslates")
+    )
+
+    tab2 <- list(
+      origin = "local",
+      name = "test_tabular_2.txt",
+      size = file.size(system.file("test/test_tabular_2.txt", package = "rslates")),
+      extension = "txt",
+      datapath = system.file("test/test_tabular_2.txt", package = "rslates")
+    )
+
+    isolate({
+      addDataset(list(
+        name = "who.covid.19",
+        type = "tabular",
+        file.info = covid.19,
+        data = read.table(covid.19$datapath, sep = ",")
+      ))
+
+      addDataset(list(
+        name = "iris",
+        type = "tabular",
+        file.info = tab1,
+        data = read.table(tab1$datapath, sep = ",")
+      ))
+
+      addDataset(list(
+        name = "mtcars",
+        type = "tabular",
+        file.info = tab2,
+        data = read.table(tab2$datapath, sep = "\t")
+      ))
+    })
 
     return(project)
   })
