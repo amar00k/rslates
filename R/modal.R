@@ -102,7 +102,20 @@ slatesTextModal <- function(id, session) {
 }
 
 
+slatesFileInputModal <- function(id, session) {
+  ID <- function(x) paste0(id, "_", x)
+  ns <- session$ns
 
+  ui.fun <- function(label, ...) {
+    fileInput(ns(ID("file_input")), label = label, ...)
+  }
+
+  submit.fun <- function() {
+    list(session$input[[ ID("file_input") ]])
+  }
+
+  slatesModal(id, session, ui.fun = ui.fun, submit.fun = submit.fun)
+}
 
 
 
