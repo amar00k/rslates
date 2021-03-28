@@ -449,12 +449,11 @@ runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer
 # -------------
 
 runBlueprintEditorApp <- function(
-    blueprint.dir,
     blueprint.filename = NULL,
     theme = getOption("rslates.default.theme")) {
 
     options(rslates.bp.editor.blueprint.filename = blueprint.filename)
-    options(rslates.bp.editor.blueprint.dir = blueprint.dir)
+    #options(rslates.bp.editor.blueprint.dir = blueprint.dir)
     options(rslates.default.theme = theme)
     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
 

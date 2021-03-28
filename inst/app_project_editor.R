@@ -67,7 +67,7 @@ projectEditorApp <- function(project = NULL) {
     )
     session.data <- reactiveValues(
       blueprints = getOption("rslates.blueprints"),
-      importer.blueprints = getOption("rslates.importer.blueprints")#,
+      import.blueprints = getOption("rslates.import.blueprints")#,
       #project.envir = new.env()
     )
 
@@ -102,18 +102,18 @@ projectEditorApp <- function(project = NULL) {
 }
 
 blueprint.dir <- getOption("rslates.blueprint.dir")
-importer.blueprint.dir <- getOption("rslates.importer.blueprint.dir")
+import.blueprint.dir <- getOption("rslates.import.blueprint.dir")
 
 blueprints <- loadBlueprints(blueprint.dir, on.error = "skip")
-importer.blueprints <- loadBlueprints(importer.blueprint.dir, on.error = "skip")
+import.blueprints <- loadBlueprints(import.blueprint.dir, on.error = "skip")
 
-blueprint.tags <- c(blueprints, importer.blueprints) %>%
+blueprint.tags <- c(blueprints, import.blueprints) %>%
   map("tags") %>%
   unlist %>%
   unique
 
 options(rslates.blueprints = blueprints)
-options(rslates.importer.blueprints = loadBlueprints(importer.blueprint.dir, on.error = "skip"))
+options(rslates.import.blueprints = loadBlueprints(import.blueprint.dir, on.error = "skip"))
 options(rslates.tag.list = blueprint.tags)
 
 project <- getOption("rslates.editor.project")
