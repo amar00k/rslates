@@ -7,32 +7,22 @@
 
 
 
-blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
+blueprintEditorApp <- function(blueprint.filename = NULL) {
 
-  if (is.null(blueprint.filename) && is.null(blueprint.dir))
-    stop("At least one of blueprint.filename or blueprint.dir must be specified.")
-
-  editorLoadBlueprint <- function(blueprint.filename) {
-    path <- file.path(blueprint.dir, blueprint.filename)
-
-    if (!file.exists(path)) {
+  editorLoadBlueprint <- function(pathname) {
+    if (is.null(pathname) || !file.exists(pathname)) {
       return(slateBlueprint(
-        name = gsub("_", " ", blueprint.filename) %>%
-          gsub("\\.json$", "", .)
+        name = gsub("\\.json$", "", basename(pathname))
       ))
     }
 
     tryCatch({
-      blueprintFromJSON(filename = path)
+      blueprintFromJSON(filename = pathname)
     },
     error = function(e) {
-      blueprintFromJSON(filename = path, preprocess = FALSE)
+      blueprintFromJSON(filename = pathname, preprocess = FALSE)
     })
   }
-
-  blueprint.list <- dir(blueprint.dir, pattern = "\\.json$")
-  if (!is.null(blueprint.filename))
-    blueprint.list <- unique(c(blueprint.list, blueprint.filename))
 
   theme <- getOption("rslates.default.theme")
 
@@ -61,12 +51,14 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
         section.div(
           tags$div(
             class = "d-flex align-items-center",
-            selectInput(
-              "active_blueprint",
-              label = "Active Blueprint",
-              choices = c("New Blueprint", blueprint.list),
-              selected = blueprint.filename
-            ),
+            actionButton("new_blueprint", "New Blueprint", icon = icon("new"), class = "mr-2"),
+            actionButton("load_blueprint", "Load Blueprint", icon = icon("load")),
+            # selectInput(
+            #   "active_blueprint",
+            #   label = "Active Blueprint",
+            #   choices = c("New Blueprint", blueprint.list),
+            #   selected = blueprint.filename
+            # ),
             #actionButton("new_blueprint", "New Blueprint", class = "ml-2"),
             uiOutput("save_state", class = "ml-auto"),
             shinyjs::disabled(
@@ -121,9 +113,13 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
     # the blueprint
     # load the initial blueprint
     blueprint <- reactiveVal(
-      editorLoadBlueprint(isolate(input$active_blueprint))
+      editorLoadBlueprint(blueprint.filename)
     )
 
+    if (!is.null(blueprint.filename))
+      pathname <- reactiveVal(dirname(blueprint.filename))
+    else
+      pathname <- getwd()
 
     # Create the slate server
     slate <- slateServer(
@@ -133,14 +129,6 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
       global.options = global.options
     )
 
-
-    # list of blueprints in directory
-    # TODO: handle blueprint.dir is NULL
-    blueprint.list <- reactiveVal(dir(blueprint.dir, pattern = "\\.json$"))
-
-    # isolate(
-    #   resetBlueprint(editorLoadBlueprint(blueprint.list()[1]))
-    # )
 
     #
     # Themeing
@@ -157,7 +145,6 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
 
 
     # Slate imports
-
     output$slate_imports <- renderUI({
       imports <- blueprint()$imports
 
@@ -188,30 +175,22 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
     # New / Load / Save
     #
 
-    observeEvent(blueprint.list(), { #input$new_blueprint, {
-      options <- c("New Blueprint", blueprint.list())
-
-      selected <- input$active_blueprint
-
-      updateSelectInput(
-        session,
-        "active_blueprint",
-        choices = options,
-        selected = selected
-      )
-    }, ignoreInit = TRUE)
-
-
-    observe(label = "change.blueprint", {
-      dlog()
-
-      if (input$active_blueprint == "New Blueprint") {
-        blueprint(slateBlueprint())
-      } else {
-        blueprint(editorLoadBlueprint(input$active_blueprint))
-      }
+    observeEvent(input$new_blueprint, {
+      blueprint(slateBlueprint())
 
       isolate(slate$updateBlueprint(blueprint()))
+    })
+
+
+    load.blueprint.modal <- slatesFileInputModal("load_modal", session)
+
+    observeEvent(input$load_blueprint, {
+      load.blueprint.modal$show(title = "Load Blueprint", label = "Select Blueprint",
+                                callback = function(file) {
+        blueprint(editorLoadBlueprint(file$datapath))
+
+        isolate(slate$updateBlueprint(blueprint()))
+      })
     })
 
 
@@ -237,15 +216,7 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
       id = "save_modal",
       session = session,
       ui.fun = function(filename) {
-        tagList(
-          shinyjs::disabled(
-            textInput(session$ns("save_filename"), label = "Filename", value = filename)
-          ),
-          tags$p(
-            "Save changes to ", file.path(blueprint.dir, filename), "?",
-            tags$b("Existing file will be overwritten!")
-          )
-        )
+        textInput(session$ns("save_filename"), label = "Filename", value = filename)
       },
       submit.fun <- function() {
         list(filename = session$input$save_filename)
@@ -259,16 +230,15 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
       filename <- paste0(gsub(" ", "_", bp$name), ".json")
 
       save.modal$show(title = "Save Blueprint",
-                      size = "l",
-                      filename = filename,
+                      size = "m",
+                      filename = file.path(pathname(), filename),
                       callback = function(filename) {
-        pathname <- file.path(blueprint.dir, filename)
+        pathname <- filename
         text <- blueprintToJSON(bp)
 
         writeLines(text, con = pathname)
 
         blueprint(slate$blueprint())
-        blueprint.list(dir(blueprint.dir, pattern = "\\.json$"))
 
         options(rslates.tag.list = unique(c(getOption("rslates.tag.list"), bp$tags)))
       })
@@ -284,20 +254,19 @@ blueprintEditorApp <- function(blueprint.dir, blueprint.filename = NULL) {
 }
 
 blueprint.dir <- getOption("rslates.blueprint.dir")
-importer.blueprint.dir <- getOption("rslates.importer.blueprint.dir")
+import.blueprint.dir <- getOption("rslates.import.blueprint.dir")
 
 blueprints <- loadBlueprints(blueprint.dir, on.error = "skip")
-importer.blueprints <- loadBlueprints(importer.blueprint.dir, on.error = "skip")
+import.blueprints <- loadBlueprints(import.blueprint.dir, on.error = "skip")
 
-blueprint.tags <- c(blueprints, importer.blueprints) %>%
+blueprint.tags <- c(blueprints, import.blueprints) %>%
   map("tags") %>%
   unlist %>%
   unique
 
 options(rslates.blueprints = blueprints)
-options(rslates.importer.blueprints = loadBlueprints(importer.blueprint.dir, on.error = "skip"))
+options(rslates.import.blueprints = loadBlueprints(import.blueprint.dir, on.error = "skip"))
 options(rslates.tag.list = blueprint.tags)
 
-blueprintEditorApp(blueprint.dir = getOption("rslates.bp.editor.blueprint.dir"),
-                   blueprint.filename = getOption("rslates.bp.editor.blueprint.filename"))
+blueprintEditorApp(blueprint.filename = getOption("rslates.bp.editor.blueprint.filename"))
 
