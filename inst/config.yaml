@@ -1,0 +1,56 @@
+
+
+theme:
+  default: "minty"
+
+theme-ace:
+  default: "dawn"
+
+blueprints:
+  directory: blueprints
+
+  categories:
+    - Plots
+      - Base
+      - ggplot2
+    - Statistics
+
+importers:
+  directory: import_blueprints
+
+  datatypes:
+    tabular:
+      blueprint: Tabular.json
+      name: "Tabular"
+      extensions:
+        - txt
+        - csv
+        - tsv
+        - tab
+    spreadsheet:
+      blueprint: spreadsheet.json
+      name: "Spreadsheet"
+      extensions:
+        - xls
+        - xlsx
+        - ods
+    text:
+      blueprint: Text.json
+      name: "Text"
+      extensions:
+        - txt
+    json-object:
+      blueprint: JSON.json
+      name: "JSON Object"
+      extensions:
+        - json
+    r-object:
+      blueprint: Rdata.json
+      name: "R Object"
+      extensions:
+        - RData
+        - rda
+        - rds
+
+
+
