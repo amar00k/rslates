@@ -1,16 +1,16 @@
 
 
-theme:
+themes:
   default: "minty"
 
-theme-ace:
+themes-ace:
   default: "dawn"
 
 blueprints:
   directory: blueprints
 
   categories:
-    - Plots
+    - Plots:
       - Base
       - ggplot2
     - Statistics
@@ -28,7 +28,7 @@ importers:
         - tsv
         - tab
     spreadsheet:
-      blueprint: spreadsheet.json
+      blueprint: Spreadsheet.json
       name: "Spreadsheet"
       extensions:
         - xls
@@ -39,18 +39,25 @@ importers:
       name: "Text"
       extensions:
         - txt
-    json-object:
-      blueprint: JSON.json
-      name: "JSON Object"
-      extensions:
-        - json
     r-object:
-      blueprint: Rdata.json
+      blueprint: RData.json
       name: "R Object"
       extensions:
         - RData
         - rda
         - rds
+    json-object:
+      blueprint: JSON.json
+      name: "JSON Object"
+      extensions:
+        - json
+    yaml-object:
+      blueprint: YAML.json
+      name: "YAML Object"
+      extensions:
+        - yml
+        - yaml
 
-
+transformers:
+  directory: transform_blueprints
 
