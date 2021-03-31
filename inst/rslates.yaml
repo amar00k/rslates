@@ -1,7 +1,7 @@
 
 
 themes:
-  default: "minty"
+  default: "Natural (soft light)"
 
 themes-ace:
   default: "dawn"
@@ -21,7 +21,8 @@ importers:
   datatypes:
     tabular:
       blueprint: Tabular.json
-      name: "Tabular"
+      name: Tabular
+      description: Read tabular data from a text file and store it in a data.frame.
       extensions:
         - txt
         - csv
@@ -29,35 +30,43 @@ importers:
         - tab
     spreadsheet:
       blueprint: Spreadsheet.json
-      name: "Spreadsheet"
+      name: Spreadsheet
+      description: Read an Excel or Open Office spreadsheet.
       extensions:
         - xls
         - xlsx
         - ods
     text:
       blueprint: Text.json
-      name: "Text"
+      name: Text
+      description: Read text from a file into a character vector.
       extensions:
         - txt
     r-object:
       blueprint: RData.json
-      name: "R Object"
+      description: Import an arbitrary R object.
+      name: R Object
       extensions:
         - RData
         - rda
         - rds
     json-object:
       blueprint: JSON.json
-      name: "JSON Object"
+      name: JSON Object
+      description: Import a serialized object from a JSON file.
       extensions:
         - json
     yaml-object:
       blueprint: YAML.json
-      name: "YAML Object"
+      name: YAML Object
+      description: Import a serialized object from a YAML file.
       extensions:
         - yml
         - yaml
 
 transformers:
   directory: transform_blueprints
+
+
+
 
