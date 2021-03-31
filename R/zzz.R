@@ -25,29 +25,28 @@ NULL
   #
   # invisible()
 
-  blueprint.dir <- system.file("blueprints", package = "rslates")
-  importer.blueprint.dir <- system.file("importer_blueprints", package = "rslates")
-
-  options(rslates.blueprint.dir = blueprint.dir)
-  options(rslates.importer.blueprint.dir = importer.blueprint.dir)
-
-  options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
-  options(rslates.default.theme = "Natural (soft light)")
-  options(rslates.default.ace.theme = "dawn")
-
-  options(rslates.run.themer = FALSE)
+  # blueprint.dir <- system.file("blueprints", package = "rslates")
+  # import.blueprint.dir <- system.file("import_blueprints", package = "rslates")
+  #
+  # options(rslates.blueprint.dir = blueprint.dir)
+  # options(rslates.import.blueprint.dir = import.blueprint.dir)
+  #
+  # options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
+  # options(rslates.default.theme = "Natural (soft light)")
+  # options(rslates.default.ace.theme = "dawn")
+  #
+  # options(rslates.run.themer = FALSE)
 
   #  blueprints <- loadBlueprints(blueprint.dir, on.error = "skip")
-  #  importer.blueprints <- loadBlueprints(importer.blueprint.dir, on.error = "skip")
+  #  import.blueprints <- loadBlueprints(import.blueprint.dir, on.error = "skip")
   #  options(rslates.blueprints = blueprints)
-  #  options(rslates.importer.blueprints = importer.blueprints)
+  #  options(rslates.import.blueprints = import.blueprints)
   #
   # options(
   #   rslates.tag.list = map(blueprints, "tags") %>%
   #     unlist %>%
   #     unique
   # )
-
 }
 
 

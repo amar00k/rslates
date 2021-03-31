@@ -349,7 +349,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
           slatesFileInput(ns("load_blueprint"),
                     class = "mb-0",
                     label = "Load Blueprint"),
-          addTagAttribs(textInput(ns("blueprint_title"),
+          tagAppendAttributes(textInput(ns("blueprint_title"),
                                   label = "Blueprint Name",
                                   value = blueprint.ini$title), class = "ml-3"),
           downloadButton(ns("save_blueprint"),
@@ -931,7 +931,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
         placeholder = "",
         callback = function(name) {
           outputs <- blueprint.outputs()
-          outputs[[ name ]] <- slateOutput(type="plot", name = name)
+          outputs[[ name ]] <- slateOutput(name)
           names(outputs) <- sapply(outputs, "[[", "name")
           blueprint.outputs(outputs)
           updateSelectInput(session, "select_output", choices = names(outputs),

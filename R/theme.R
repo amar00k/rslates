@@ -8,7 +8,7 @@ rslate.themes <- list(
     bootswatch = "minty", version = "4",
     bg = "#F1ede4", fg = "#000000",
     primary = "#092B36", secondary = "#2A7F62",
-    base_font = "Noto Sans JP, sans-serif",
+    #base_font = "Noto Sans JP, sans-serif",
     "input-border-color" = "#6c757d"
     ) %>%
     bslib::bs_add_variables(

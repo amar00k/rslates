@@ -24,7 +24,7 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
     })
   }
 
-  theme <- getOption("rslates.default.theme")
+  theme <- getOption("rslates.themes")$default
 
   section.div <- function(...) {
     tags$div(
@@ -95,7 +95,7 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
 
 
   server <- function(input, output, session) {
-    global.options <- reactiveValues(ace.theme = getOption("default.ace.theme"))
+    global.options <- reactiveValues(ace.theme = getOption("rslates.themes-ace")$default)
 
     slate.options <- do.call(
       reactiveValues,
@@ -117,9 +117,9 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
     )
 
     if (!is.null(blueprint.filename))
-      pathname <- reactiveVal(dirname(blueprint.filename))
+      blueprint.path <- reactiveVal(dirname(blueprint.filename))
     else
-      pathname <- getwd()
+      blueprint.path <- getwd()
 
     # Create the slate server
     slate <- slateServer(
@@ -185,12 +185,14 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
     load.blueprint.modal <- slatesFileInputModal("load_modal", session)
 
     observeEvent(input$load_blueprint, {
-      load.blueprint.modal$show(title = "Load Blueprint", label = "Select Blueprint",
-                                callback = function(file) {
-        blueprint(editorLoadBlueprint(file$datapath))
+      load.blueprint.modal$show(
+        title = "Load Blueprint", label = "Select Blueprint",
+        callback = function(file) {
+          blueprint(editorLoadBlueprint(file$datapath))
+          blueprint.path(dirname(file$datapath))
 
-        isolate(slate$updateBlueprint(blueprint()))
-      })
+          isolate(slate$updateBlueprint(blueprint()))
+        })
     })
 
 
@@ -231,16 +233,24 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
 
       save.modal$show(title = "Save Blueprint",
                       size = "m",
-                      filename = file.path(pathname(), filename),
+                      filename = file.path(blueprint.path(), filename),
                       callback = function(filename) {
         pathname <- filename
-        text <- blueprintToJSON(bp)
+        ext <- sub("^.*\\.(.*?)$", "\\1", filename)
+
+        if (ext == "json")
+          text <- blueprintToJSON(bp)
+        else if (ext == "yaml")
+          text <- blueprintToYAML(bp)
+        else
+          stop("Invalid filename.")
 
         writeLines(text, con = pathname)
+        blueprint.path(dirname(pathname))
 
         blueprint(slate$blueprint())
 
-        options(rslates.tag.list = unique(c(getOption("rslates.tag.list"), bp$tags)))
+        options(rslates.tag.list = unique(c(getOption("rslates.blueprint.tags"), bp$tags)))
       })
     })
 
@@ -253,20 +263,8 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
     shiny::shinyApp(ui, server)
 }
 
-blueprint.dir <- getOption("rslates.blueprint.dir")
-import.blueprint.dir <- getOption("rslates.import.blueprint.dir")
 
-blueprints <- loadBlueprints(blueprint.dir, on.error = "skip")
-import.blueprints <- loadBlueprints(import.blueprint.dir, on.error = "skip")
-
-blueprint.tags <- c(blueprints, import.blueprints) %>%
-  map("tags") %>%
-  unlist %>%
-  unique
-
-options(rslates.blueprints = blueprints)
-options(rslates.import.blueprints = loadBlueprints(import.blueprint.dir, on.error = "skip"))
-options(rslates.tag.list = blueprint.tags)
+initServerOptions()
 
 blueprintEditorApp(blueprint.filename = getOption("rslates.bp.editor.blueprint.filename"))
 

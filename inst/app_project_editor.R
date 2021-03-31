@@ -12,37 +12,9 @@ projectEditorApp <- function(project = NULL) {
     project <- slatesProject("Untitled Project")
   }
 
-  # ui <- fluidPage(
-  #   shinyjs::useShinyjs(),
-  #   shiny::bootstrapLib(bslib::bs_theme(bootswatch = default.theme, version = "4")),
-  #   thematic::thematic_shiny(), # recolors plots
-  #   shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
-  #   title = "Slates Project Editor",
-  #   titlePanel("Slates Project Editor"),
-  #   sidebarLayout(
-  #     sidebarPanel = sidebarPanel(
-  #       width = 2,
-  #       tagList(
-  #         selectInput("select_theme",
-  #                     label = "Theme",
-  #                     choices = bslib::bootswatch_themes(),
-  #                     selected = default.theme),
-  #         selectInput("select_ace_theme",
-  #                     label = "Ace Editor Theme",
-  #                     choices = shinyAce::getAceThemes(),
-  #                     selected = default.ace.theme)
-  #       )
-  #     ),
-  #     mainPanel = mainPanel(
-  #       width = 10,
-  #       slates_editUI("editor", project)
-  #     )
-  #   )
-  # )
-
   ui <- slatesNavbarPage(
     title = "Slates",
-    theme = getOption("rslates.default.theme"),
+    theme = getOption("rslates.themes")$default,
     header = tagList(
     ),
     tabs = list(
@@ -54,21 +26,16 @@ projectEditorApp <- function(project = NULL) {
     session.info = TRUE
   )
 
-  # htmltools::htmlDependencies(ui) <- htmltools::htmlDependency(
-  #   "font-awesome",
-  #   "5.13.0", "www/shared/fontawesome", package = "shiny",
-  #   stylesheet = c("css/all.min.css", "css/v4-shims.min.css"))
-
 
   server <- function(input, output, session) {
     global.options <- reactiveValues(
-      ace.theme = getOption("rslates.default.ace.theme"),
-      bslib.theme = getOption("rslates.default.theme")
+      ace.theme = getOption("rslates.themes-ace")$default,
+      bslib.theme = getOption("rslates.themes")$default
     )
+
     session.data <- reactiveValues(
-      blueprints = getOption("rslates.blueprints"),
-      import.blueprints = getOption("rslates.import.blueprints")#,
-      #project.envir = new.env()
+      blueprints = getOption("rslates.blueprints.list"),
+      importers = getOption("rslates.importers.list")
     )
 
     #
@@ -101,20 +68,7 @@ projectEditorApp <- function(project = NULL) {
     shiny::shinyApp(ui, server)
 }
 
-blueprint.dir <- getOption("rslates.blueprint.dir")
-import.blueprint.dir <- getOption("rslates.import.blueprint.dir")
-
-blueprints <- loadBlueprints(blueprint.dir, on.error = "skip")
-import.blueprints <- loadBlueprints(import.blueprint.dir, on.error = "skip")
-
-blueprint.tags <- c(blueprints, import.blueprints) %>%
-  map("tags") %>%
-  unlist %>%
-  unique
-
-options(rslates.blueprints = blueprints)
-options(rslates.import.blueprints = loadBlueprints(import.blueprint.dir, on.error = "skip"))
-options(rslates.tag.list = blueprint.tags)
+initServerOptions()
 
 project <- getOption("rslates.editor.project")
 
