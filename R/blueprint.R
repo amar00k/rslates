@@ -11,6 +11,9 @@ slateBlueprint <- function(name = "Untitled",
                            tags = list(),
                            source = "",
                            preprocess = TRUE) {
+  md5 <- list(name, author, category, tags, source) %>%
+    digest::digest(algo = "md5")
+
   if (preprocess == TRUE) {
     preprocessed <- preprocessSource(source)
 
@@ -28,7 +31,8 @@ slateBlueprint <- function(name = "Untitled",
       imports = preprocessed$imports,
       exports = preprocessed$exports,
       datasets = list(),
-      source = source
+      source = source,
+      md5 = md5
     )
   } else {
     list(
@@ -45,7 +49,8 @@ slateBlueprint <- function(name = "Untitled",
       imports = list(),
       exports = list(),
       datasets = list(),
-      source = source
+      source = source,
+      md5 = md5
     )
   }
 }
@@ -378,6 +383,8 @@ restoreBlueprint <- function(blueprint) {
 }
 
 
+# Load/Save Blueprint
+
 blueprintToJSON <- function(blueprint, pretty = FALSE) {
   data <- list(
     name = blueprint$name,
@@ -412,147 +419,120 @@ blueprintFromJSON <- function(filename=NULL, text=NULL, preprocess = TRUE) {
 }
 
 
+blueprintToYAML <- function(blueprint) {
+  data <- list(
+    name = blueprint$name,
+    author = blueprint$author,
+    category = blueprint$category,
+    tags = blueprint$tags
+  )
+
+  strsplit(blueprint$source, split = "\n")[[1]] %>%
+    map(~paste0("  ", .)) %>%
+    paste(collapse = "\n") %>%
+    paste0(yaml::as.yaml(data), "\n", "source: |-2\n", .)
+}
 
 
-#
-#
-# loadBlueprint <- function(filename,
-#                           format = c("auto", "txt", "json")) {
-#   format <- match.arg(format)
-#
-#   if (format == "auto") {
-#     format <- gsub("^.*\\.(.*?)$", "\\1", filename)
-#
-#     if (!(format %in% c("txt", "json")))
-#       stop("File extension must be txt or json.")
-#   }
-#
-#   if (format == "txt") {
-#     source <- readLines(filename) %>% paste(collapse = "\n")
-#
-#     parsed <- preprocessSource(source)
-#
-#     inputs <- parsed$inputs
-#     outputs <- parsed$outputs
-#
-#     blueprint <- slateBlueprint(
-#       title = "Untitled",
-#       pages = parsed$pages,
-#       groups = parsed$groups,
-#       inputs = parsed$inputs,
-#       outputs = parsed$outputs
-#     )
-#
-#     blueprint$source <- source
-#   } else if (format == "json") {
-#     blueprint <- blueprintFromJSON(filename)
-#   }
-#
-#   return(blueprint)
-# }
-#
+blueprintFromYAML <- function(filename=NULL, text=NULL, preprocess = TRUE) {
+  if (!is.null(filename) && !is.null(text))
+    stop("Only one of filename or text must be supplied.")
+
+  if (!is.null(filename))
+    data <- yaml::read_yaml(filename)
+  else
+    data <- yaml::yaml.load(string = text)
+
+  blueprint <- slateBlueprint(
+    name = data$name,
+    author = data$author,
+    category = data$category,
+    tags = data$tags,
+    source = data$source,
+    preprocess = preprocess
+  )
+
+  return(blueprint)
+}
 
 
+blueprintToTxt <- function(blueprint) {
+  data <- list(
+    name = blueprint$name,
+    author = blueprint$author,
+    category = blueprint$category,
+    tags = paste(blueprint$tags, collapse = ", ")
+  )
+
+  imap(data, ~paste0(.y, ": ", .x)) %>%
+    paste(collapse = "\n") %>%
+    paste0("\n---\n", blueprint$source)
+}
 
 
-#
-# Blueprint utilities
-#
+blueprintFromTxt <- function(filename=NULL, text=NULL, preprocess = TRUE) {
+  if (!is.null(filename) && !is.null(text))
+    stop("Only one of filename or text must be supplied.")
 
-# printInputItem <- function(x) {
-#   #x$children <- NULL
-#   print(paste(names(x), x, sep = " = ", collapse=", "))
-# }
+  if (!is.null(filename))
+    lines <- readLines(filename)
+  else
+    lines <- strsplit(text, split = "\n")[[1]]
 
+  sep <- grep("^---$", lines)[1]
 
-# printInputLayout <- function(layout) {
-#   indent <- list("", "  ", "    ")
-#
-#   invisible(traverseInputLayout(layout, function(x, ancestry) {
-#     print(paste0(indent[[ length(ancestry) + 1 ]], x$type, ": ", x$name))
-#     x
-#   }))
-# }
-#
-#
-# flattenInputLayout <- function(layout, clear.children = FALSE) {
-#   lapply(layout$pages, function(p) {
-#     lapply(p$children, function(g) {
-#       lapply(g$children, function(i) {
-#         i$ancestry <- c(p$name, g$name)
-#         i
-#       })
-#     }) %>%
-#       unlist(recursive = FALSE) %>%
-#       append(lapply(p$children, function(g) {
-#         g$ancestry <- p$name
-#         g
-#       }))
-#   }) %>%
-#     unlist(recursive = FALSE) %>%
-#     append(layout$pages) %>%
-#     set_names(sapply(., "[[", "id"))
-# }
-#
-#
-#
-# traverseInputLayout <- function(layout, callback = function(x, ancestry) x, flatten = FALSE) {
-#   layout$pages <- lapply(layout$pages, function(p) {
-#     p <- callback(p, NULL)
-#     p$children <- lapply(p$children, function(g) {
-#       g <- callback(g, p$name)
-#       g$children <- lapply(g$children, function(i) {
-#         callback(i, c(p$name, g$name))
-#       }) %>% set_names(sapply(., "[[", "name"))
-#       g
-#     }) %>% set_names(sapply(., "[[", "name"))
-#     p
-#   }) %>% set_names(sapply(., "[[", "name"))
-#
-#   if (flatten == TRUE)
-#     layout <- flattenInputLayout(layout)
-#
-#   return(layout)
-# }
-#
-#
-# updateInputLayoutItem <- function(layout, item, ancestry = c(), name = NULL) {
-#   if (is.null(name))
-#     path <- c(ancestry, item$name)
-#   else
-#     path <- c(ancestry, name)
-#
-#   if (length(path) == 1) {
-#     layout$pages[[ path ]] <- item
-#     names(layout$pages) <- sapply(layout$pages, "[[", "name")
-#   } else if (length(path) == 2) {
-#     layout$pages[[ path[1] ]]$children[[ path[2] ]] <- item
-#     names(layout$pages[[ path[1] ]]$children) <-
-#       sapply(layout$pages[[ path[1] ]]$children, "[[", "name")
-#   } else {
-#     layout$pages[[ path[1] ]]$children[[ path[2] ]]$children[[ path[3] ]] <- item
-#     names(layout$pages[[ path[1] ]]$children[[ path[2] ]]$children) <-
-#       sapply(layout$pages[[ path[1] ]]$children[[ path[2] ]]$children, "[[", "name")
-#   }
-#
-#   return(layout)
-# }
+  data <- lines[ 1:(sep-1) ] %>%
+    map(~{
+      strsplit(., split = ":")[[1]] %>%
+        trimws
+    }) %>%
+    transpose
+  data <- data[[2]] %>% set_names(data[[1]])
 
+  data$tags <- strsplit(data$tags, split = ",")[[1]] %>% trimws
 
-# getInputs <- function(blueprint) {
-#   Filter(function(x) x$type == "input",
-#          flattenInputLayout(blueprint$input.layout)) %>%
-#     set_names(sapply(., "[[", "name"))
-# }
+  data$source <-
+    lines[ sep + 1:length(lines) ] %>%
+    paste(collapse = "\n")
+
+  blueprint <- slateBlueprint(
+    name = data$name,
+    author = data$author,
+    category = data$category,
+    tags = data$tags,
+    source = data$source,
+    preprocess = preprocess
+  )
+
+  return(blueprint)
+}
 
 
 
-# slate_dataset <- function(id, source) {
-#   list(
-#     id = id,
-#     source = source
-#   )
-# }
+loadBlueprint <- function(filename,
+                          format = c("auto", "yaml", "txt", "json"),
+                          preprocess = TRUE) {
+  format <- match.arg(format)
+
+  if (format == "auto") {
+    format <- gsub("^.*\\.(.*?)$", "\\1", filename)
+
+    if (!(format %in% c("yaml", "yml", "txt", "json")))
+      stop("Unknown format: ", format)
+  }
+
+  if (format == "txt") {
+    blueprint <- blueprintFromTxt(filename = filename, preprocess = preprocess)
+  } else if (format == "json") {
+    blueprint <- blueprintFromJSON(filename = filename, preprocess = preprocess)
+  } else if (format %in% c("yml", "yaml")) {
+    blueprint <- blueprintFromYAML(filename = filename, preprocess = preprocess)
+  }
+
+  return(blueprint)
+}
+
+
 
 
 
