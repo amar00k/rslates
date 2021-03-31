@@ -4,16 +4,7 @@
 \alias{slatesFileInput}
 \title{Shiny File Upload Control}
 \usage{
-slatesFileInput(
-  id,
-  label,
-  multiple = FALSE,
-  accept = NULL,
-  width = NULL,
-  buttonLabel = "Browse...",
-  placeholder = "No file selected",
-  class = ""
-)
+slatesFileInput(id, label, ..., class = "")
 }
 \description{
 Fixes an issue where the page jumps to top when clicking the "Browse..." button.

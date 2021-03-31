@@ -23,142 +23,18 @@ Slate blueprints are just regular R source code files decorated with *slates* pr
 
 The *Slates* preprocessor is responsible to convert **decorated code** to regular R source code that can be parsed and executed by the R interpreter by substituting in the source code the user-defined values of the inputs. 
 
-# Quick Start
-
-Here we show a summary of all supported preprocessor directives and their usual syntax. Detailed descriptions of each directive are presented in the sections following.
-
-```{r, eval = FALSE}
-# Single-hash comment. Will appear in R source and may 
-# contain preprocessor directives.
- 
-## Double-hash comment. Will be suppressed from the R source
-## code but may contain preprocessor directives.
-
-### Triple-hash comment. Will be suppressed from R source 
-### and preprocessor directives will be ignored.
-
-##
-## Input
-##
-## 'type' is one of character, expression, logical, numeric, choices, numeric2, numeric4
-## 
-$@input name
-
-$@input name(type, default)
-$@input name(type, default, description, parent, ...)
-
-##
-## Group
-##
-$@group id(title, description, layout, parent)
-$@group title, description, layout, parent
-
-##
-## Page
-##
-$@page id(title, description, layout, parent)
-$@page title, description, layout, parent
-
-##
-## Outputs
-##
-## 'type' is one of print, plot, table, html, markdown.
-##
-$@output type, title, ...
-
-$end-output
-
-##
-## Variable Substitution
-##
-## 'options' are combinations of x, n, N, d, D, q, Q, lxx.
-## 'parameters' follow the same syntax as $@input, but parenthesis are mandatory.
-##
-## Substitute a single variable
-$$var
-$$options:var
-$$options:var(parameters)
-
-## Substitute multiple variable and separate values with commas
-${var1, var2}
-${options:: options1:var1, options2:var2}
-${options:: options1:var1(parameters1), options2:var2(parameters2)}
-
-##
-## Imports
-##
-$@import name(type)
-$@import name, type
-
-## Execute code on import
-$@begin-import name(type)
-$@begin-import name, type
-
-$@end-import
-
-##
-## Exports
-##
-$@export varname
-
-## Execute code on export
-$@begin-export varname
-$@end-export
-
-##
-## Code Visibility
-##
-$@invisible
-$@visible
-
-##
-## Value Setter
-##
-set_input(name, value)
-```
-
-
-# Example
-
-We start with a complete example showing off most features of the preprocessing engine. 
-
-```{r, eval = FALSE}
-$@title "Scatterplot"
-$@tags "example", "rgraphics", "scatterplot"
-$@preamble FALSE
- 
-## $@input x(expression, "1:10", description = "x coordinates for the plot; or structure defining both x and y coordinates.")
-## $@input y(expression, description = "y coordinates for the plot.")
-## 
-## $@input type(choices, "p",
-##              choices = list("Points"="p", "Lines"="l", "Both"="b", "Empty Points"="c",
-##                             "Overplotted"="o", "Stairs (Floor)"="s", "Stairs (Ceiling)"="S"),
-##              description = "desired type of plot.")
-## 
-## $@input main(character, description = "main title for the plot.")
-## $@input xlab(character, description = "label for the x-axis.")
-## $@input ylab(character, description = "label for the y-axis.")
-## 
-## $@input xlim(numeric2, c(NA, NA), description = "x limits (x1, x2) for the plot.")
-## $@input ylim(numeric2, c(NA, NA), description = "y limits (x1, x2) for the plot.")
-
-$@output plot(Scatterplot)
-
-# set the margins for the plot
-par(mar=c(${mar_bottom, mar_left, mar_top, mar_right}))
-
-# do the plot
-plot(${dn:: x:x, y=y(check.valid = FALSE), type=type, main=main, xlab=xlab, ylab=ylab})
-
-$@end-output
-
-```
-
-
 
 # Comments
 
 Comments come in three flavors (`#`, `##` and `###`). These affect what comments will be *displayed*, *suppressed* and/ or *interpreted* by the preprocessor.
+
+
+| Type        | Symbol | Contents Preprocessed | Supressed in Code |
+|:------------|:------:|:---------------------:|:-----------------:|
+| Single Hash | `#`    | Yes                   | No                |
+| Double Hash | `##`   | Yes                   | Yes               |
+| Triple Tash | `###`  | No                    | Yes               |
+
 
 ## Single Hash (`#`)
 
@@ -178,11 +54,29 @@ Inputs, groups and pages are defined through the `$@input`, `$@group` and `$@pag
 
 ## Inputs
 
-> `$@input name(type, default, ...)`
+Syntax:
 
-Inputs are defined using the syntax `$@input name(type, default, ...)` where `name` is the variable name associated with the input, `type` is the input type, and `default` is the default value of the input. 
+> `$@input name, type [, default] [, description=value1, ... ] ]`
 
-Input types include `character`, `numeric`, `logical`, `choices`, `expression`, `numeric2` and `numeric4`. 
+Alternate syntax:
+
+> `$@input name(type [, default] [, description=value1, ... ] ])`
+
+### Parameters
+
+#### Mandatory
+
+* `name` variable name to use for the input. Name will be sanitized via `make.names()` to ensure it is a valid name for an R variable.
+* `type` type of input. Must be one of `character`, `numeric`, `choices`, `logical`, `expression`, `numeric2`, `numeric4`.
+
+#### Optional
+
+* `default` default value of the input. If not specified, defaults to the default value of the specified input type.
+* `allow.null` whether to display a toggle button to set the input to `NULL`. Defaults to `FALSE`.
+* `parent` can be an id specifying the parent *group* or *page*, or `"auto"` to set the last previously declared page or group as the parent of this input, or `NULL` to set the root container as the parent.
+* `long.name` alternate name to display as a label for this input.
+* `description` description of the input to be displayed in the form of a tooltip.
+
 
 ### Usage
 

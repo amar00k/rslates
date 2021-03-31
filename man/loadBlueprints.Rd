@@ -2,7 +2,7 @@
 % Please edit documentation in R/rslates.R
 \name{loadBlueprints}
 \alias{loadBlueprints}
-\title{Load JSON blueprints from file or folder}
+\title{Load JSON blueprints folder}
 \usage{
 loadBlueprints(path, on.error = c("stop", "skip"))
 }
@@ -13,5 +13,5 @@ loadBlueprints(path, on.error = c("stop", "skip"))
 
 }
 \description{
-Load JSON blueprints from file or folder
+Load JSON blueprints folder
 }
