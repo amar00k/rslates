@@ -65,7 +65,7 @@ blueprintEditorUI  <- function(id, blueprint) {
         selectInput(ns("blueprint_category"), "Category",
                     choices = "", selected = ""),
         selectizeInput(ns("blueprint_tags"), label = "Tags", multiple = TRUE,
-                       choices = getOption("rslates.tag.list"),
+                       choices = getOption("rslates.blueprint.tags"),
                        selected = blueprint$tags,
                        options = list(
                          delimiter = '',
@@ -106,13 +106,23 @@ blueprintEditorUI  <- function(id, blueprint) {
     )
   )
 
+  export.tab <- tabPanel(
+    title = "Export",
+    tags$div(
+      class = "container pt-3",
+      radioButtons(ns("export_format"), label = "Format", choices = c("YAML", "JSON")),
+      verbatimTextOutput(ns("export_output"))
+    )
+  )
+
   tags$div(
     id = ns("blueprint_editor"),
     class = "container pt-3",
     tabsetPanel(
       metadata.tab,
       code.tab,
-      debug.tab
+      debug.tab,
+      export.tab
     ),
     tags$hr()
   )
@@ -277,6 +287,14 @@ blueprintEditorServer <- function(id, blueprint, slate, global.options = NULL) {
     })
 
 
+    output$export_output <- renderText({
+      if (input$export_format == "YAML")
+        blueprintToYAML(blueprint())
+      else
+        blueprintToJSON(blueprint())
+    })
+
+
     updateBlueprint <- function(new.blueprint) {
       dlog(new.blueprint$name)
 
@@ -289,7 +307,7 @@ blueprintEditorServer <- function(id, blueprint, slate, global.options = NULL) {
       updateTextInput(session, "blueprint_author", value = blueprint$author)
       updateSelectInput(session, "blueprint_category", selected = blueprint$category)
       updateSelectizeInput(session, "blueprint_tags",
-                           choices = getOption("rslates.tag.list"),
+                           choices = getOption("rslates.blueprint.tags"),
                            selected = blueprint$tags)
 
       shinyAce::updateAceEditor(session, "blueprint_source", value = blueprint$source)
@@ -459,7 +477,8 @@ slateUI <- function(id, slate.options = slateOptions()) {
 
 
 slateServer <- function(id, blueprint = NULL, #init.input.values = NULL,
-                        slate.options = NULL, global.options = NULL) {
+                        slate.options = NULL,
+                        global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -481,18 +500,6 @@ slateServer <- function(id, blueprint = NULL, #init.input.values = NULL,
     }
 
 
-    # setImport <- function(name, data) {
-    #   dlog()
-    # }
-
-
-    # the blueprint
-    # if (is.null(blueprint))
-    #   blueprint <- do.call(reactiveValues, slateBlueprint())
-    # else if (class(blueprint) != "reactivevalues")
-    #   blueprint <- do.call(reactiveValues, blueprint)
-
-
     #
     # Inititalization
     #
@@ -509,7 +516,7 @@ slateServer <- function(id, blueprint = NULL, #init.input.values = NULL,
     # the global options
     if (is.null(global.options)) {
       global.options <- reactiveValues(
-        ace.theme = getOption("rslates.default.ace.theme")
+        ace.theme = getOption("rslates.themes-ace")$default
       )
     }
 
@@ -607,9 +614,10 @@ slateServer <- function(id, blueprint = NULL, #init.input.values = NULL,
     })
 
 
+    # sources for imports
     import.sources <- reactive({
       blueprint$imports %>%
-        keep(~!is.null(import.data[[ .$name ]])) %>%
+        keep(map_lgl(., ~!is.null(import.data[[ .$name ]]))) %>%
         map_chr(~{
           import.handlers[[ .$type ]]$make.source(., import.data[[ .$name ]])
         })
@@ -922,7 +930,6 @@ slateServer <- function(id, blueprint = NULL, #init.input.values = NULL,
       blueprint <- isolate(reactiveValuesToList(blueprint))
       blueprintEditorUI(ns("editor"), blueprint)
     })
-
 
 
     # create the server for the blueprint editor
