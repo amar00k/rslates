@@ -55,7 +55,7 @@ slatesWizardButton <- function(id, wizards) {
   btn <- do.call(shinyWidgets::dropdownButton,
                  append(button.params, unname(wizard.list)))
 
-  addTagAttribs(tag = btn, class = "wizard-btn")
+  tagAppendAttributes(tag = btn, class = "wizard-btn")
 }
 
 

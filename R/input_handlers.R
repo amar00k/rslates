@@ -686,8 +686,6 @@ input.handlers <- list(
       value$values %<>%
         imap(~input.handlers[[ .y ]]$as.value(x = x$inputs[[ .y ]], value = .x))
 
-      dlog(value)
-
       return(value)
     },
 

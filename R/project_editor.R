@@ -338,7 +338,7 @@ projectEditorServer <- function(id, project, session.data, global.options) {
     #
 
     # Modal dialog to import a dataset
-    import.modal <- importDatasetModal("import_dataset", session)
+    import.modal <- importDatasetModal("import_dataset")
 
 
     # observe Add Slab buttons

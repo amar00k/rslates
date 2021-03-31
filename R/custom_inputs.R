@@ -1,17 +1,6 @@
 
 
 
-#
-# Utilities
-#
-
-addTagAttribs <- function(tag, class="", style="") {
-  tag$attribs$class <- paste(tag$attribs$class, class)
-  tag$attribs$style <- paste(tag$attribs$style, style)
-  return(tag)
-}
-
-
 # removeTagClass <- function(tag, class) {
 #   tag.classes <- trimws(strsplit(tag$attribs$class, split = " ")[[1]])
 #   tag$attribs$class <- paste(tag.classes[ tag.classes != class ], collapse = " ")
@@ -57,21 +46,10 @@ slatesSwitchInput <- function(id, label, value = FALSE, on.off.labels = c("True"
 #' @description Fixes an issue where the page jumps to top when clicking the "Browse..." button.
 #'
 #' @export
-slatesFileInput <- function(id, label,
-                      multiple = FALSE,
-                      accept = NULL,
-                      width = NULL,
-                      buttonLabel = "Browse...",
-                      placeholder = "No file selected",
-                      class = "") {
-  tag <- shiny::fileInput(id, label = label,
-                          multiple = multiple,
-                          accept = accept,
-                          width = width,
-                          buttonLabel = buttonLabel,
-                          placeholder = placeholder)
+slatesFileInput <- function(id, label, ..., class = "") {
+  tag <- shiny::fileInput(id, label = label, ...)
 
-  tag <- addTagAttribs(tag, class = class)
+  tag <- tagAppendAttributes(tag, class = class)
   tag$children[[2]]$children[[1]]$children[[1]]$children[[2]]$attribs$style <- "display: none"
 
   return(tag)
@@ -86,8 +64,8 @@ slatesFileInput <- function(id, label,
 slatesNavbarPage <- function(title, tabs,
                              header = tagList(),
                              footer = tagList(),
-                             theme = getOption("rslates.default.theme"),
-                             ace.theme = getOption("rslates.default.ace.theme"),
+                             theme = getOption("rslates.themes")$default,
+                             ace.theme = getOption("rslates.themes-ace")$default,
                              session.info = TRUE,
                              ns = identity) {
 
@@ -100,11 +78,11 @@ slatesNavbarPage <- function(title, tabs,
     right = TRUE,
     selectInput("select_theme",
                 label = "Theme",
-                choices = getOption("rslates.themes"),
+                choices = getOption("rslates.themes.list"),
                 selected = theme),
     selectInput("select_ace_theme",
                 label = "Ace Editor Theme",
-                choices = shinyAce::getAceThemes(),
+                choices = getOption("rslates.themes.ace.list"),
                 selected = ace.theme)
   )
 
