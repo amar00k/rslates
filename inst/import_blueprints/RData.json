@@ -1,1 +1,0 @@
-{"name":["RData"],"author":[""],"category":[""],"tags":[],"source":["$@import fileinfo, file\n\n$@input name, character, description = \"Name of the variable to hold this table.\"\n\n$@page p1, \"Import Settings\"\n\n$@input x\n\nload(fileinfo$path)\n\n$@output Environment, print\n\nload(fileinfo$path)\nls()\n\n\n"]}
