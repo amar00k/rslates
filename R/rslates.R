@@ -405,19 +405,18 @@ initServerOptions <- function(config.file = system.file("rslates.yaml", package 
     opts <- yaml::read_yaml(config.file)
 
     stopifnot(
-        !is.null(opts$blueprints),
-        !is.null(opts$importers$directory),
-        !is.null(opts$blueprints),
-        !is.null(opts$importers$directory)
+        !is.null(opts$blueprints$directory)
     )
 
-    opts$blueprints.list <- loadBlueprints(opts$blueprints$directory)
-    opts$importers.list <- loadBlueprints(opts$importers$directory)
+    opts$blueprints.list <-
+        dir(opts$blueprints$directory, pattern = "\\.json$", recursive = TRUE, full.names = TRUE) %>%
+        set_names(dir(opts$blueprints$directory, pattern = "\\.json$", recursive = TRUE))
 
     opts$themes.list <- sort(c(names(rslate.themes), bslib::bootswatch_themes()))
     opts$themes.ace.list <- shinyAce::getAceThemes()
 
-    opts$blueprint.tags <- c(opts$blueprints.list, opts$importers.list) %>%
+    opts$blueprint.tags <- opts$blueprints.list %>%
+        map(loadBlueprint) %>%
         map("tags") %>%
         unlist %>%
         unique
@@ -478,9 +477,10 @@ runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer
 runBlueprintEditorApp <- function(
     blueprint.filename = NULL,
     config.file = system.file("rslates.yaml", package = "rslates"),
-    options = list()) {
-
+    options = list())
+{
     options(rslates.bp.editor.blueprint.filename = blueprint.filename)
+    options(rslates.run.themer = FALSE)
 
     runApp(system.file("app_blueprint_editor.R", package = "rslates"))
 }
