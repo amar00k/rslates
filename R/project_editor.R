@@ -1,5 +1,72 @@
 
 
+getValidExtensions <- function() {
+  getOption("rslates.importers") %>%
+    map("extensions") %>%
+    unlist %>%
+    unique
+}
+
+
+getImporters <- function(extensions = NULL) {
+  importers <- getOption("rslates.importers")
+
+  if (is.null(extensions))
+    return(importers)
+
+  keep(importers, ~any(extensions %in% .$extensions))
+}
+
+getImporterIcon <- function(type) {
+  getOption("rslates.importers")[[ type ]]$icon
+}
+
+
+
+
+slateViewerModal <- function(id) {
+  slatesModal_(id, function(input, output, session) {
+    ns <- session$ns
+
+    slate.options <- slateOptions(
+      height = "60vh",
+      view.inputs = FALSE,
+      use.card = FALSE
+    )
+
+    slate.server <- slateServer(
+      id = "slate",
+      blueprint = slateBlueprint(),
+      slate.options = slate.options
+    )
+
+    slate.ui <- tags$div(
+      style = "height: 60vh;",
+      slateUI(id = ns("slate"), slate.options = slate.options)
+    )
+
+    ui <- function(blueprint, input.values, import.values) {
+      blueprint$inputs %<>% assignInputValues(input.values)
+
+      slate.server$updateBlueprint(blueprint)
+
+      for (name in names(import.values))
+        slate.server$import.values[[ name ]] <- import.values[[ name ]]
+
+      slate.ui
+    }
+
+    submit <- function() {
+      return(NULL)
+    }
+
+    return(list(
+      ui = ui,
+      submit = submit
+    ))
+  }, default.size = "xl")
+}
+
 
 
 
@@ -231,32 +298,29 @@ projectEditorServer <- function(id, project, session.data, global.options) {
     }
 
 
+    extendedDatasetSummary <- function(dataset) {
+      data <- dataset$data
+
+      if (class(data) == "data.frame") {
+        paste(as.character(summary(data)), collapse = "\n")
+      } else {
+        class(data)
+      }
+    }
+
+
     datasetCard <- function(dataset) {
-      icn <- switch(
-        dataset$type,
-        "tabular" = {
-          "file-csv"
-        },
-        "dice-d6"
-      )
+      icn <- getImporterIcon(dataset$type)
 
       status <- "primary"
-      #bg <- paste0("bg-", status)
 
-      # tags$div(
-      #   class = "card dataset-card",
-      #   tags$div(
-      #     class = "card-header",
-      #     icon(icn, class = "fa-2x"),
-      #     dataset$name
-      #   ),
-      #   tags$div(
-      #     class = "card-body",
-      #     datasetSummary(dataset)
-      #   )
-      # )
+      id <- ns(paste0(dataset$name, "_card"))
 
-      tags$div(
+      card <- tags$div(
+        # title = dataset$name,
+        # `data-toggle` = "popover",
+        # `data-content` = extendedDatasetSummary(dataset),
+        id = id,
         class = "card dataset-card d-flex flex-row",
         tags$div(
           class = paste("dataset-icon card-img", paste0("text-", status)),
@@ -264,10 +328,15 @@ projectEditorServer <- function(id, project, session.data, global.options) {
           #tags$span(class="badge badge-secondary", "URL")
         ),
         tags$div(
-          class = "p-2",
+          class = "p-2 w-100",
+          tags$div(
+            class = "dataset-toolbox float-right",
+            icon("eye", class = "dataset-button"),
+            icon("pen", class = "dataset-button")
+          ),
           tags$div(
             class = "dataset-title",
-            dataset$name
+            dataset$name,
           ),
           tags$div(
             class = "dataset-summary",
@@ -276,10 +345,21 @@ projectEditorServer <- function(id, project, session.data, global.options) {
         )
       )
 
+      # card <- shinyBS::popify(
+      #   card,
+      #   title = dataset$name,
+      #   content = as.character(tags$p(datasetSummary(dataset)))
+      # )
+
+      return(card)
     }
 
 
+    # render the datasets list
+    # dataset.cards.changed <- reactiveVal(runif(1))
     output$datasets_summary <- renderUI({
+      dlog()
+
       datasets <- reactiveValuesToList(datasets)
 
       if (length(datasets) == 0) {
@@ -296,15 +376,6 @@ projectEditorServer <- function(id, project, session.data, global.options) {
         map(datasets, datasetCard)
       )
 
-      # dataset.tags <- map(datasets, ~{
-      #   type <- .x$file.info$extension
-      #   name <- .x$name
-      #
-      #   tags$a(
-      #     icon("file-csv"), name
-      #   )
-      # })
-
       envir.tags <- tags$p(
         class = "text-muted",
         map_chr(ls(project.data$envir), ~{
@@ -313,12 +384,29 @@ projectEditorServer <- function(id, project, session.data, global.options) {
           paste(collapse = "; ")
       )
 
+      #isolate(dataset.cards.changed(runif(1)))
+
       tagList(
         dataset.tags,
         tags$hr(),
         envir.tags
       )
     })
+
+
+
+    # observe(label = "popovers", {
+    #   dlog()
+    #
+    #   dataset.cards.changed()
+    #
+    #   invalidateLater(1000)
+    #
+    #   shinyjs::runjs("$('[data-toggle=\"popover\"]').popover();")
+    # })
+
+
+
 
 
     # output$output_global <- renderPrint({
@@ -339,7 +427,7 @@ projectEditorServer <- function(id, project, session.data, global.options) {
 
     # Modal dialog to import a dataset
     import.modal <- importDatasetModal("import_dataset")
-
+    dataset.viewer.modal <- slateViewerModal("dataset_viewer")
 
     # observe Add Slab buttons
     observeEvent(input$add_dataset, {
@@ -353,17 +441,31 @@ projectEditorServer <- function(id, project, session.data, global.options) {
       )
     })
 
+
     addDataset <- function(dataset) {
       if (is.null(dataset) || dataset$name == "")
         return()
+
+      dlog()
 
       datasets[[ dataset$name ]] <- dataset
 
       project.data$envir[[ dataset$name ]] <- dataset$data
 
+      shinyjs::onclick(paste0(dataset$name, "_card"), {
+        dlog()
+
+        dataset.viewer.modal$show(
+          title = dataset$name,
+          blueprint = dataset$slate.data$blueprint,
+          input.values = dataset$slate.data$input.values,
+          import.values = dataset$slate.data$import.values
+        )
+      })
+
       # data <- dataset$data %>%
       #   keep(names(dataset$data) != "")
-
+      #
       # for (name in names(data)) {
       #   project.data$envir[[ name ]] <- data[[name]]
       # }
@@ -380,55 +482,39 @@ projectEditorServer <- function(id, project, session.data, global.options) {
     observeEvent(input$add_slate, {
       dlog()
 
-      blueprints <- session.data$blueprints
-
-      dlog(names(blueprints))
-
       #modals$select.input$show("Select blueprint", names(blueprints), function(value) {
       add.slate.modal$show(
         label = "Select Blueprint:",
-        choices = names(blueprints),
+        choices = session.data$blueprints,
         callback = function(value) {
-          addSlate(blueprints[[ value ]])
+          blueprint <- loadBlueprint(value)
+
+          addSlate(blueprint)
         })
     })
 
 
-    addSlate <- function(blueprint) {
+    addSlate <- function(blueprint, view.inputs = TRUE) {
       slate.list <- reactiveValuesToList(slates)
       id <- seq.uid("slate")  # TODO: substitute this
 
       slate.options <- slateOptions(
         envir = project.data$envir,
-        open.inputs = TRUE
+        view.inputs = view.inputs,
       )
 
       server <- slateServer(
         id,
-        blueprint,
+        blueprint = blueprint,
         slate.options = slate.options,
         global.options = global.options
       )
-
-      # if (!is.null(input.values)) {
-      #   blueprint$input.list <- lapply(blueprint$input.list, function(x) {
-      #     value <- input.values[[ x$name ]]
-      #
-      #     if (!is.null(value)) {
-      #       x$value <- value
-      #     }
-      #
-      #     return (x)
-      #   })
-      # }
-      #
 
       insertUI(
         selector = "#slates_end",
         where = "beforeBegin",
         ui = slateUI(
-          ns(id),
-          slate.options = slate.options
+          ns(id), slate.options = slate.options
         )
       )
 
@@ -537,55 +623,48 @@ projectEditorServer <- function(id, project, session.data, global.options) {
     })
 
 
-    #
-    # TEST
-    #
-    covid.19 <- list(
-      origin = "local",
-      name = "WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv",
-      size = file.size("C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"),
-      extension = "csv",
-      datapath = "C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"
-    )
 
-    tab1 <- list(
-      origin = "local",
-      name = "test_tabular_1.csv",
-      size = file.size(system.file("test/test_tabular_1.csv", package = "rslates")),
-      extension = "txt",
-      datapath = system.file("test/test_tabular_1.csv", package = "rslates")
-    )
 
-    tab2 <- list(
-      origin = "local",
-      name = "test_tabular_2.txt",
-      size = file.size(system.file("test/test_tabular_2.txt", package = "rslates")),
-      extension = "txt",
-      datapath = system.file("test/test_tabular_2.txt", package = "rslates")
-    )
+
+    loadDatasetFromFile <- function(filename, blueprint, varname) {
+      import.values <- list(fileinfo = fileInfo(filename))
+      input.values <- list(name = varname)
+
+      slate <- slateData(
+        blueprint,
+        input.values = input.values,
+        import.values = import.values
+      )
+
+      data <- getSlateExportData(slate)
+
+      dataset <- list(
+        name = names(data)[1],
+        type = "tabular",
+        fileinfo = import.values$fileinfo,
+        data = data[[1]],
+        slate.data = slate
+      )
+    }
+
+
+    #
+    # test
+    #
+    blueprint.dir <- getOption("rslates.blueprints")$directory
 
     isolate({
-      addDataset(list(
-        name = "who.covid.19",
-        type = "tabular",
-        file.info = covid.19,
-        data = read.table(covid.19$datapath, sep = ",")
-      ))
+      file1 = "C:\\Users\\daniel\\Downloads\\WHO COVID-19 global table data February 25th 2021 at 3.31.34 PM.csv"
 
-      addDataset(list(
-        name = "iris",
-        type = "tabular",
-        file.info = tab1,
-        data = read.table(tab1$datapath, sep = ",")
-      ))
+      loadDatasetFromFile(
+        filename = file1,
+        blueprint = loadBlueprint(file.path(blueprint.dir, getOption("rslates.importers")$tabular$blueprint)),
+        varname = makeVarnameFromFilename(file1)
+      ) %>% addDataset
 
-      addDataset(list(
-        name = "mtcars",
-        type = "tabular",
-        file.info = tab2,
-        data = read.table(tab2$datapath, sep = "\t")
-      ))
     })
+
+
 
     return(project)
   })
