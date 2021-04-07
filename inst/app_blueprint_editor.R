@@ -99,7 +99,7 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
 
     slate.options <- do.call(
       reactiveValues,
-      slateOptions(open.inputs = TRUE, open.editor = TRUE)
+      slateOptions(view.inputs = TRUE, open.editor = TRUE)
     )
 
     observe({
@@ -155,7 +155,7 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
         observeEvent(input[[ input.id ]], {
           data <- input[[ input.id ]]
 
-          slate$import.data[[ name ]] <- data
+          slate$import.values[[ name ]] <- data
         })
       })
 

@@ -34,7 +34,7 @@ projectEditorApp <- function(project = NULL) {
     )
 
     session.data <- reactiveValues(
-      blueprints = getOption("rslates.blueprints.list"),
+      blueprints = getOption("rslates.blueprints.list") %>% set_names(sub("\\..*?$", "", names(.))),
       importers = getOption("rslates.importers.list")
     )
 
