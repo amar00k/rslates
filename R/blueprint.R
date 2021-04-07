@@ -33,7 +33,8 @@ slateBlueprint <- function(name = "Untitled",
       datasets = list(),
       source = source,
       md5 = md5
-    )
+    ) %>%
+      structure(class = "slateBlueprint")
   } else {
     list(
       name = name,
@@ -51,7 +52,8 @@ slateBlueprint <- function(name = "Untitled",
       datasets = list(),
       source = source,
       md5 = md5
-    )
+    ) %>%
+      structure(class = "slateBlueprint")
   }
 }
 
@@ -125,8 +127,7 @@ slateInput <- function(name,
   # make sure the id is set
   input$id <- paste0("input_", name)
 
-
-  #input$value <- input$default
+  input$value <- input$default
 
   return (input)
 }
@@ -307,8 +308,8 @@ getHandler <- function(x) {
 }
 
 
-assignInputValues <- function(inputs, values) {
-  inputs %>%
+assignInputValues <- function(x, values) {
+  x %>%
     modify_if(~.$name %in% names(values),
               ~list_modify(., value = values[[ .$name ]]))
 }
