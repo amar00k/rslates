@@ -10,59 +10,63 @@ blueprints:
   directory: blueprints
 
   categories:
+    - Import
     - Plots:
       - Base
       - ggplot2
     - Statistics
 
 importers:
-  directory: import_blueprints
-
-  datatypes:
-    tabular:
-      blueprint: Tabular.json
-      name: Tabular
-      description: Read tabular data from a text file and store it in a data.frame.
-      extensions:
-        - txt
-        - csv
-        - tsv
-        - tab
-    spreadsheet:
-      blueprint: Spreadsheet.json
-      name: Spreadsheet
-      description: Read an Excel or Open Office spreadsheet.
-      extensions:
-        - xls
-        - xlsx
-        - ods
-    text:
-      blueprint: Text.json
-      name: Text
-      description: Read text from a file into a character vector.
-      extensions:
-        - txt
-    r-object:
-      blueprint: RData.json
-      description: Import an arbitrary R object.
-      name: R Object
-      extensions:
-        - RData
-        - rda
-        - rds
-    json-object:
-      blueprint: JSON.json
-      name: JSON Object
-      description: Import a serialized object from a JSON file.
-      extensions:
-        - json
-    yaml-object:
-      blueprint: YAML.json
-      name: YAML Object
-      description: Import a serialized object from a YAML file.
-      extensions:
-        - yml
-        - yaml
+  tabular:
+    blueprint: Import/Tabular.json
+    name: Tabular
+    description: Read tabular data from a text file and store it in a data.frame.
+    icon: file-csv
+    extensions:
+      - txt
+      - csv
+      - tsv
+      - tab
+  spreadsheet:
+    blueprint: Import/Spreadsheet.json
+    name: Spreadsheet
+    description: Read an Excel or Open Office spreadsheet.
+    icon: file-excel
+    extensions:
+      - xls
+      - xlsx
+      - ods
+  text:
+    blueprint: Import/Text.json
+    name: Text
+    description: Read text from a file into a character vector.
+    icon: file-alt
+    extensions:
+      - txt
+  r-object:
+    blueprint: Import/RData.json
+    description: Import an arbitrary R object.
+    name: R Object
+    icon: r-project
+    extensions:
+      - RData
+      - rda
+      - rds
+  json-object:
+    blueprint: Import/JSON.json
+    name: JSON Object
+    description: Import a serialized object from a JSON file.
+    icon: file-code
+    extensions:
+      - json
+  yaml-object:
+    blueprint: Import/YAML.json
+    name: YAML Object
+    description: Import a serialized object from a YAML file.
+    icon: file-code
+    extensions:
+      - yml
+      - yaml
 
 transformers:
   directory: transform_blueprints
