@@ -1,22 +1,6 @@
 
 
 
-getValidExtensions <- function() {
-  getOption("rslates.importers")$datatypes %>%
-    map("extensions") %>%
-    unlist %>%
-    unique
-}
-
-
-getImporters <- function(extensions = NULL) {
-  importers <- getOption("rslates.importers")$datatypes
-
-  if (is.null(extensions))
-    return(importers)
-
-  keep(importers, ~any(extensions %in% .$extensions))
-}
 
 
 makeVarnameFromFilename <- function(filename, max.length = 15) {
@@ -30,6 +14,17 @@ makeVarnameFromFilename <- function(filename, max.length = 15) {
   } else {
     dataset.name <- substr(fileinfo$name, 1, max.length)
   }
+}
+
+
+fileInfo <- function(filepath, filename = basename(filepath), origin = "local") {
+  list(origin = origin,
+       name = filename,
+       size = file.size(filepath),
+       extension = sub(".*\\.(.*$)", "\\1", filename),
+       type = sub(".*\\.(.*$)", "\\1", filename),
+       datapath = filepath
+  )
 }
 
 
@@ -89,7 +84,7 @@ importDatasetModal <- function(id) {
 
     slate.server <- slateServer(
       "preview_slate",
-      blueprint = slateBlueprint(), #getOption("rslates.importers.list")$Tabular,
+      blueprint = slateBlueprint(),
       slate.options = slate.options
     )
 
@@ -103,13 +98,7 @@ importDatasetModal <- function(id) {
         return(NULL)
 
       if (import.from == "local" && !is.null(file.data)) {
-        list(origin = "local",
-             name = file.data$name,
-             size = file.data$size,
-             extension = sub(".*\\.(.*$)", "\\1", file.data$name),
-             type = file.data$type,
-             datapath = file.data$datapath
-        )
+        fileInfo(filename = file.data$name, filepath = file.data$datapath)
       } else {
         return(NULL)
       }
@@ -120,8 +109,12 @@ importDatasetModal <- function(id) {
     blueprint <- reactive({
       req(importer <- input$importer)
 
-      datatype <- getOption("rslates.importers")$datatypes[[ importer ]]
-      blueprint <- getOption("rslates.importers.list")[[ datatype$name ]]
+      blueprint.filename <- file.path(
+        getOption("rslates.blueprints")$directory,
+        getOption("rslates.importers")[[ importer ]]$blueprint
+      )
+
+      loadBlueprint(blueprint.filename)
     })
 
 
@@ -143,7 +136,7 @@ importDatasetModal <- function(id) {
       slate.server$updateBlueprint(blueprint)
 
       # update file information
-      slate.server$import.data$fileinfo <- fileinfo
+      slate.server$import.values$fileinfo <- fileinfo
     })
 
 
@@ -154,7 +147,7 @@ importDatasetModal <- function(id) {
         importer <- input$importer
       )
 
-      if (importer == "Tabular")
+      if (importer == "tabular")
         return(detectTabularFormat(fileinfo$datapath))
       else
         return(NULL)
@@ -187,7 +180,7 @@ importDatasetModal <- function(id) {
     output$importer_description <- renderText({
       req(importer <- input$importer)
 
-      getOption("rslates.importers")$datatypes[[ importer ]]$description
+      getOption("rslates.importers")[[ importer ]]$description
       # importers <- getOption("rslates.importers")$datatypes
       # w <- match(importer.name, importers %>% map("name"))
       #
@@ -305,15 +298,17 @@ importDatasetModal <- function(id) {
 
 
     submit <- function() {
-      data <- slate.server$export.data()
+      data <- slate$export.data
 
       dataset <- list(
         name = names(data)[1],
         type = "tabular",
-        file.info = file.info(),
-        data = data[[1]]
-        #import.blueprint =
+        fileinfo = fileinfo(),
+        data = data[[1]],
+        slate.data = slate.server$slate.data()
       )
+
+      return(list(dataset = dataset))
     }
 
 
@@ -426,7 +421,7 @@ importDatasetModal <- function(id) {
 #     #
 #     # # update the slate
 #     # slate.server$updateBlueprint(blueprint)
-#     # slate.server$import.data$fileinfo <- file.info
+#     # slate.server$import.values$fileinfo <- file.info
 #   #})
 #
 #
