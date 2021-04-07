@@ -22,6 +22,11 @@ autoReactableTheme <- function(bslib.theme = getCurrentTheme(), options = list()
 
 
 
+copyEnvironment <- function(envir) {
+  list2env(as.list(envir))
+}
+
+
 #
 # Outputs
 #
@@ -44,9 +49,9 @@ output.handlers <- list(
     },
     createRenderer = function(x, session, sources, inputs, envir) {
       renderPlot({
-        text <- sources()$output[[ x$name ]]$source
+        text <- sources()$outputs[[ x$name ]]$source
 
-        eval(str2expression(text), envir = new.env(parent = envir()))
+        eval(str2expression(text), envir = copyEnvironment(envir()))
       })
     }
   ),
@@ -61,9 +66,9 @@ output.handlers <- list(
       name <- x$name
 
       renderTable({
-        text <- sources()$output[[ x$name ]]$source
+        text <- sources()$outputs[[ x$name ]]$source
 
-        eval(str2expression(text), envir = new.env(parent = envir()))
+        eval(str2expression(text), envir = copyEnvironment(envir()))
       }, spacing = "s")
     }
   ),
@@ -75,10 +80,10 @@ output.handlers <- list(
       name <- x$name
 
       reactable::renderReactable({
-        text <- sources()$output[[ x$name ]]$source
+        text <- sources()$outputs[[ x$name ]]$source
 
         reactable::reactable(
-          eval(str2expression(text), envir = new.env(parent = envir()))
+          eval(str2expression(text), envir = copyEnvironment(envir()))
           #theme = theme
         )
       })
@@ -96,9 +101,9 @@ output.handlers <- list(
       name <- x$name
 
       renderPrint({
-        text <- sources()$output[[ name ]]$source
+        text <- sources()$outputs[[ name ]]$source
 
-        eval(str2expression(text), envir = new.env(parent = envir()))
+        eval(str2expression(text), envir = copyEnvironment(envir()))
       })
     }
   ),
@@ -110,15 +115,16 @@ output.handlers <- list(
       name <- x$name
 
       renderUI({
-        text <- sources()$output[[ name ]]$source
+        text <- sources()$outputs[[ name ]]$source
         # text <- eval(str2expression(source), envir = new.env(parent = envir()))
 
-        knitr::knit(text = text, envir = envir(), quiet = TRUE) %>%
+        knitr::knit(text = text, envir = copyEnvironment(envir()), quiet = TRUE) %>%
           markdown::markdownToHTML(text = ., fragment.only = TRUE) %>%
           HTML
       })
     }
   )
+
   # source = outputHandler(
   #   create.ui = function(id, title, options) {
   #     shinyAce::aceEditor(id,
