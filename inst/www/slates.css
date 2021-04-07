@@ -173,7 +173,7 @@
 }
 
 .dataset-card:hover {
-  background-color: lightgray;
+  background-color: #ababab44;
 }
 
 @media (max-width: 767px) {
@@ -195,6 +195,7 @@
 }
 
 .dataset-card .dataset-title {
+  height: 1.5em;
   font-family: var(--font-family-monospace);
   font-weight: bold;
 }
@@ -202,6 +203,27 @@
 .dataset-card .dataset-summary {
   font-weight: lighter;
 }
+
+.dataset-card .dataset-toolbox {
+}
+
+.dataset-button {
+  opacity: 0.35;
+  transition: 0.2s;
+}
+
+.dataset-button:hover {
+  opacity: 1;
+}
+
+.dataset-card .dataset-button {
+  display: none;
+}
+
+.dataset-card:hover .dataset-button {
+  display: inline-block;
+}
+
 
 
 
@@ -230,6 +252,10 @@
 
 /* Bootstrap 4 stuff */
 
+.popover {
+  max-width: 700px;
+}
+
 /* larger modal (apply this upstream of the modal dialog) */
 @media (min-width: 576px) {
   .modal-xl {
@@ -241,7 +267,6 @@
      max-width: 1200px;
   }
 }
-
 
 .slates-multi-button {
   margin-bottom: .5rem;
@@ -258,7 +283,6 @@
 
 
 /* Inputs */
-
 .expression-input {
   font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;
   border-radius: 0;
