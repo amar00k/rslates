@@ -1,6 +1,10 @@
 
 
 
+
+
+
+
 #' Create a Modal Dialog
 #'
 #' @param id id of the modal dialog.
@@ -66,6 +70,8 @@ slatesModal <- function(id, session,
     show = show
   )
 }
+
+
 
 
 
@@ -647,6 +653,89 @@ slatesFileInputModal <- function(id, session) {
 # )
 #
 # runApp(app)
+
+
+
+
+slatesModal_ <- function(id, modal.fun,
+                        default.size = c("m", "s", "l", "xl")) {
+  default.size <- match.arg(default.size)
+
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+
+    modal.data <- modal.fun(input, output, session)
+
+    ui <- modal.data$ui
+    validator <- modal.data$validator
+    observers <- modal.data$observers
+    submit <- modal.data$submit
+
+    if (is.null(validator)) {
+      validator <- function() TRUE
+    }
+
+    .callback <- NULL
+
+    observeEvent(input$btn_ok, {
+      removeModal(session)
+
+      if (!is.null(.callback)) {
+        results <- submit()
+
+        do.call(.callback, results)
+      }
+    })
+
+
+    show <- function(callback = NULL, title = NULL, size = default.size, ...) {
+      ns <- session$ns
+
+      .callback <<- callback
+
+      if (size == "xl")
+        modal.size = "m"
+      else
+        modal.size = size
+
+      md <- modalDialog(
+        title = title,
+        easyClose = FALSE,
+        size = modal.size,
+        ui(...),
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton(ns("btn_ok"), "OK")
+        )
+      )
+
+      if (size == "xl")
+        md <- tagAppendAttributes(md, class = "modal-xl")
+
+      showModal(md, session)
+    }
+
+
+    destroy <- function() {
+      for (x in observers) {
+        if ("Observer" %in% class(x))
+          x$destroy()
+      }
+    }
+
+
+    list(
+      id = id,
+      show = show
+    )
+  })
+}
+
+
+
+
+
+
 slatesMultiPageModal <- function(id, modal.fun,
                                  back.button = TRUE,
                                  default.size = c("m", "s", "l", "xl")) {
@@ -660,6 +749,7 @@ slatesMultiPageModal <- function(id, modal.fun,
     pages <- modal.data$pages
     validators <- modal.data$validators
     observers <- modal.data$observers
+    submit <- modal.data$submit
 
     num.pages <- length(pages)
 
@@ -724,14 +814,14 @@ slatesMultiPageModal <- function(id, modal.fun,
       removeModal(session)
 
       if (!is.null(.callback)) {
-        results <- submit(session)
+        results <- submit()
 
         do.call(.callback, results)
       }
     })
 
 
-    show <- function(callback, title = NULL, size = default.size, ...) {
+    show <- function(callback = NULL, title = NULL, size = default.size, ...) {
       ns <- session$ns
 
       .callback <<- callback
