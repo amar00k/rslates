@@ -15,38 +15,19 @@ NULL
 
 
 .onLoad <- function(libname, pkgname) {
-  # op <- options()
-  # op.rslates <- list(
-  #   #slate.blueprints = create_slate_blueprints()
-  #   #slate.data.blueprints = create_data_blueprints()
-  # )
-  # toset <- !(names(op.rslates) %in% names(op))
-  # if(any(toset)) options(op.rslates[toset])
-  #
-  # invisible()
+  opts <- yaml::read_yaml(system.file("rslates.yaml", package = "rslates"))
 
-  # blueprint.dir <- system.file("blueprints", package = "rslates")
-  # import.blueprint.dir <- system.file("import_blueprints", package = "rslates")
-  #
-  # options(rslates.blueprint.dir = blueprint.dir)
-  # options(rslates.import.blueprint.dir = import.blueprint.dir)
-  #
-  # options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
-  # options(rslates.default.theme = "Natural (soft light)")
-  # options(rslates.default.ace.theme = "dawn")
-  #
-  # options(rslates.run.themer = FALSE)
+  opts$blueprints$directory <- system.file(opts$blueprints$directory, package = "rslates")
 
-  #  blueprints <- loadBlueprints(blueprint.dir, on.error = "skip")
-  #  import.blueprints <- loadBlueprints(import.blueprint.dir, on.error = "skip")
-  #  options(rslates.blueprints = blueprints)
-  #  options(rslates.import.blueprints = import.blueprints)
-  #
-  # options(
-  #   rslates.tag.list = map(blueprints, "tags") %>%
-  #     unlist %>%
-  #     unique
-  # )
+  opts$blueprints.list <-
+    dir(opts$blueprints$directory, pattern = "\\.json$", recursive = TRUE, full.names = TRUE) %>%
+    set_names(dir(opts$blueprints$directory, pattern = "\\.json$", recursive = TRUE))
+
+  opts$themes.list <- sort(c(names(rslate.themes), bslib::bootswatch_themes()))
+  opts$themes.ace.list <- shinyAce::getAceThemes()
+
+  names(opts) <- paste0("rslates.", names(opts))
+  options(opts)
 }
 
 
