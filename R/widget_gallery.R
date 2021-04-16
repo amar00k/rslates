@@ -53,7 +53,7 @@ widgetGalleryServer <- function(id, inputs, global.options = NULL) {
 
       data.frame(
         Name = map_chr(inputs, "name"),
-        Type = map_chr(inputs, "input.type"),
+        Type = map_chr(inputs, "type"),
         Value = map_chr(values, valueString),
         Class = map_chr(values, class),
         Source = map_chr(inputs, ~getHandler(.x)$as.source(.x, session)),

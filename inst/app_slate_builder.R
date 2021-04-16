@@ -118,10 +118,11 @@ newInputModal <- function(id, session) {
 }
 
 
+
 #
 # App
 #
-slateBuilderApp <- function(blueprint.ini = NULL) {
+slateBuilderApp <- function(blueprint = NULL) {
   default.theme <- "solar"
   default.ace.theme <- "twilight"
 
@@ -857,7 +858,7 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
           else
             path <- c(item$ancestry, item$name)
 
-          new.item <- slateInput(name = name, input.type = type)
+          new.item <- slateInput(name = name, type = type)
 
           blueprint.inputs(updateInputLayoutItem(blueprint.inputs(), new.item, path))
         })
@@ -1080,4 +1081,9 @@ slateBuilderApp <- function(blueprint.ini = NULL) {
 #input.container <- getOption("rslates.builder.input.container")
 
 slateBuilderApp(getOption("rslates.builder.blueprint"))
+
+
+
+
+
 

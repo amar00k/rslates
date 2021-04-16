@@ -17,10 +17,13 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
     }
 
     tryCatch({
-      blueprintFromJSON(filename = pathname)
+      loadBlueprint(filename = pathname, format = "auto")
+      #blueprintFromJSON(filename = pathname)
     },
     error = function(e) {
-      blueprintFromJSON(filename = pathname, preprocess = FALSE)
+      warning(e)
+      slateBlueprint()
+      #blueprintFromJSON(filename = pathname, preprocess = FALSE)
     })
   }
 
