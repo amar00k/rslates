@@ -9,52 +9,75 @@ slateBlueprint <- function(name = "Untitled",
                            author = "",
                            category = "",
                            tags = list(),
-                           source = "",
-                           preprocess = TRUE) {
-  md5 <- list(name, author, category, tags, source) %>%
-    digest::digest(algo = "md5")
+                           source = NULL,
+                           preprocess = TRUE,
+                           pages = list(),
+                           groups = list(),
+                           inputs = list(),
+                           outputs = list(),
+                           imports = list(),
+                           exports = list(),
+                           ...) {
+  blueprint <- list(
+    name = name,
+    author = author,
+    category = category,
+    tags = tags,
+    pages = pages,
+    groups = groups,
+    inputs = inputs,
+    blocks = list(),
+    toplevel = character(0),
+    outputs = outputs,
+    imports = imports,
+    exports = exports,
+    source = source,
+    substitutions = list()
+  )
+
+  class(blueprint) <- "slateBlueprint"
+
+  blueprint$md5 <- digest::digest(blueprint, algo = "md5")
 
   if (preprocess == TRUE) {
+    # get all blueprint sources
+    text <- map(blueprint$outputs, "source") %>%
+      unlist(recursive = FALSE) %>%
+      map("text") %>%
+      paste(collapse = "\n")
+
+    #text <-
+
+    # Handle substitutions
+    blueprint$substitutions <-
+      gregexpr("\\$\\{.*?\\}", text) %>%
+      regmatches(text, .) %>%
+      unlist %>%
+      map(preprocessSubstitutionBlock)
+
+  }
+
+  if (preprocess == TRUE && !is.null(source)) {
     preprocessed <- preprocessSource(source)
 
-    list(
-      name = name,
-      author = author,
-      category = category,
-      tags = tags,
-      pages = preprocessed$pages,
-      groups = preprocessed$groups,
-      inputs = preprocessed$inputs,
-      blocks = preprocessed$blocks,
-      toplevel = preprocessed$toplevel,
-      outputs = preprocessed$outputs,
-      imports = preprocessed$imports,
-      exports = preprocessed$exports,
-      datasets = list(),
-      source = source,
-      md5 = md5
-    ) %>%
-      structure(class = "slateBlueprint")
-  } else {
-    list(
-      name = name,
-      author = author,
-      category = category,
-      tags = tags,
-      pages = list(),
-      groups = list(),
-      inputs = list(),
-      blocks = list(),
-      toplevel = character(0),
-      outputs = list(),
-      imports = list(),
-      exports = list(),
-      datasets = list(),
-      source = source,
-      md5 = md5
-    ) %>%
-      structure(class = "slateBlueprint")
+    blueprint$pages <- preprocessed$pages
+    blueprint$groups <- preprocessed$groups
+    blueprint$inputs <- preprocessed$inputs
+    blueprint$substitutions <- preprocessed$blocks
+    blueprint$toplevel <- preprocessed$toplevel
+    blueprint$outputs <- preprocessed$outputs
+    blueprint$imports <- preprocessed$imports
+    blueprint$exports <- preprocessed$exports
   }
+
+  # make sure we dont have parent="auto" anymore
+  clear_auto <- . %>%
+    modify_if(~.$parent == "auto", ~list_modify(., parent = ".root"))
+
+  blueprint$inputs %<>% clear_auto
+  blueprint$groups %<>% clear_auto
+
+  return(blueprint)
 }
 
 
@@ -84,35 +107,35 @@ slateInput <- function(name,
                        type = "character",
                        default = NULL,
                        allow.null = FALSE,
-                       parent = "auto",
-                       long.name = "",
+                       parent = "auto", # "auto", "none", id
+                       long.name = NULL,
                        description = "",
                        condition = NULL,
                        wizards = list(),
-                       input.type = type,  # legacy
                        ...) {
   if (is.null(default))
-    default <- input.handlers[[ input.type ]]$default.value
+    default <- input.handlers[[ type ]]$default.value
 
   input <- list(
     name = name,
-    input.type = input.type,
+    type = type,
     default = default,
     allow.null = allow.null,
     parent = parent,
     long.name = long.name,
     description = description,
     condition = condition,
-    wizards = wizards,
-    type = "input"
+    wizards = wizards
   )
+
+  class(input) <- "slateInput"
 
   # add additional input parameters specified
   input <- modifyList(input, list(...))
 
   # check if valid input type
-  if (!(input$input.type %in% names(input.handlers)))
-    stop("\"", input$input.type, "\" is not a valid input type.")
+  if (!(input$type %in% names(input.handlers)))
+    stop("\"", input$type, "\" is not a valid input type.")
 
   # set default value
   if (is.null(input$default))
@@ -126,7 +149,6 @@ slateInput <- function(name,
 
   # make sure the id is set
   input$id <- paste0("input_", name)
-
   input$value <- input$default
 
   return (input)
@@ -152,11 +174,12 @@ slatePage <- function(name,
     name = name,
     title = title,
     description = description,
-    layout = layout,
-    type = "page"
+    layout = layout
   )
 
   page$id <- paste0("page_", name)
+
+  class(page) <- "slatePage"
 
   return(page)
 }
@@ -186,11 +209,13 @@ slateGroup <- function(name, ...,
     description = description,
     layout = layout,
     condition = condition,
-    id = paste0("group_", name),
-    type = "group")
+    id = paste0("group_", name)
+  )
 
   group <- c(group, list(...))
   group$id <- paste0("group_", name)
+
+  class(group) <- "slateGroup"
 
   return(group)
 }
@@ -215,17 +240,17 @@ inferSlateLayout <- function(layout) {
     x <- layout[[ i ]]
 
     if (!is.null(x$parent) && x$parent == "auto") {
-      if (x$type == "group" || (x$type == "input" && is.null(last.group))) {
+      if (class(x) == "slateGroup" || (class(x) == "slateInput" && is.null(last.group))) {
         layout[[ i ]]$parent <- last.page$name
-      } else if (x$type == "input") {
+      } else if (class(x) == "slateInput") {
         layout[[ i ]]$parent <- last.group$name
       }
     }
 
-    if (x$type == "page") {
+    if (class(x) == "slatePage") {
       last.page <- x
       last.group <- NULL
-    } else if (x$type == "group") {
+    } else if (class(x) == "slateGroup") {
       last.group <- x
     }
   }
@@ -245,6 +270,8 @@ slateOutput <- function(name, type, source = "", ...) {
   output.data <- c(output.data, list(...))
 
   output.data$id <- paste0("output_", name)
+
+  class(output.data) <- "slateOutput"
 
   return (output.data)
 }
@@ -287,7 +314,7 @@ slateImport <- function(name, type, description = "") {
     name = name,
     type = type,
     description = description
-  )
+  ) %>% structure(class = "slateImport")
 }
 
 
@@ -300,9 +327,9 @@ slateExport <- function(var.name, out.name = var.name) {
 
 
 getHandler <- function(x) {
-  if (x$type == "input") {
-    input.handlers[[ x$input.type ]]
-  } else if (x$type %in% names(output.handlers)) {
+  if (class(x) == "slateInput") {
+    input.handlers[[ x$type ]]
+  } else if (class(x) == "slateOutput") {
     output.handlers[[ x$type ]]
   }
 }
@@ -320,28 +347,27 @@ assignInputValues <- function(x, values) {
 #
 
 page.defaults <- list(
-  type = "page",
   name = "untitled",
   description = ""
 )
 
 group.defaults <- list(
-  type = "group",
   name = "Group",
-  layout = "flow",
+  layout = "flow-2",
   condition = ""
 )
 
 input.defaults <- list(
-  type = "input",
   default = "",
-  long.name = "",
+  allow.null = FALSE,
+  long.name = NULL,
   description = "",
+  parent = "auto",
   wizards = list()
 )
 
 clearDefaults <- function(x, defaults) {
-  is.default <- sapply(names(x), function(name) identical(x[[ name ]], defaults[[ name ]]))
+  is.default <- map_lgl(names(x), ~identical(x[[ . ]], defaults[[ . ]]))
   x[ !is.default ]
 }
 
@@ -355,13 +381,17 @@ clearDefaults <- function(x, defaults) {
 #'
 #' @seealso [restoreBlueprint()] to restore a simplified blueprint to its initial state.
 simplifyBlueprint <- function(blueprint) {
-  blueprint$pages %<>% map(~clearDefaults(., page.defaults))
-  blueprint$groups %<>% map(~clearDefaults(., group.defaults))
+  blueprint$pages %<>% map(~clearDefaults(., page.defaults)) %>%
+    map(~list_modify(., id = NULL, value = NULL))
+
+  blueprint$groups %<>% map(~clearDefaults(., group.defaults)) %>%
+    map(~list_modify(., id = NULL, value = NULL))
 
   blueprint$inputs %<>% map(function(x) {
     input.defaults <- c(input.defaults, map(getHandler(x)$params.list, "default"))
     clearDefaults(x, input.defaults)
-  })
+  }) %>%
+    map(~list_modify(., id = NULL, value = NULL))
 
   return(blueprint)
 }
@@ -384,6 +414,35 @@ restoreBlueprint <- function(blueprint) {
 }
 
 
+# inputs tree conversions
+
+flatInputsToTree <- function(pages, groups, inputs) {
+  groups <-
+    map(groups, function(g) {
+      list_modify(g, inputs = inputs %>% keep(map_lgl(., ~.$parent == g$name)))
+    })
+
+  pages <- map(pages, function(p) {
+    list_modify(
+      p,
+      groups = groups %>% keep(map_lgl(., ~.$parent == p$name)),
+      inputs = inputs %>% keep(map_lgl(., ~.$parent == p$name))
+    )
+  })
+
+  list(
+    pages = pages,
+    groups = keep(groups, map_lgl(groups, ~.$parent == ".root")),
+    inputs = keep(inputs, map_lgl(inputs, ~.$parent == ".root"))
+  )
+}
+
+
+flattenInputsTree <- function(tree) {
+
+}
+
+
 # Load/Save Blueprint
 
 blueprintToJSON <- function(blueprint, pretty = FALSE) {
@@ -397,6 +456,7 @@ blueprintToJSON <- function(blueprint, pretty = FALSE) {
 
   jsonlite::toJSON(data, pretty = pretty)
 }
+
 
 blueprintFromJSON <- function(filename=NULL, text=NULL, preprocess = TRUE) {
   if (!is.null(filename) && !is.null(text))
@@ -421,19 +481,33 @@ blueprintFromJSON <- function(filename=NULL, text=NULL, preprocess = TRUE) {
 
 
 blueprintToYAML <- function(blueprint) {
+  blueprint <- simplifyBlueprint(blueprint)
+
+  clean_node <- function(x) {
+    x$name <- NULL
+    x$parent <- NULL
+    x$inputs <- if (!is.null(x$inputs)) map(x$inputs, clean_node)
+    x$groups <- if (!is.null(x$groups)) map(x$groups, clean_node)
+    x$pages <- if (!is.null(x$pages)) map(x$pages, clean_node)
+
+    return(x)
+  }
+
+  tree <- flatInputsToTree(blueprint$pages, blueprint$groups, blueprint$inputs)
+
   data <- list(
     name = blueprint$name,
     author = blueprint$author,
     category = blueprint$category,
-    tags = blueprint$tags
+    tags = blueprint$tags,
+    outputs = blueprint$outputs %>% map(~list_modify(., name = NULL, id = NULL)),
+    inputs = map(tree$inputs, clean_node),
+    groups = map(tree$groups, clean_node),
+    pages = map(tree$pages, clean_node)
   )
 
-  strsplit(blueprint$source, split = "\n")[[1]] %>%
-    map(~paste0("  ", .)) %>%
-    paste(collapse = "\n") %>%
-    paste0(yaml::as.yaml(data), "\n", "source: |-2\n", .)
+  yaml::as.yaml(data)
 }
-
 
 blueprintFromYAML <- function(filename=NULL, text=NULL, preprocess = TRUE) {
   if (!is.null(filename) && !is.null(text))
@@ -444,13 +518,44 @@ blueprintFromYAML <- function(filename=NULL, text=NULL, preprocess = TRUE) {
   else
     data <- yaml::yaml.load(string = text)
 
+  pages <- data$pages
+  groups <- data$groups
+  inputs <- data$inputs
+
+  pages <- imap(pages, function(page, name) {
+    groups <<- append(groups, page$groups %>% map(~list_modify(., parent = name)))
+    inputs <<- append(inputs, page$inputs %>% map(~list_modify(., parent = name)))
+    page$name <- name
+    page$groups <- NULL
+    page$inputs <- NULL
+    do.call(slatePage, page)
+  })
+
+  groups <- imap(groups, function(group, name) {
+    inputs <<- append(inputs, group$inputs %>% map(~list_modify(., parent = name)))
+    group$name <- name
+    group$inputs <- NULL
+    do.call(slateGroup, group)
+  })
+
+  inputs <- imap(inputs, function(input, name) {
+    input$name <- name
+    do.call(slateInput, input)
+  })
+
+  outputs <- imap(data$outputs, ~do.call(slateOutput, append(.x, list(name = .y))))
+
   blueprint <- slateBlueprint(
     name = data$name,
     author = data$author,
     category = data$category,
     tags = data$tags,
-    source = data$source,
-    preprocess = preprocess
+    outputs = outputs,
+    inputs = inputs,
+    groups = groups,
+    pages = pages
+    #source = data$source,
+    #preprocess = preprocess
   )
 
   return(blueprint)
@@ -513,6 +618,8 @@ blueprintFromTxt <- function(filename=NULL, text=NULL, preprocess = TRUE) {
 loadBlueprint <- function(filename,
                           format = c("auto", "yaml", "txt", "json"),
                           preprocess = TRUE) {
+  dlog(filename)
+
   format <- match.arg(format)
 
   if (format == "auto") {
