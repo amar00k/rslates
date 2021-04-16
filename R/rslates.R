@@ -409,14 +409,14 @@ initServerOptions <- function(config.file = system.file("rslates.yaml", package 
     )
 
     opts$blueprints.list <-
-        dir(opts$blueprints$directory, pattern = "\\.json$", recursive = TRUE, full.names = TRUE) %>%
-        set_names(dir(opts$blueprints$directory, pattern = "\\.json$", recursive = TRUE))
+        dir(opts$blueprints$directory, pattern = "\\.(json|yaml)$", recursive = TRUE, full.names = TRUE) %>%
+        set_names(dir(opts$blueprints$directory, pattern = "\\.(json|yaml)$", recursive = TRUE))
 
     opts$themes.list <- sort(c(names(rslate.themes), bslib::bootswatch_themes()))
     opts$themes.ace.list <- shinyAce::getAceThemes()
 
     opts$blueprint.tags <- opts$blueprints.list %>%
-        map(loadBlueprint) %>%
+        map(loadBlueprint, preprocess = FALSE) %>%
         map("tags") %>%
         unlist %>%
         unique
@@ -442,16 +442,16 @@ runSlatePreviewApp <- function(blueprint,
 }
 
 
-runSlateBuilderApp <- function(blueprint = NULL,
-                               theme = "Natural (soft light)",
-                               run.themer = FALSE) {
-    options(rslates.builder.blueprint = blueprint)
-    options(rslates.default.theme = theme)
-    options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
-    options(rslates.run.themer = run.themer)
-
-    runApp(system.file("app_slate_builder.R", package = "rslates"))
-}
+# runSlateBuilderApp <- function(blueprint = NULL,
+#                                theme = "Natural (soft light)",
+#                                run.themer = FALSE) {
+#     options(rslates.builder.blueprint = blueprint)
+#     options(rslates.default.theme = theme)
+#     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
+#     options(rslates.run.themer = run.themer)
+#
+#     runApp(system.file("app_slate_builder.R", package = "rslates"))
+# }
 
 
 runProjectEditorApp <- function(project = NULL, theme = "Natural (soft light)" , run.themer = FALSE) {
@@ -477,11 +477,24 @@ runSlatesWidgetGalleryApp <- function(theme = "Natural (soft light)", run.themer
 runBlueprintEditorApp <- function(
     blueprint.filename = NULL,
     config.file = system.file("rslates.yaml", package = "rslates"),
-    options = list())
-{
+    options = list()) {
+
     options(rslates.bp.editor.blueprint.filename = blueprint.filename)
     options(rslates.run.themer = FALSE)
 
     runApp(system.file("app_blueprint_editor.R", package = "rslates"))
 }
+
+
+runBlueprintEditor2App <- function(
+    blueprint.filename = NULL,
+    config.file = system.file("rslates.yaml", package = "rslates"),
+    options = list()) {
+
+    options(rslates.bp.editor.blueprint.filename = blueprint.filename)
+    options(rslates.run.themer = FALSE)
+
+    runApp(system.file("app_blueprint_editor_2.R", package = "rslates"))
+}
+
 
