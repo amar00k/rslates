@@ -593,70 +593,6 @@ slatesFileInputModal <- function(id, session) {
 
 
 
-# app <- shinyApp(
-#   ui = fluidPage(
-#     shinyjs::useShinyjs(),
-#     actionButton("show", "Show Modal")
-#   ),
-#   server = function(input, output, session) {
-#     modal <- slatesMultiPageModal("example_modal", function(input, output, session) {
-#       ns <- session$ns
-#
-#       pages <- list(
-#         page1 = function(common.label, text.value = "") {
-#           tagList(
-#             helpText("Hello there! This is page 1! Please enter less than 5 characters."),
-#             textInput(ns("text_input"), label = common.label, value = text.value)
-#           )
-#         },
-#         page2 = function(common.label, numeric.value) {
-#           tagList(
-#             helpText("Hi again! We're on page 2 now. Enter an even number to proceed."),
-#             numericInput(ns("numeric_input"), label = common.label, value = numeric.value)
-#           )
-#         }
-#       )
-#
-#       validators <- list(
-#         page1 = function() {
-#           return(nchar(input$text_input) < 5)
-#         },
-#         page2 = function() {
-#           return(input$numeric_input %% 2 == 0)
-#         }
-#       )
-#
-#       submit <- function() {
-#         input <- session$input
-#
-#         list(text.value = input$text_input,
-#              numeric.value = input$numeric_input)
-#       }
-#
-#       list(
-#         pages = pages,
-#         validators = validators,
-#         submit = submit
-#       )
-#     })
-#
-#     observeEvent(input$show, {
-#       modal$show(
-#         common.label = "Some input", text.value = "Something", numeric.value = 41,
-#         title = "Example Multi-Page Modal",
-#         callback = function(text.value, numeric.value) {
-#           print(paste("Modal returned:", text.value, ",", numeric.value))
-#         }
-#       )
-#     })
-#   }
-# )
-#
-# runApp(app)
-
-
-
-
 slatesModal_ <- function(id, modal.fun,
                         default.size = c("m", "s", "l", "xl")) {
   default.size <- match.arg(default.size)
@@ -676,6 +612,14 @@ slatesModal_ <- function(id, modal.fun,
     }
 
     .callback <- NULL
+
+
+    observe({
+      valid <- validator()
+
+      shinyjs::toggleState("btn_ok", condition = valid)
+    })
+
 
     observeEvent(input$btn_ok, {
       removeModal(session)
@@ -880,6 +824,29 @@ slatesMultiPageModal <- function(id, modal.fun,
     )
   })
 }
+
+
+
+
+
+textInputModal <- function(id) {
+  slatesModal_(id, function(input, output, session) {
+    ns <- session$ns
+
+    list(
+      ui = function(label, placeholder = NULL, value = "") {
+        textInput(ns("text_input"), label = label, value = value, placeholder = placeholder)
+      },
+      validator = function() {
+        input$text_input != ""
+      },
+      submit = function() {
+        list(value = input$text_input)
+      }
+    )
+  })
+}
+
 
 
 
