@@ -56,28 +56,48 @@ getSlateUserSources <- function(x) {
 
   outputs <- x$blueprint$outputs
   toplevel <- x$blueprint$toplevel
-  blocks <- x$blueprint$blocks
+  substitutions <- x$blueprint$substitutions
   import.values <- x$import.values
 
   inputs <- assignInputValues(x$blueprint$inputs, x$input.values)
 
   sources <- list()
 
+  # sources$outputs <-
+  #   map(outputs, function(output) {
+  #     output$text <- map(output$source, ~{
+  #       text <- tryCatch({
+  #         substituteVariables(.$text, substitutions, inputs)
+  #       },
+  #       error = function(e) {
+  #         return(.$text)
+  #       })
+  #
+  #       return(text)
+  #     }) %>% paste(collapse = "\n")
+  #
+  #     return(output)
+  #   })
   sources$outputs <-
     map(outputs, ~{
-      new.source <- tryCatch({
-        substituteVariables(.$source, blocks, inputs)
+      .$text <- tryCatch({
+        substituteVariables(.$source, substitutions, inputs)
       },
       error = function(e) {
-        return(.$source)
+        strsplit(.$source, split = "\n")[[1]] %>%
+          paste("##", ., collapse = "\n") %>%
+          paste(
+            "## There was an error processing output source:",
+            "##", ., sep = "\n"
+          )
       })
 
-      list_modify(., source = new.source)
+      return(.)
     })
 
   sources$toplevel <-
     tryCatch({
-      substituteVariables(toplevel, blocks, inputs)
+      substituteVariables(toplevel, substitutions, inputs)
     },
     error = function(e) {
       return(toplevel)
@@ -111,7 +131,7 @@ getSlateUserSource <- function(x, headers = TRUE) {
 
   toplevel.code <- sources$toplevel
 
-  output.code <- map(sources$outputs, ~paste0("#-- ", .$name, "\n", .$source)) %>%
+  output.code <- map(sources$outputs, ~paste0("#-- ", .$name, "\n", .$text)) %>%
     paste(collapse = "\n\n")
 
   paste(import.code, toplevel.code, output.code, sep = "\n\n")
@@ -358,21 +378,11 @@ slateUI <- function(id, slate.options = slateOptions()) {
       div(
         id = "inputs_panel_div",
         class = "w-50 p-2",
-        uiOutput(ns("inputs_panel"))
+        uiOutput(ns("inputs_panel"), style = "height: 100%; overflow-y: auto; overflow-x: hidden;")
       )
     )
   )
 
-  # body.ui <- tags$div(
-  #   uiOutput(ns("blueprint_editor_ui")),
-  #   uiOutput(ns("body_ui"))
-  #   # tags$div(
-  #   #   class = "d-flex",
-  #   #   style = if (!is.null(height)) paste0("height: ", height, ";") else "",
-  #   #   uiOutput(ns("outputs_panel"), class = "flex-fill"),
-  #   #   uiOutput(ns("inputs_panel"), class = "flex-fill")
-  #   # )
-  # )
 
 
   if (slate.options$use.card) {
@@ -410,7 +420,7 @@ slateUI <- function(id, slate.options = slateOptions()) {
 
 slateServer <- function(id,
                         slate = slateData(),
-                        blueprint = slateBlueprint(), #init.input.values = NULL,
+                        blueprint = slateBlueprint(),
                         slate.options = NULL,
                         global.options = NULL,
                         input.values = NULL,
@@ -432,8 +442,8 @@ slateServer <- function(id,
       for (name in names(blueprint))
         blueprint[[ name ]] <- new.blueprint[[ name ]]
 
-      if (update.editor == TRUE)
-        blueprint.editor$updateBlueprint(new.blueprint)
+      # if (update.editor == TRUE)
+      #   blueprint.editor$updateBlueprint(new.blueprint)
     }
 
     #
@@ -460,8 +470,10 @@ slateServer <- function(id,
     # slate <- do.call(reactiveValues, slate)
     # slate$blueprint <- do.call(reactiveValues, slate$blueprint)
 
-
     # create the blueprint container
+    if ("reactiveVal" %in% class(blueprint))
+      blueprint <- isolate(blueprint())
+
     if (class(blueprint) == "reactiveValues") {
       blueprint <- do.call(reactiveValues, reactiveValuesToList(blueprint))
     } else {
@@ -489,6 +501,10 @@ slateServer <- function(id,
         author = blueprint$author,
         category = blueprint$category,
         tags = blueprint$tags,
+        outputs = blueprint$outputs,
+        inputs = blueprint$inputs,
+        pages = blueprint$pages,
+        groups = blueprint$groups,
         source = blueprint$source,
         preprocess = TRUE
       )
@@ -500,15 +516,15 @@ slateServer <- function(id,
                 envir = slate.options$envir)
     })
 
-    # observe changes in editor
-    observeEvent(blueprint.editor$blueprint(), label = "editor.change", {
-      req(!identical(reactiveValuesToList(blueprint),
-                     blueprint.editor$blueprint())
-      )
-      dlog()
-
-      updateBlueprint(blueprint.editor$blueprint(), update.editor = FALSE)
-    })
+    # # observe changes in editor
+    # observeEvent(blueprint.editor$blueprint(), label = "editor.change", {
+    #   req(!identical(reactiveValuesToList(blueprint),
+    #                  blueprint.editor$blueprint())
+    #   )
+    #   dlog()
+    #
+    #   updateBlueprint(blueprint.editor$blueprint(), update.editor = FALSE)
+    # })
 
 
     # provides the state of all inputs
@@ -644,30 +660,30 @@ slateServer <- function(id,
     })
 
 
-    output$body_ui <- renderUI({
-      height <- slate.options$height
-
-      container <- function(outputs, inputs) {
-        tags$div(
-          class = "d-flex",
-          style = if (!is.null(height)) paste0("height: ", height, ";") else "",
-          outputs,
-          inputs
-        )
-      }
-
-      if (isTruthy(input$view_inputs)) {
-        container(
-          uiOutput(ns("outputs_panel"), class = "p-2 w-50"),
-          uiOutput(ns("inputs_panel"), class = "p-2 w-50")
-        )
-      } else {
-        container(
-          uiOutput(ns("outputs_panel"), class = "p-2 w-100"),
-          NULL
-        )
-      }
-    })
+    # output$body_ui <- renderUI({
+    #   height <- slate.options$height
+    #
+    #   container <- function(outputs, inputs) {
+    #     tags$div(
+    #       class = "d-flex",
+    #       style = if (!is.null(height)) paste0("height: ", height, ";") else "",
+    #       outputs,
+    #       inputs
+    #     )
+    #   }
+    #
+    #   if (isTruthy(input$view_inputs)) {
+    #     container(
+    #       uiOutput(ns("outputs_panel"), class = "p-2 w-50"),
+    #       uiOutput(ns("inputs_panel"), class = "p-2 w-50")
+    #     )
+    #   } else {
+    #     container(
+    #       uiOutput(ns("outputs_panel"), class = "p-2 w-100"),
+    #       NULL
+    #     )
+    #   }
+    # })
 
 
     # displays inputs panel
@@ -755,7 +771,7 @@ slateServer <- function(id,
       sources <- isolate(sources())
 
       text <-
-        map(sources$output, ~paste0("#-- ", .$name, "\n", .$source)) %>%
+        map(sources$outputs, ~paste0("#-- ", .$name, "\n", .$text)) %>%
         paste(collapse = "\n\n")
 
       shinyAce::updateAceEditor(
@@ -821,25 +837,25 @@ slateServer <- function(id,
     })
 
 
-    # create the server for the blueprint editor
-    # TODO: don't even create until user requests it
-    blueprint.editor <- blueprintEditorServer(
-      "editor",
-      blueprint = blueprint,
-      slate = list(
-        slate.title = slate.title,
-        import.values = import.values,
-        input.values = input.values,
-        sources = sources,
-        import.sources = import.sources ,
-        source.code = source.code,
-        slate.envir = slate.envir,
-        export.data = export.data,
-        global.options = global.options,
-        slate.options = slate.options
-      ),
-      global.options = global.options
-    )
+    # # create the server for the blueprint editor
+    # # TODO: don't even create until user requests it
+    # blueprint.editor <- blueprintEditorServer(
+    #   "editor",
+    #   blueprint = blueprint,
+    #   slate = list(
+    #     slate.title = slate.title,
+    #     import.values = import.values,
+    #     input.values = input.values,
+    #     sources = sources,
+    #     import.sources = import.sources ,
+    #     source.code = source.code,
+    #     slate.envir = slate.envir,
+    #     export.data = export.data,
+    #     global.options = global.options,
+    #     slate.options = slate.options
+    #   ),
+    #   global.options = global.options
+    # )
 
 
     # Cleanup function
