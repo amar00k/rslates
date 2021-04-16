@@ -31,10 +31,12 @@ copyEnvironment <- function(envir) {
 # Outputs
 #
 
-outputHandler <- function(createUI = function(...) { tagList() },
+outputHandler <- function(name = "",
+                          createUI = function(...) { tagList() },
                           createRenderer = function(...) {},
                           observer = function(...) {}) {
   list(
+    name = name,
     createUI = createUI,
     createRenderer = createRenderer,
     observer = observer
@@ -44,18 +46,20 @@ outputHandler <- function(createUI = function(...) { tagList() },
 
 output.handlers <- list(
   plot = outputHandler(
+    name = "Plot",
     createUI = function(x, session) {
       plotOutput(session$ns(x$id))
     },
     createRenderer = function(x, session, sources, inputs, envir) {
       renderPlot({
-        text <- sources()$outputs[[ x$name ]]$source
+        text <- sources()$outputs[[ x$name ]]$text
 
         eval(str2expression(text), envir = copyEnvironment(envir()))
       })
     }
   ),
   table = outputHandler(
+    name = "Table",
     createUI = function(x, session) {
       tags$div(
         class = "slates-output slates-output-table",
@@ -66,13 +70,14 @@ output.handlers <- list(
       name <- x$name
 
       renderTable({
-        text <- sources()$outputs[[ x$name ]]$source
+        text <- sources()$outputs[[ x$name ]]$text
 
         eval(str2expression(text), envir = copyEnvironment(envir()))
       }, spacing = "s")
     }
   ),
   reactable = outputHandler(
+    name = "Table (Reactable)",
     createUI = function(x, session) {
       reactable::reactableOutput(session$ns(x$id))
     },
@@ -80,7 +85,7 @@ output.handlers <- list(
       name <- x$name
 
       reactable::renderReactable({
-        text <- sources()$outputs[[ x$name ]]$source
+        text <- sources()$outputs[[ x$name ]]$text
 
         reactable::reactable(
           eval(str2expression(text), envir = copyEnvironment(envir()))
@@ -90,6 +95,7 @@ output.handlers <- list(
     }
   ),
   print = outputHandler(
+    name = "Print",
     createUI = function(x, session) {
       tags$div(
         # TODO: make the height adapt to the slate height
@@ -101,13 +107,14 @@ output.handlers <- list(
       name <- x$name
 
       renderPrint({
-        text <- sources()$outputs[[ name ]]$source
+        text <- sources()$outputs[[ name ]]$text
 
         eval(str2expression(text), envir = copyEnvironment(envir()))
       })
     }
   ),
   markdown = outputHandler(
+    name = "Markdown",
     createUI = function(x, session) {
       uiOutput(session$ns(x$id))
     },
@@ -115,7 +122,7 @@ output.handlers <- list(
       name <- x$name
 
       renderUI({
-        text <- sources()$outputs[[ name ]]$source
+        text <- sources()$outputs[[ name ]]$text
         # text <- eval(str2expression(source), envir = new.env(parent = envir()))
 
         knitr::knit(text = text, envir = copyEnvironment(envir()), quiet = TRUE) %>%
