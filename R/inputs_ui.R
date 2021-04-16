@@ -242,14 +242,14 @@ makeSlatesMultiInput <- function(id, label, inputs,
     stop("Need at least 1 type.")
 
   input.tags <- map(inputs, ~{
-    fun <- tagFromType[[ .$input.type ]]
-    tag.id <- paste0(id, "-", .$input.type)
+    fun <- tagFromType[[ .$type ]]
+    tag.id <- paste0(id, "-", .$type)
 
     .$id <- tag.id
     .$value <- .$default
 
     # if first
-    if (.$input.type == inputs[[1]]$input.type)
+    if (.$type == inputs[[1]]$type)
       .$visible <- TRUE
     else
       .$visible <- FALSE
@@ -259,7 +259,7 @@ makeSlatesMultiInput <- function(id, label, inputs,
 
   multi.radio <- slatesMultiInputRadio(
     id = id,
-    types = map_chr(inputs, "input.type"),
+    types = map_chr(inputs, "type"),
     value = value,
     allow.null = allow.null)
 

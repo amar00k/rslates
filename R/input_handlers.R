@@ -631,7 +631,7 @@ input.handlers <- list(
       # make multi-inputs
       x$inputs %<>%
         imap(~list_modify(.x,
-                          input.type = .y,
+                          type = .y,
                           name = paste0(x$name, "-", .y))) %>%
         map(~do.call(slateInput, .))
 
@@ -754,8 +754,8 @@ createInputUI <- function(input, ns = identity) {
   elem <- getHandler(input)$createUI(input, ns)
 
   if (!is.null(input$description) && input$description != "") {
-    tooltip <-paste0("<b>", input$input.type, "</b>",
-                     "<br>", input$description) %>%
+    tooltip <- paste0("<b>", input$type, "</b>",
+                      "<br>", input$description) %>%
       shinyBS::bsTooltip(ns(input$id), ., placement = "top")
 
     return(tagList(elem, tooltip))
