@@ -1,0 +1,69 @@
+name: Tabular
+author: Daniel Neves
+category: ''
+tags:
+- import
+- csv
+- tsv
+- txt
+- tabular
+- data.frame
+outputs:
+  Preview:
+    type: table
+    source:
+    - condition: ~
+      text: |2
+
+        df %>% head(10)
+  Summary:
+    type: markdown
+    source:
+    - condition: ~
+      text: |2
+
+        **Filename:** `r fileinfo$name`
+
+        | Option | Value |
+        |-----|:---:|
+        | Header | `${header}` |
+        | Separator character | `${sep}` |
+        | Decimal character | `${dec}` |
+pages:
+  p1:
+    title: Import Settings
+    layout: flow-2
+    inputs:
+      header:
+        type: logical
+        default: no
+        description: Whether the file contains the names of the variables as its first
+          line.
+      sep:
+        type: choices
+        default: ','
+        description: The field separator character.
+        choices:
+          Comma (,): ','
+          Semicolon (;): ;
+          Space: ' '
+          Tab: "\t"
+      dec:
+        type: choices
+        default: '.'
+        description: The character used in the file for decimal points
+        choices:
+        - '.'
+        - ','
+      skip:
+        type: numeric
+        default: 0.0
+        description: The number of lines of the data file to skip before beginning
+          to read data.
+    groups: {}
+groups: {}
+inputs:
+  name:
+    type: character
+    description: Name of the variable to hold this table.
+

@@ -1,0 +1,112 @@
+name: Scatterplot
+author: Daniel Neves
+category: ''
+tags:
+- plot
+- scatterplot
+- base
+- generic
+outputs:
+  Scatterplot:
+    type: plot
+    source: |
+      #-- invisible
+      print("hello")
+      #-- end invisible
+      #-- if !default(mar)
+      # set margins for the plot
+      par(mar=${mar})
+
+      #-- end if
+      plot(${dn:: x:x, y=y, type=type, pch=pch, col=col, main=main, xlab=xlab, ylab=ylab, xlim=xlim, ylim=ylim})
+pages:
+  Plot Options:
+    title: Plot Options
+    layout: flow-2
+    inputs:
+      type:
+        type: choices
+        default: p
+        description: desired type of plot.
+        choices:
+          Points: p
+          Lines: l
+          Both: b
+          Empty Points: c
+          Overplotted: o
+          Stairs (Floor): s
+          Stairs (Ceiling): S
+    groups:
+      g1:
+        description: Shape and color
+        layout: flow-3
+        condition: ~
+        inputs:
+          col:
+            type: expression
+            description: colors for points and lines.
+          pch:
+            type: expression
+            default: '21'
+            description: plotting characters or symbols.
+          cex:
+            type: expression
+            description: size of plotting characters and symbols.
+      g2:
+        description: Labels
+        layout: flow-2
+        condition: ~
+        inputs:
+          main:
+            type: character
+            description: main title for the plot.
+          xlab:
+            type: character
+            description: label for the x-axis.
+          ylab:
+            type: character
+            description: label for the y-axis.
+      g3:
+        description: Limits for the axes
+        layout: flow-2
+        condition: ~
+        inputs:
+          xlim:
+            type: numeric2
+            default:
+            - 0.0
+            - 0.0
+            allow.null: yes
+            description: x limits (x1, x2) for the plot.
+          ylim:
+            type: numeric2
+            default:
+            - 0.0
+            - 0.0
+            allow.null: yes
+            description: y limits (y1, y2) for the plot.
+  Graphical Options:
+    title: Graphical Options
+    layout: flow-2
+    inputs:
+      mar:
+        type: numeric4
+        default:
+        - 5.1
+        - 4.1
+        - 4.1
+        - 2.1
+        allow.null: yes
+        description: margins of the bottom, left, top and right sides of the plot
+          in lines.
+    groups: {}
+groups: {}
+inputs:
+  x:
+    type: expression
+    default: '1:10'
+    description: x coordinates for the plot; or structure defining both x and y coordinates.
+  'y':
+    type: expression
+    description: y coordinates for the plot.
+
