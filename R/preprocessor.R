@@ -428,9 +428,12 @@ preprocessOutput <- function(lines) {
   else
     body <- ""
 
-  output$source <-
-    paste(body, collapse = "\n") %>%
-    cleanPreprocessorDirectives
+  output$source <- list(
+    list(
+      condition = NULL,
+      text = paste(body, collapse = "\n") %>% cleanPreprocessorDirectives
+    )
+  )
 
   return(output)
 }
@@ -446,8 +449,8 @@ splitIntoDefinitionBlocks <- function(text) {
 
   # split the lines into blocks, each associated with
   # a specific definition, or belonging to the top-level
-  start.tokens <- c("\\$@output") # , "\\$@import")
-  end.tokens <- c("\\$@end-output") #, "\\$@end-import")
+  start.tokens <- c("\\$@output", "\\$@onload") # , "\\$@import")
+  end.tokens <- c("\\$@end-output", "\\$@end-onload") #, "\\$@end-import")
 
   end.idx <- paste(end.tokens, collapse = "|") %>%
     grep(lines) %>%
@@ -473,6 +476,8 @@ splitIntoDefinitionBlocks <- function(text) {
       header <- .[1]
       if (grepl("\\$@output", header))
         type <- "output"
+      else if (grepl("\\$@onload", header))
+        type <- "onload"
       else
         type <- "top-level"
 
@@ -482,6 +487,39 @@ splitIntoDefinitionBlocks <- function(text) {
       )
     })
 }
+
+
+
+runOnload <- function(text) {
+  layout <- list()
+
+  add_input <- function(...) {
+    x <- slateInput(...)
+    layout <<- append(layout, list(x))
+  }
+
+  add_page <- function(...) {
+    x <- slatePage(...)
+    layout <<- append(layout, list(x))
+  }
+
+  add_group <- function(...) {
+    x <- slateGroup(...)
+    layout <<- append(layout, list(x))
+  }
+
+  tryCatch({
+    eval(parse(text = text))
+  },
+  error = function(e) {
+    stop(paste0("Error evaluating onload: ", text))
+  })
+
+  return(list(
+    layout = layout
+  ))
+}
+
 
 
 preprocessSource <- function(text) {
@@ -507,6 +545,10 @@ preprocessSource <- function(text) {
     removeComments(n = 3) %>%
     disableComments(n = 2)
 
+  # prepare blocks
+  source.blocks <- splitIntoDefinitionBlocks(text)
+
+
   # process layout elements (pages, groups, inputs)
   directives <-
     makePreprocessorDirectiveRE("input|page|group|import|export") %>%
@@ -517,13 +559,24 @@ preprocessSource <- function(text) {
 
   layout <-
     keep(directives, ~.$type %in% c("page", "group", "input")) %>%
-    map("object") %>%
+    map("object") #%>%
+    #inferSlateLayout %>%
+    #set_names(map(., "name"))
+
+  onload <-
+    source.blocks %>%
+    keep(map(., "type") == "onload") %>%
+    map(~.$body[2:length(.$body)]) %>%
+    map_chr(paste, collapse = "\n") %>%
+    runOnload
+
+  layout <- append(layout, onload$layout) %>%
     inferSlateLayout %>%
     set_names(map(., "name"))
 
-  blueprint.data$pages <- keep(layout, ~.$type == "page")
-  blueprint.data$groups <- keep(layout, ~.$type == "group")
-  blueprint.data$inputs <- keep(layout, ~.$type == "input")
+  blueprint.data$pages <- keep(layout, ~class(.) == "slatePage")
+  blueprint.data$groups <- keep(layout, ~class(.) == "slateGroup")
+  blueprint.data$inputs <- keep(layout, ~class(.) == "slateInput")
 
   blueprint.data$imports <- keep(directives, ~.$type == "import") %>%
     map("object") %>%
@@ -550,9 +603,6 @@ preprocessSource <- function(text) {
   if (length(sub.inputs) > 0)
     blueprint.data$inputs %<>% append(sub.inputs)
 
-  # prepare blocks
-  source.blocks <- splitIntoDefinitionBlocks(text)
-
   # Handle top-level code
   blueprint.data$toplevel <-
     source.blocks %>%
@@ -572,6 +622,95 @@ preprocessSource <- function(text) {
 
   return(blueprint.data)
 }
+
+
+
+
+#----------
+
+
+# preprocessOutputSource <- function(lines, type = "") {
+#   if (length(lines) == 0)
+#     return(list())
+#
+#   def.patterns <- c(
+#     "\\^#-- *condition", "\\^#-- *invisible",
+#     "\\^#-- *end +condition", "\\^#-- *end +invisible")
+#
+#   # check for condition or invisible directives
+#   def.idx <-
+#     paste(def.patterns, collapse = "|", lines) %>%
+#     grep(lines)[1]
+#
+#   # if no directives return all lines
+#   if (is.na(def.1)) {
+#     #if (type != "")
+#     #  stop("Unexpected end of input in ", type, " definition.")
+#     return(lines)
+#   }
+#
+#   # check if end
+#   if (grep("\\^#-- *end", def.line)) {
+#
+#   }
+# }
+
+preprocessOutputSource <- function(lines, type = "") {
+  if (length(lines) == 0)
+    return(list())
+
+  def.patterns <-
+    c("if", "else", "invisible", "end +condition", "end +invisible") %>%
+    paste0("^#-- *", .)
+
+  # check for condition or invisible directives
+  def.idx <-
+    paste(def.patterns, collapse = "|") %>%
+    grep(trimws(lines))
+
+  # if no directives return all lines
+  if (is.na(def.1)) {
+    #if (type != "")
+    #  stop("Unexpected end of input in ", type, " definition.")
+    return(lines)
+  }
+
+  # check if end
+  if (grep("\\^#-- *end", def.line)) {
+
+  }
+}
+
+
+
+text <- '
+#-- if !default(mar)
+
+  #-- invisible
+    old.par <- par()
+  #-- end invisible
+
+  # set the margins for the plot
+  par(mar=${mar}))
+
+#-- else
+
+  # no need to set margins
+
+#-- end if
+
+# do the plot
+plot(${dn:: x:x, y=y, type=type, pch=pch, col=col, main=main, xlab=xlab, ylab=ylab})
+
+#-- if exists(old.par)
+
+  par(old.par)
+
+#-- end if
+'
+
+lines <- strsplit(text, split = "\n")[[1]]
+
 
 
 
