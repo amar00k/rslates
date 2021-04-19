@@ -114,10 +114,18 @@ inputItemServer <- function(id, item, global.options = NULL) {
 
 
     createUI <- function() {
-      dlog(item())
+      dlog(isolate(item()$name))
 
       createItemPropertiesUI(id, isolate(item()))
     }
+
+    ui.output <- uiOutput(ns("ui_output"))
+
+    output$ui_output <- renderUI({
+      dlog(isolate(item()$name))
+
+      createItemPropertiesUI(id, isolate(item()))
+    })
 
 
     # output$input_default_ui <- renderUI({
@@ -248,6 +256,7 @@ inputItemServer <- function(id, item, global.options = NULL) {
 
     list(
       item = item,
+      ui.output = ui.output,
       createUI = createUI,
       need.redraw = need.redraw,
       redraw.default.ui = redraw.default.ui

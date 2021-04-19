@@ -65,8 +65,7 @@ blueprintEditorApp <- function(blueprint.filename = NULL) {
             )
           ),
           tags$hr(),
-          uiOutput("slate_imports"),
-          tags$hr(),
+          #uiOutput("slate_imports"),
           blueprintEditor2UI("editor", blueprint)
         )
       )
