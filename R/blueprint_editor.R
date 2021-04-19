@@ -121,7 +121,6 @@ blueprintEditor2UI  <- function(id, blueprint) {
   ns <- NS(id)
 
   metadata.ui <- tags$div(
-    class = "container",
     tags$div(
       class = "slates-flow slates-flow-2",
       textInput(ns("blueprint_name"), "Name", value = blueprint$name),
@@ -140,12 +139,13 @@ blueprintEditor2UI  <- function(id, blueprint) {
   )
 
 
-  inputs.ui <- fluidRow(
+  inputs.ui <- tags$div(
+    class = "row h-100",
     column(
       width = 4,
       tags$div(
-        class = "well",
-        style = "height: 90%;",
+        class = "well mb-2",
+        style = "height: calc(100% - 4em);",
         shinyTree::shinyTree(ns("inputs_tree"),
                              stripes = FALSE,
                              multiple = FALSE,
@@ -164,7 +164,8 @@ blueprintEditor2UI  <- function(id, blueprint) {
         )
       ),
       tags$div(
-        class = "py-2 d-flex justify-content-start",
+        class = "",
+        style = "height: 4em;",
         shinyWidgets::dropdownButton(
           inputId = ns("inputs_add"),
           label = "Add",
@@ -178,55 +179,53 @@ blueprintEditor2UI  <- function(id, blueprint) {
         actionButton(ns("inputs_remove"), class = "ml-auto", label = "Delete")
       )
     ),
-    column(
+    tags$div(
+      class = "col-8 h-100",
       style = "overflow-y: auto;",
-      width = 8,
       shinyjs::hidden(textInput(ns("input_id"), label = "")),
       uiOutput(ns("input_item_ui"))
     )
   )
 
 
-  outputs.ui <- tags$div(
-    class = "container",
-    fluidRow(
-      column(
-        width = 4,
-        tags$div(
-          class = "well",
-          style = "height: 90%",
-          shinyTree::shinyTree(ns("outputs_tree"),
-                               stripes = FALSE,
-                               multiple = TRUE,
-                               animation = FALSE,
-                               contextmenu = FALSE,
-                               dragAndDrop = TRUE,
-                               wholerow = TRUE,
-                               theme = "proton",
-                               types =
-                                 "{
+  outputs.ui <- fluidRow(
+    column(
+      width = 4,
+      tags$div(
+        class = "well mb-2",
+        style = "height: calc(100% - 4em);",
+        shinyTree::shinyTree(ns("outputs_tree"),
+                             stripes = FALSE,
+                             multiple = TRUE,
+                             animation = FALSE,
+                             contextmenu = FALSE,
+                             dragAndDrop = TRUE,
+                             wholerow = TRUE,
+                             theme = "proton",
+                             types =
+                               "{
             '#': { 'max_depth' : 1, 'valid_children' : ['output'] },
             'output' : { 'icon' : 'fa fa-poll', 'valid_children' : [] }
           }"
-          )
-        ),
-        tags$div(
-          class = "d-flex justify-content-start",
-          actionButton(ns("add_output"), label = "Add"),
-          actionButton(ns("rename_output"), class = "ml-2", label = "Rename"),
-          actionButton(ns("remove_output"), class = "ml-auto", label = "Delete")
         )
       ),
-      column(
-        width = 8,
-        style = "overflow-y: auto;",
-        uiOutput(ns("output_item_ui"))
+      tags$div(
+        class = "",
+        style = "height: 4em;",
+        actionButton(ns("add_output"), label = "Add"),
+        actionButton(ns("rename_output"), class = "ml-2", label = "Rename"),
+        actionButton(ns("remove_output"), class = "ml-auto", label = "Delete")
       )
+    ),
+    tags$div(
+      class = "col-8 h-100",
+      style = "overflow-y: auto;",
+      uiOutput(ns("output_item_ui"))
     )
   )
 
+
   code.ui <- tags$div(
-    class = "container",
     shinyAce::aceEditor(
       ns("blueprint_source"),
       height = "350px",
@@ -237,7 +236,7 @@ blueprintEditor2UI  <- function(id, blueprint) {
   )
 
   export.ui <- tags$div(
-    class = "container d-flex flex-column",
+    class = "d-flex flex-column",
     radioButtons(
       ns("export_format"),
       inline = TRUE,
@@ -252,14 +251,14 @@ blueprintEditor2UI  <- function(id, blueprint) {
   editor.tab <- function(x) {
     tags$div(
       class = "pt-3",
-      style = "height: 500px",
+      style = "height: 400px",
       x
     )
   }
 
   editor.tab <- tabPanel(
     title = "Editor",
-    class = "container pt-3",
+    class = "container-fluid pt-3",
     #navlistPanel(
     #  widths = c(3, 9),
     #  fluid = FALSE,
@@ -275,24 +274,21 @@ blueprintEditor2UI  <- function(id, blueprint) {
 
   debug.tab <- tabPanel(
     title = "Inspector",
-    class = "container pt-3",
+    class = "container-fluid pt-3",
     tags$div(
-      class = "container pt-3",
-      tags$div(
-        class = "slates-flow slates-flow-3",
-        selectInput(ns("debug_type"), label = "Debug",
-                    choices = c("Blueprint", "State")),
-        selectInput(ns("debug_element"),
-                    label = "Element", choices = "")
-      ),
-      verbatimTextOutput(ns("blueprint_debug")) %>%
-        tagAppendAttributes(style = "overflow: auto; height: 250px;")
-    )
+      class = "slates-flow slates-flow-3",
+      selectInput(ns("debug_type"), label = "Debug",
+                  choices = c("Blueprint", "State")),
+      selectInput(ns("debug_element"),
+                  label = "Element", choices = "")
+    ),
+    verbatimTextOutput(ns("blueprint_debug")) %>%
+      tagAppendAttributes(style = "overflow: auto; height: 250px;")
   )
 
   preview.tab <- tabPanel(
     title = "Preview",
-    class = "container pt-3",
+    class = "container-fluid pt-3",
     flowLayout(
       selectInput(
         ns("preview_inputs_style"),
@@ -497,8 +493,6 @@ blueprintEditor2Server <- function(id, blueprint,  global.options = NULL) {
 
       dlog("renderTree")
 
-      # selected <- isolate(selected.inputs()) %||% names[1]
-
       tree
     })
 
@@ -530,8 +524,12 @@ blueprintEditor2Server <- function(id, blueprint,  global.options = NULL) {
 
       ids <- isolate(selected.inputs())
 
-      tabs <- imap(servers, ~tabPanelBody(value = .y, .x$createUI())) %>%
-        unname
+      tabs <- imap(servers, ~{
+        tabPanelBody(
+          value = .y,
+          .x$ui.output
+        )
+      }) %>% unname
 
       do.call(tabsetPanel,
               append(list(id = ns("input_item_tabs"), type = "hidden", selected = ids[1]), tabs))
@@ -547,6 +545,36 @@ blueprintEditor2Server <- function(id, blueprint,  global.options = NULL) {
       updateTabsetPanel(session, "input_item_tabs", selected = ids[1])
     })
 
+    # observe selected item, and enable or disable buttons elements
+    observe({
+      req(selected <- selected.inputs())
+
+      if (is.null(selected)) {
+        shinyjs::hide("layout_add_input")
+        shinyjs::hide("layout_add_group")
+        return()
+      }
+
+      if (length(selected) > 1) {
+        shinyjs::disable("layout_add")
+        shinyjs::disable("layout_rename")
+        return()
+      }
+
+      item.class <-
+        c(blueprint.data$inputs, blueprint.data$pages, blueprint.data$groups) %>%
+        keep(map(., "id") == selected) %>%
+        class %>% print
+
+      shinyjs::disable("layout_add")
+      shinyjs::disable("layout_rename")
+      shinyjs::show("layout_add_input")
+      shinyjs::show("layout_add_group")
+    })
+
+
+
+
     #
     # Outputs Tab
     #
@@ -557,10 +585,15 @@ blueprintEditor2Server <- function(id, blueprint,  global.options = NULL) {
 
     selected.outputs <- reactive({
       if (is.null(input$outputs_tree))
-        return(character(0))
+        return(NULL)
 
       selected <- shinyTree::get_selected(input$outputs_tree) %>%
         map_chr(~attr(., "stinfo"))
+
+      if (length(selected) == 0)
+        return(NULL)
+      else
+        return(selected)
     })
 
     # render the outputs selector
