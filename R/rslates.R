@@ -401,6 +401,15 @@ loadBlueprints <- function(path, on.error = c("stop", "skip")) {
 }
 
 
+#' Initialize server options from file
+#'
+#' @param config.file
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' initServerOptions(config.file = "my_settings.yaml")
 initServerOptions <- function(config.file = system.file("rslates.yaml", package = "rslates")) {
     opts <- yaml::read_yaml(config.file)
 

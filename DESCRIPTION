@@ -24,7 +24,8 @@ Imports:
     shinyTree,
     digest,
     rlang,
-    reactable
+    reactable,
+    thematic
 Remotes:
     rstudio/shiny
 RoxygenNote: 7.1.1

@@ -7,9 +7,10 @@
 slateOptions(
   envir = new.env(),
   height = NULL,
+  container = "card",
   use.card = TRUE,
   card.header = TRUE,
-  open.inputs = TRUE,
+  view.inputs = TRUE,
   open.editor = FALSE,
   inputs.style = c("tabset", "collapses", "flowing")
 )
@@ -20,15 +21,18 @@ slateOptions(
 \item{height}{height of the slate in any css unit (e.g. "500px"). If NULL
 the height of the slate is unrestricted.}
 
+\item{container}{container for the slate. Either one of "card", "none", or a
+function used to contruct the container UI.}
+
 \item{use.card}{use a bs4 card as a container for the slate UI.}
 
 \item{card.header}{show the card header. Only used if \code{use.card} is TRUE.}
 
+\item{open.editor}{}
+
 \item{inputs.style}{the style used for the inputs panel. \code{"tabset"} uses
 a tabsetPanel as a container for input pages. \code{"collapses"} uses bs4
 collapse panels. \code{"flowing"} displays all pages in a single vertical container.}
-
-\item{open.settings}{start with the input settings panel open.}
 }
 \value{
 a list of options to be passed to \code{slateUI()} and \code{slateServer()}.

@@ -7,11 +7,10 @@
 getSlateUserSources(x)
 }
 \arguments{
-\item{x}{the slate structure}
+\item{x}{the slate data structure}
 }
 \value{
-a list with elements \code{toplevel} and \code{output}, with \code{output} being a list with each
-element named after an output defined in the blueprint.
+a list with elements \code{imports}, \code{toplevel} and \code{outputs}.
 }
 \description{
 Get user source code for all parts of a slate in the form of a names list of

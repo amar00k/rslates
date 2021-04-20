@@ -10,11 +10,10 @@ slateInput(
   default = NULL,
   allow.null = FALSE,
   parent = "auto",
-  long.name = "",
+  long.name = NULL,
   description = "",
   condition = NULL,
   wizards = list(),
-  input.type = type,
   ...
 )
 }
@@ -40,10 +39,10 @@ always show the input.}
 \item{wizards}{a list of wizards associated with this input. Wizards will ususally be
 displayed in a dropdown menu above the input. See \code{\link[=slateWizard]{slateWizard()}} for details.}
 
-\item{input.type}{\emph{legacy: use \code{type} instead}}
-
 \item{...}{additional input parameters to be stored in the input structure. These are usually
 type-specific parameters, such as \code{choices} if the input is of type \code{select}.}
+
+\item{input.type}{\emph{legacy: use \code{type} instead}}
 
 \item{null}{if TRUE, a toggle is displayed to allow the user to select NULL as the input value.}
 }
