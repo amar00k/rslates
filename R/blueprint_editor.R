@@ -117,7 +117,7 @@ outputItemServer <- function(id, item, global.options) {
 # Editor UI
 #
 
-blueprintEditor2UI  <- function(id, blueprint) {
+blueprintEditorUI  <- function(id, blueprint) {
   ns <- NS(id)
 
   metadata.ui <- tags$div(
@@ -319,7 +319,7 @@ blueprintEditor2UI  <- function(id, blueprint) {
 
 
 
-blueprintEditor2Server <- function(id, blueprint,  global.options = NULL) {
+blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
   stopifnot(class(blueprint) == "slateBlueprint")
 
   blueprint.ini <- blueprint
@@ -524,10 +524,10 @@ blueprintEditor2Server <- function(id, blueprint,  global.options = NULL) {
 
       ids <- isolate(selected.inputs())
 
-      tabs <- imap(servers, ~{
+      tabs <- imap(servers, function(x, name) {
         tabPanelBody(
-          value = .y,
-          .x$ui.output
+          value = name,
+          x$ui.output
         )
       }) %>% unname
 
