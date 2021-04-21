@@ -5,6 +5,24 @@ INLINE.MAX.CHAR <- 8
 ARG.TYPES <- c("numeric", "logical", "character", "expression", "choices", "file")
 
 
+#' Create a slate blueprint object
+#'
+#' @param name name (or title) for the blueprint
+#' @param author author of this blueprint
+#' @param category
+#' @param tags
+#' @param source
+#' @param preprocess
+#' @param pages
+#' @param groups
+#' @param inputs
+#' @param outputs
+#' @param imports
+#' @param exports
+#' @param ...
+#'
+#' @return
+#' @export
 slateBlueprint <- function(name = "Untitled",
                            author = "",
                            category = "",
@@ -259,6 +277,17 @@ inferSlateLayout <- function(layout) {
 }
 
 
+#' Create a slate output object
+#'
+#' @param name
+#' @param type
+#' @param source
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
 slateOutput <- function(name, type, source = "", ...) {
   output.data <- list(
     name = name,
@@ -276,15 +305,6 @@ slateOutput <- function(name, type, source = "", ...) {
   return (output.data)
 }
 
-
-slateDataset <- function(name, type, source = "", export = FALSE, export.name = "") {
-  list(
-    name = name,
-    source = source,
-    export = export,
-    export.name = export.name
-  )
-}
 
 
 import.handlers <- list(
@@ -307,6 +327,16 @@ import.handlers <- list(
 )
 
 
+#' Create a slate import object
+#'
+#' @param name
+#' @param type
+#' @param description
+#'
+#' @return
+#' @export
+#'
+#' @examples
 slateImport <- function(name, type, description = "") {
   stopifnot(type %in% names(import.handlers))
 
@@ -318,6 +348,15 @@ slateImport <- function(name, type, description = "") {
 }
 
 
+#' Create a slate export object
+#'
+#' @param var.name
+#' @param out.name
+#'
+#' @return
+#' @export
+#'
+#' @examples
 slateExport <- function(var.name, out.name = var.name) {
   list(
     var.name = var.name,
