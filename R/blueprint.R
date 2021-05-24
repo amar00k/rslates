@@ -61,10 +61,7 @@ slateBlueprint <- function(name = "Untitled",
     # get all blueprint sources
     text <- map(blueprint$outputs, "source") %>%
       unlist(recursive = FALSE) %>%
-      map("text") %>%
       paste(collapse = "\n")
-
-    #text <-
 
     # Handle substitutions
     blueprint$substitutions <-
@@ -72,21 +69,20 @@ slateBlueprint <- function(name = "Untitled",
       regmatches(text, .) %>%
       unlist %>%
       map(preprocessSubstitutionBlock)
-
   }
 
-  if (preprocess == TRUE && !is.null(source)) {
-    preprocessed <- preprocessSource(source)
-
-    blueprint$pages <- preprocessed$pages
-    blueprint$groups <- preprocessed$groups
-    blueprint$inputs <- preprocessed$inputs
-    blueprint$substitutions <- preprocessed$blocks
-    blueprint$toplevel <- preprocessed$toplevel
-    blueprint$outputs <- preprocessed$outputs
-    blueprint$imports <- preprocessed$imports
-    blueprint$exports <- preprocessed$exports
-  }
+  # if (preprocess == TRUE && !is.null(source)) {
+  #   preprocessed <- preprocessSource(source)
+  #
+  #   blueprint$pages <- preprocessed$pages
+  #   blueprint$groups <- preprocessed$groups
+  #   blueprint$inputs <- preprocessed$inputs
+  #   blueprint$substitutions <- preprocessed$blocks
+  #   blueprint$toplevel <- preprocessed$toplevel
+  #   blueprint$outputs <- preprocessed$outputs
+  #   blueprint$imports <- preprocessed$imports
+  #   blueprint$exports <- preprocessed$exports
+  # }
 
   # make sure we dont have parent="auto" anymore
   clear_auto <- . %>%
@@ -187,11 +183,13 @@ slateInput <- function(name,
 slatePage <- function(name,
                       title = name,
                       layout = "flow-2",
-                      description = "") {
+                      description = "",
+                      ...) {
   page <- list(
     name = name,
     title = title,
     description = description,
+    parent = ".root",
     layout = layout
   )
 

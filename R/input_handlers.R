@@ -899,7 +899,7 @@ createInputLayout <- function(pages, groups, inputs,
 
   # build and prepend default page
   my.inputs <- inputs %>%
-    keep(map_lgl(., ~is.null(.$parent))) %>%
+    keep(map_lgl(., ~.$parent == ".root")) %>%
     map(createInputUI, ns = ns) %>%
     tagList() %>%
     do.call(getLayoutFun("flow-2"), .)
