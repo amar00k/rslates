@@ -441,9 +441,6 @@ slateServer <- function(id,
 
       for (name in names(blueprint))
         blueprint[[ name ]] <- new.blueprint[[ name ]]
-
-      # if (update.editor == TRUE)
-      #   blueprint.editor$updateBlueprint(new.blueprint)
     }
 
     #
@@ -881,6 +878,7 @@ slateServer <- function(id,
 
     return(
       list(
+        id = id,
         blueprint = reactive(reactiveValuesToList(blueprint)),
         import.values = import.values,
         export.data = export.data,

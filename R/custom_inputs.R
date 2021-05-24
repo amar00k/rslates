@@ -98,7 +98,7 @@ slatesNavbarPage <- function(title, tabs,
 
   navpanel <- tags$nav(
     id = "title-navbar",
-    class = "navbar navbar-dark navbar-static-top bg-title mb-0",
+    class = "navbar navbar-inverse navbar-static-top bg-title mb-0",
     role = "navigation",
     tags$div(
       class = "container-fluid d-flex align-items-baseline mt-2",
@@ -124,8 +124,8 @@ slatesNavbarPage <- function(title, tabs,
 
   if (session.info == TRUE) {
     footer <- tags$div(
-      footer,
       class = "container",
+      footer,
       tags$h3("Session Info"),
       tags$div(HTML(paste(captureSessionInfo(320), collapse="<br>")))
     )
@@ -133,7 +133,7 @@ slatesNavbarPage <- function(title, tabs,
 
   bootstrapPage(
     shinyjs::useShinyjs(),
-    shiny::bootstrapLib(),
+    shiny::bootstrapLib(bslib::bs_theme(version = 4)),
     #htmltools::findDependencies(shinyBS::bsButton("test", "test")),
     shiny::tags$link(rel = "stylesheet", type = "text/css", href = "slates.css"),
     thematic::thematic_shiny(),
