@@ -441,14 +441,14 @@ runSlatesApp <- function() {
 }
 
 
-runSlatePreviewApp <- function(blueprint,
-                               theme = "Natural (soft light)") {
-    options(rslates.preview.blueprint = blueprint)
-    options(rslates.default.theme = theme)
-    options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
-
-    runApp(system.file("app_slate_preview.R", package = "rslates"))
-}
+# runSlatePreviewApp <- function(blueprint,
+#                                theme = "Natural (soft light)") {
+#     options(rslates.preview.blueprint = blueprint)
+#     options(rslates.default.theme = theme)
+#     options(rslates.themes = sort(c(names(rslate.themes), bslib::bootswatch_themes())))
+#
+#     runApp(system.file("app_slate_preview.R", package = "rslates"))
+# }
 
 
 # runSlateBuilderApp <- function(blueprint = NULL,
@@ -495,15 +495,10 @@ runBlueprintEditorApp <- function(
 }
 
 
-runBlueprintEditor2App <- function(
-    blueprint.filename = NULL,
-    config.file = system.file("rslates.yaml", package = "rslates"),
-    options = list()) {
+runSlateViewerApp <- function(blueprint = NULL, theme = "Natural (soft light)") {
+    options(rslates.viewer.blueprint = blueprint)
 
-    options(rslates.bp.editor.blueprint.filename = blueprint.filename)
-    options(rslates.run.themer = FALSE)
-
-    runApp(system.file("app_blueprint_editor_2.R", package = "rslates"))
+    runApp(system.file("app_slate_viewer.R", package = "rslates"))
 }
 
 
