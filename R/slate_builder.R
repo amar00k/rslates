@@ -22,7 +22,7 @@ createTypeSpecificUI <- function(ns, item) {
   if (length(params) > 0) {
     tags <- lapply(names(params), function(name) {
       par <- params[[ name ]]
-      id <- paste0("input_", name)
+      id <- paste0(name)
 
       switch(
         par$type,
@@ -56,14 +56,12 @@ createTypeSpecificUI <- function(ns, item) {
 }
 
 
-createItemPropertiesUI <- function(id, item) {
-  ns <- NS(id)
-
+createItemPropertiesUI <- function(ns, item) {
   if (class(item) == "slatePage") {
     ui <- tagList(
       tags$h5("Page Properties", paste0("(", item$name, ")")),
       tags$hr(),
-      textAreaInput(ns("page_description"), label = "Description", item$description)
+      textAreaInput(ns("description"), label = "Description", item$description)
     )
   } else if (class(item) == "slateGroup") {
     ui <- tagList(
@@ -75,7 +73,8 @@ createItemPropertiesUI <- function(id, item) {
                               "flow-4",
                               "vertical"),
                   selected = item$layout),
-      textInput(ns("group_condition"), label = "Condition", item$condition)
+      textInput(ns("condition"), label = "Condition", item$condition),
+      textAreaInput(ns("description"), label = "Description", item$description)
     )
   } else if (class(item) == "slateInput") {
     ui <- tagList(
@@ -83,19 +82,19 @@ createItemPropertiesUI <- function(id, item) {
       tags$hr(),
       tags$div(
         class = "slates-flow-2",
-        selectInput(ns("input_input.type"), label = "Type",
+        selectInput(ns("type"), label = "Type",
                     selectize = TRUE,
                     choices = names(input.handlers),
                     selected = item$type),
-        uiOutput(ns("input_default_ui"))
+        uiOutput(ns("ui_default"))
       ),
-      createTypeSpecificUI(ns, item),
+      uiOutput(ns("ui_specific")),
       selectizeInput(
-        ns("input_wizards"), label = "Wizards",
+        ns("wizards"), label = "Wizards",
         choices = names(wizard.list), multiple = TRUE,
         selected = item$wizards
       ),
-      textAreaInput(ns("input_description"), label = "Description", value = item$description)
+      textAreaInput(ns("description"), label = "Description", value = item$description)
     )
   }
 
@@ -107,24 +106,64 @@ inputItemServer <- function(id, item, global.options = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    item <- reactiveVal(item)
+    item.class <- class(item)
+    item.data <- reactiveVal(item)
 
     need.redraw <- reactiveVal("")  # change when we need to redraw this whole page
     redraw.default.ui <- reactiveVal("") # change to update default input (on entering page)
 
-
-    createUI <- function() {
-      dlog(isolate(item()$name))
-
-      createItemPropertiesUI(id, isolate(item()))
-    }
-
     ui.output <- uiOutput(ns("ui_output"))
 
-    output$ui_output <- renderUI({
-      dlog(isolate(item()$name))
 
-      createItemPropertiesUI(id, isolate(item()))
+    output$ui_output <- renderUI({
+      req(x <- isolate(item.data()))
+
+      createItemPropertiesUI(ns, x)
+    })
+
+
+    output$ui_specific <- renderUI({
+      req(x <- isolate(item.data()))
+
+      x$type <- input$type
+
+      createTypeSpecificUI(ns, x)
+    })
+
+
+    output$ui_default <- renderUI({
+      req(x <- isolate(item.data()))
+
+      dlog()
+
+      # listen to these events
+      # redraw.default.ui()
+      # input$input_input.type
+
+      x$name <- "Default Value"
+      x$type <- input$type
+      x$value <- x$default
+      x$wizards <- NULL
+      getHandler(x)$createUI(x, ns = ns)
+    })
+
+
+    observe(label = "update input", {
+      req(x <- isolate(item.data()))
+
+      dlog(names(input))
+
+      for (name in names(input))
+        x[[ name ]] <- input[[ name ]]
+
+      item.data(x)
+    })
+
+
+    item <- reactive({
+      params <- item.data()
+
+      do.call(get(item.class), params)
     })
 
 
@@ -257,7 +296,7 @@ inputItemServer <- function(id, item, global.options = NULL) {
     list(
       item = item,
       ui.output = ui.output,
-      createUI = createUI,
+      # createUI = createUI,
       need.redraw = need.redraw,
       redraw.default.ui = redraw.default.ui
     )

@@ -1,6 +1,8 @@
 
 
 library(rslates)
+library(shinyTree)
+library(bslib)
 
 initServerOptions()
 
@@ -28,29 +30,52 @@ if (!is.null(blueprint.filename)) {
   blueprint <- slateBlueprint()
 }
 
+preview.tab <- tabPanel(
+  title = "Preview",
+  class = "container-fluid pt-3",
+  flowLayout(
+    selectInput(
+      "preview_inputs_style",
+      label = "Input Panel Style",
+      choices = list("tabset", "collapses", "flowing"),
+      selected = "tabset"
+    ),
+    textInput("slate_height", "Slate Height", value = "520px"),
+    checkboxGroupInput(
+      "slate_options", "Card",
+      choices = c("Use Card" = "use.card",
+                  "Show Header" = "card.header"),
+      selected = c("use.card", "card.header"))
+  ),
+  shinyBS::bsTooltip("preview_inputs_style", title = "Style of the inputs panel.",
+                     placement = "top"),
+  shinyBS::bsTooltip("slate_height", title = "Height of the slate in any valid css unit.",
+                     placement = "top"),
+  slateUI("slate")
+)
+
 ui <- slatesNavbarPage(
   title = "Blueprint Editor",
+  #theme = bslib::bs_theme(version = 4),
   theme = theme,
-  header = tagList(
+  header = tags$div(
+    class = "d-flex align-items-center bg-light px-5 py-4",
+    actionButton("new_blueprint", "New Blueprint", icon = icon("new"), class = "mr-2"),
+    actionButton("load_blueprint", "Load Blueprint", icon = icon("load")),
+    uiOutput("save_state", class = "ml-auto"),
+    shinyjs::disabled(
+      actionButton("save_blueprint", "Save Blueprint", icon = icon("save"), class = "ml-2")
+    )
   ),
   tabs = list(
     tabPanel(
-      title = "Blueprint Editor",
+      title = "Edit",
+      #uiOutput("slate_imports"),
       section.div(
-        tags$div(
-          class = "d-flex align-items-center",
-          actionButton("new_blueprint", "New Blueprint", icon = icon("new"), class = "mr-2"),
-          actionButton("load_blueprint", "Load Blueprint", icon = icon("load")),
-          uiOutput("save_state", class = "ml-auto"),
-          shinyjs::disabled(
-            actionButton("save_blueprint", "Save Blueprint", icon = icon("save"), class = "ml-2")
-          )
-        ),
-        tags$hr(),
-        #uiOutput("slate_imports"),
         blueprintEditorUI("editor", blueprint)
       )
-    )
+    ),
+    preview.tab
   ),
   session.info = TRUE
 )
@@ -67,10 +92,24 @@ server <- function(input, output, session) {
   else
     blueprint.path <- getwd()
 
+  slate.options <- do.call(
+    reactiveValues,
+    slateOptions(view.inputs = TRUE, open.editor = FALSE)
+  )
+
+  # Create the slate server
+  slate <- slateServer(
+    "slate",
+    blueprint = blueprint,
+    slate.options = slate.options,
+    global.options = global.options
+  )
+
   # create the blueprint editor server
   blueprint.editor <- blueprintEditorServer(
     "editor",
     blueprint = isolate(blueprint()),
+    slate.server = slate,
     global.options = global.options
   )
 
@@ -84,12 +123,8 @@ server <- function(input, output, session) {
 
   observeEvent(input$select_theme, {
     theme <- loadTheme(input$select_theme)
-
-    tryCatch({
-      session$setCurrentTheme(theme)
-    }, error = function(e) {
-      invalidateLater(1000)
-    })
+    #session$setCurrentTheme()
+    session$setCurrentTheme(theme)
   })
 
 
@@ -116,9 +151,16 @@ server <- function(input, output, session) {
 
   # slate ui
 
-  output$slate_ui <- renderUI({
-    slateUI("the_slate", slate.options = slate.options)
+  observe({
+    slate.options$inputs.style = input$preview_inputs_style
+    slate.options$height = input$slate_height
+    slate.options$use.card = "use.card" %in% input$slate_options
+    slate.options$card.header = "card.header" %in% input$slate_options
   })
+
+  # output$slate_ui <- renderUI({
+  #   slateUI("the_slate", slate.options = slate.options)
+  # })
 
   #
   # New / Load / Save

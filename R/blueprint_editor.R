@@ -1,53 +1,136 @@
 
 
 
-inputsToTree <- function(pages, groups, inputs, selected = "") {
-  inputs.tree <- flatInputsToTree(pages, groups, inputs)
+#' Get a tree representation of the inputs structure
+#'
+#' @param pages
+#' @param groups
+#' @param inputs
+#'
+#' @return a tree of pages, groups and input names
+#' @export
+#'
+#' @examples
+inputsTree <- function(pages, groups, inputs) {
+  make.node <- function(parent) {
+    children <- c(inputs, groups) %>%
+      keep(map_lgl(., ~.$parent == parent))
 
-  node_type <- function(x) {
-    switch(class(x),
-           "slateInput" = "input",
-           "slateGroup" = "group",
-           "slatePage" = "page")
+    if (length(children) == 0)
+      return(character(0))
+
+    map(children, ~make.node(.$name))
   }
 
-  jstree <- function(tree) {
-    id <- tree$id
-
-    nodes <- map(
-      tree$inputs,
-      ~structure("", sttype = "input", stclass = "input",
-                 stinfo = .$id, stselected = .$id == selected)
-    )
-
-    if (length(tree$groups) > 0) {
-      nodes <- map2(
-        tree$groups, map(tree$groups, jstree),
-        ~structure(.y,
-                   sttype = "group", stclass = "group",
-                   stinfo = .x$id, stselected = .x$id == selected)
-      ) %>% append(nodes, .)
-    }
-
-    if (length(tree$pages) > 0) {
-      nodes <- map2(
-        tree$pages, map(tree$pages, jstree),
-        ~structure(.y,
-                   sttype = "pages", stclass = "pages",
-                   stinfo = .x$id, stselected = .x$id == selected)
-      ) %>% append(nodes, .)
-    }
-
-    return(nodes)
-  }
-
-  tree <- jstree(inputs.tree)
-
-  if (selected == "")
-    attr(tree[[1]], "stselected") <- TRUE
-
-  return(tree)
+  c(make.node(".root"),
+    pages %>% map(~make.node(.$name)))
 }
+
+
+inputsToShinyTree <- function(pages, groups, inputs,
+                              opened = "",
+                              selected = "") {
+  tree <- inputsTree(pages, groups, inputs)
+  all.inputs <- c(inputs, groups, pages)
+
+  make_node <- function(node, name) {
+    if (length(node) == 0)
+      node <- ""
+    else
+      node <- imap(node, make_node)
+
+    item <- all.inputs[[ name ]]
+    item.type <- class(item)
+
+    structure(node, sttype = item.type, stinfo = item$name,
+              stopened = item$name %in% opened,
+              stselected = item$name %in% selected)
+  }
+
+  imap(tree, make_node)
+}
+
+
+shinyTreeToDf <- function(stree, old.df = NULL) {
+  get_level <- function(node, parent = ".root") {
+    name <- attr(node, "stinfo")
+
+    if (!is.null(old.df))
+      type <- old.df[ name, ]$type
+    else
+      type <- attr(node, "sttype")
+
+    info <- list()
+    info[[ name ]] <- list(
+      name = name, type = type, parent = parent,
+      opened = attr(node, "stopened"),
+      selected = attr(node, "stselected")
+    ) %>%
+      modify_if(is.null, ~FALSE)
+
+    if (length(attr(node, "names")) > 0) {
+      children <-
+        map(node, get_level, parent = attr(node, "stinfo")) %>%
+        unlist(recursive = FALSE)
+
+      info <- append(info, children)
+    }
+
+    return(info)
+  }
+
+  map(stree, get_level) %>%
+    unlist(recursive = FALSE) %>%
+    set_names(map(., "name")) %>%
+    do.call(rbind.data.frame, .)
+}
+
+
+dfToShinyTree <- function(df) {
+  make_node <- function(name) {
+    x <- df[ name, ]
+    children <- df[ which(df$parent == x$name), ]$name
+
+    children %<>% map(make_node) %>% set_names(children)
+
+    structure(children, sttype = x$type, stinfo = x$name,
+              stopened = x$opened, stselected = x$selected)
+  }
+
+  names <- df[ which(df$parent == ".root"), ]$name
+  map(names, make_node) %>%
+    set_names(names)
+}
+
+
+
+#
+# Modals
+#
+
+
+newInputModal <- function(id) {
+  slatesModal_(id, function(input, output, session) {
+    ns <- session$ns
+
+    list(
+      ui = function() {
+        tagList(
+          textInput(ns("name"), label = "Name", value = ""),
+          selectInput(ns("type"), label = "Type",
+                      choices = names(input.handlers))
+        )
+      },
+      validator = function() {
+        input$name != ""
+      },
+      submit = function() {
+        list(name = input$name, type = input$type)
+      }
+    )
+  })
+}
+
 
 
 
@@ -156,10 +239,10 @@ blueprintEditorUI  <- function(id, blueprint) {
                              theme = "proton",
                              types =
           "{
-            '#': { 'max_depth' : 3, 'valid_children' : ['page', 'group', 'input'] },
-            'page' : { 'icon' : 'fa fa-folder', 'valid_children' : ['group', 'input'] },
-            'group' : { 'icon' : 'fa fa-object-group', 'valid_children' : ['input'] },
-            'input' : { 'icon' : 'fa fa-pen', 'valid_children' : [''] }
+            'default': { 'max_depth' : 3, 'valid_children' : ['slatePage', 'slateGroup', 'slateInput'] },
+            'slatePage' : { 'icon' : 'fa fa-folder', 'valid_children' : ['slateGroup', 'slateInput'] },
+            'slateGroup' : { 'icon' : 'fa fa-object-group', 'valid_children' : ['slateInput'] },
+            'slateInput' : { 'icon' : 'fa fa-pen', 'valid_children' : [''] }
           }"
         )
       ),
@@ -256,9 +339,7 @@ blueprintEditorUI  <- function(id, blueprint) {
     )
   }
 
-  editor.tab <- tabPanel(
-    title = "Editor",
-    class = "container-fluid pt-3",
+  editor.ui <-
     #navlistPanel(
     #  widths = c(3, 9),
     #  fluid = FALSE,
@@ -270,56 +351,56 @@ blueprintEditorUI  <- function(id, blueprint) {
       tabPanel(title = "Code", editor.tab(code.ui)),
       tabPanel(title = "Export", editor.tab(export.ui))
     )
-  )
 
-  debug.tab <- tabPanel(
-    title = "Inspector",
-    class = "container-fluid pt-3",
-    tags$div(
-      class = "slates-flow slates-flow-3",
-      selectInput(ns("debug_type"), label = "Debug",
-                  choices = c("Blueprint", "State")),
-      selectInput(ns("debug_element"),
-                  label = "Element", choices = "")
-    ),
-    verbatimTextOutput(ns("blueprint_debug")) %>%
-      tagAppendAttributes(style = "overflow: auto; height: 250px;")
-  )
 
-  preview.tab <- tabPanel(
-    title = "Preview",
-    class = "container-fluid pt-3",
-    flowLayout(
-      selectInput(
-        ns("preview_inputs_style"),
-        label = "Input Panel Style",
-        choices = list("tabset", "collapses", "flowing"),
-        selected = "tabset"
-      ),
-      textInput(ns("slate_height"), "Slate Height", value = "520px"),
-      checkboxGroupInput(
-        ns("slate_options"), "Card",
-        choices = c("Use Card" = "use.card",
-                    "Show Header" = "card.header"),
-        selected = c("use.card", "card.header"))
-    ),
-    shinyBS::bsTooltip(ns("preview_inputs_style"), title = "Style of the inputs panel.",
-                       placement = "top"),
-    shinyBS::bsTooltip(ns("slate_height"), title = "Height of the slate in any valid css unit.",
-                       placement = "top"),
-    slateUI(ns("slate"))
-  )
+  # debug.tab <- tabPanel(
+  #   title = "Inspector",
+  #   class = "container-fluid pt-3",
+  #   tags$div(
+  #     class = "slates-flow slates-flow-3",
+  #     selectInput(ns("debug_type"), label = "Debug",
+  #                 choices = c("Blueprint", "State")),
+  #     selectInput(ns("debug_element"),
+  #                 label = "Element", choices = "")
+  #   ),
+  #   verbatimTextOutput(ns("blueprint_debug")) %>%
+  #     tagAppendAttributes(style = "overflow: auto; height: 250px;")
+  # )
 
-  tabsetPanel(
-    editor.tab,
-    debug.tab,
-    preview.tab
-  )
+  # preview.tab <- tabPanel(
+  #   title = "Preview",
+  #   class = "container-fluid pt-3",
+  #   flowLayout(
+  #     selectInput(
+  #       ns("preview_inputs_style"),
+  #       label = "Input Panel Style",
+  #       choices = list("tabset", "collapses", "flowing"),
+  #       selected = "tabset"
+  #     ),
+  #     textInput(ns("slate_height"), "Slate Height", value = "520px"),
+  #     checkboxGroupInput(
+  #       ns("slate_options"), "Card",
+  #       choices = c("Use Card" = "use.card",
+  #                   "Show Header" = "card.header"),
+  #       selected = c("use.card", "card.header"))
+  #   ),
+  #   shinyBS::bsTooltip(ns("preview_inputs_style"), title = "Style of the inputs panel.",
+  #                      placement = "top"),
+  #   shinyBS::bsTooltip(ns("slate_height"), title = "Height of the slate in any valid css unit.",
+  #                      placement = "top"),
+  #   slateUI(ns("slate"))
+  # )
+
+  # tabsetPanel(
+  #   editor.tab,
+  #   debug.tab
+  #   #preview.tab
+  # )
 }
 
 
 
-blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
+blueprintEditorServer <- function(id, blueprint, slate.server = NULL, global.options = NULL) {
   stopifnot(class(blueprint) == "slateBlueprint")
 
   blueprint.ini <- blueprint
@@ -328,47 +409,72 @@ blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
     ns <- session$ns
 
     # create the blueprint container
-    blueprint.data <- reactiveValues(
-      name = blueprint.ini$name,
-      author = blueprint.ini$author,
-      category = blueprint.ini$category,
-      tags = blueprint.ini$tags,
-      source = blueprint.ini$source,
-      pages = blueprint.ini$pages,
-      groups = blueprint.ini$groups,
-      inputs = blueprint.ini$inputs,
-      outputs = blueprint.ini$outputs,
-      imports = blueprint.ini$imports,
-      exports = blueprint.ini$exports
-    )
+    blueprint.data <- reactiveValues()
 
-    slate.options <- do.call(
-      reactiveValues,
-      slateOptions(view.inputs = TRUE, open.editor = FALSE)
-    )
+    global.options$group.name.generator <- sequenceGenerator("group")
 
     # Create the slate server
-    slate <- slateServer(
-      "slate",
-      blueprint = blueprint,
-      slate.options = slate.options,
-      global.options = global.options
-    )
+    if (is.null(slate.server)) {
+      slate <- slateServer(
+        "slate",
+        blueprint = blueprint,
+        #slate.options = slate.options,
+        global.options = global.options
+      )
+    } else {
+      slate <- slate.server
+    }
 
     errors <- reactiveVal(list())
 
     text.input.modal <- textInputModal(ns("text_input_modal"))
 
-    observe({
-      slate.options$inputs.style = input$preview_inputs_style
-      slate.options$height = input$slate_height
-      slate.options$use.card = "use.card" %in% input$slate_options
-      slate.options$card.header = "card.header" %in% input$slate_options
-    })
-
+    # observe({
+    #   slate.options$inputs.style = input$preview_inputs_style
+    #   slate.options$height = input$slate_height
+    #   slate.options$use.card = "use.card" %in% input$slate_options
+    #   slate.options$card.header = "card.header" %in% input$slate_options
+    # })
 
     blueprint <- reactive({
-      do.call(slateBlueprint, reactiveValuesToList(blueprint.data))
+      data <- reactiveValuesToList(blueprint.data)
+
+      df <- tree.data()
+      inputs <- reactiveValuesToList(input.data)
+      input.servers <- reactiveValuesToList(input.servers)
+
+      req(all(rownames(df) %in% names(input.servers)))
+
+      # data$pages <-
+      #   inputs[ filter(df, type == "slatePage")$name ] %>%
+      #   map(~list_modify(.,
+      #                    parent = df[ .$name, ]$parent,
+      #                    title = .$name))
+      # data$groups <-
+      #   inputs[ filter(df, type == "slateGroup")$name ] %>%
+      #   map(~list_modify(., parent = df[ .$name, ]$parent))
+      #
+      # data$inputs <-
+      #   inputs[ filter(df, type == "slateInput")$name ] %>%
+      #   map(~list_modify(., parent = df[ .$name, ]$parent))
+      data$pages <-
+        filter(df, type == "slatePage")$name %>%
+        map(~input.servers[[ . ]]$item()) %>%
+        map(~list_modify(.,
+                         parent = df[ .$name, ]$parent,
+                         title = .$name))
+
+      data$groups <-
+        filter(df, type == "slateGroup")$name %>%
+        map(~input.servers[[ . ]]$item()) %>%
+        map(~list_modify(., parent = df[ .$name, ]$parent))
+
+      data$inputs <-
+        filter(df, type == "slateInput")$name %>%
+        map(~input.servers[[ . ]]$item()) %>%
+        map(~list_modify(., parent = df[ .$name, ]$parent))
+
+      do.call(slateBlueprint, data)
     })
 
 
@@ -378,6 +484,17 @@ blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
       slate$updateBlueprint(blueprint())
     })
 
+
+    getInputByName <- function(name) {
+      c(blueprint.data$inputs, blueprint.data$pages, blueprint.data$groups) %>%
+        keep(map(., "name") == name) %>%
+        pluck(1)
+    }
+
+
+    #
+    # Metadata Tab
+    #
 
     observe(label = "blueprint.metadata", {
       req(
@@ -466,53 +583,82 @@ blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
     #
     # Inputs Tab
     #
+
+    input.data <- reactiveValues()
+    tree.data <- reactiveVal()
     input.servers <- reactiveValues()
-    input.tree <- reactive({
-      req(
-        pages <- blueprint.data$pages,
-        groups <- blueprint.data$groups,
-        inputs <- blueprint.data$inputs
-      )
 
-      inputsToTree(pages, groups, inputs)
-    })
 
-    selected.inputs <- reactive({
+    observeEvent(input$inputs_tree, {
       dlog()
 
-      if (is.null(input$inputs_tree))
-        return(character(0))
-
-      selected <- shinyTree::get_selected(input$inputs_tree) %>%
-        map_chr(~attr(., "stinfo"))
+      tree.data(
+        shinyTreeToDf(input$inputs_tree, tree.data())
+      )
     })
+
+
+    selected.inputs <- reactive({
+      filter(tree.data(), selected == TRUE) %>% rownames
+    })
+
 
     # render inputs tree
     output$inputs_tree <- shinyTree::renderTree({
-      req(tree <- input.tree())
+      dlog("render tree")
 
-      dlog("renderTree")
+      isolate(
+        if (!is.null(input$inputs_tree))
+          old.names <- shinyTreeToDf(input$inputs_tree, tree.data())$name
+        else
+          old.names <- ""
+      )
 
-      tree
+      req(
+        !identical(tree.data()$name, old.names),
+        cancelOutput = TRUE
+      )
+
+      dfToShinyTree(tree.data())
     })
+
 
     # create servers for inputs properties
     observe({
       req(
-        inputs <- blueprint.data$inputs,
-        pages <- blueprint.data$pages,
-        groups <- blueprint.data$groups
+        tree.data(),
+        all(rownames(tree.data()) %in% names(input.data))
       )
 
-      all.inputs <- c(inputs, pages, groups)
+      for (x in rownames(tree.data())) {
+        if (is.null(input.servers[[ x ]])) {
+          name <- x
 
-      for (x in all.inputs) {
-        if (is.null(input.servers[[ x$id ]])) {
-          input.servers[[ x$id ]] <-
-            inputItemServer(ns(paste0("builder_", x$id)), x, global.options)
+          server <- inputItemServer(
+            paste0("builder_", name), input.data[[ name ]], global.options
+          )
+
+          input.servers[[ name ]] <- server
         }
       }
     })
+
+
+    observe({
+      req(
+        servers <- reactiveValuesToList(input.servers),
+        selected <- selected.inputs()
+      )
+
+      items <- map(servers, ~.$item())
+      for (x in items) {
+        if (!identical(input.data[[ x$name ]], x)) {
+          dlog(x$name)
+          input.data[[ x$name ]] <- x
+        }
+      }
+    })
+
 
     # render the inputs properties UI
     output$input_item_ui <- renderUI({
@@ -522,7 +668,7 @@ blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
 
       dlog()
 
-      ids <- isolate(selected.inputs())
+      selected <- isolate(selected.inputs())
 
       tabs <- imap(servers, function(x, name) {
         tabPanelBody(
@@ -531,47 +677,176 @@ blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
         )
       }) %>% unname
 
-      do.call(tabsetPanel,
-              append(list(id = ns("input_item_tabs"), type = "hidden", selected = ids[1]), tabs))
+      do.call(
+        tabsetPanel,
+        append(
+          list(
+            id = ns("input_item_tabs"),
+            type = "hidden",
+            selected = selected[1]
+          ),
+          tabs
+        )
+      )
     })
 
 
     observeEvent(selected.inputs(), {
       req(
-        ids <- selected.inputs(),
-        length(ids) == 1
+        length(selected.inputs()) == 1
       )
 
-      updateTabsetPanel(session, "input_item_tabs", selected = ids[1])
+      updateTabsetPanel(session, "input_item_tabs", selected = selected.inputs())
     })
+
+
 
     # observe selected item, and enable or disable buttons elements
     observe({
       req(selected <- selected.inputs())
 
       if (is.null(selected)) {
-        shinyjs::hide("layout_add_input")
-        shinyjs::hide("layout_add_group")
+        shinyjs::hide("inputs_add_input")
+        shinyjs::hide("inputs_add_group")
         return()
       }
 
       if (length(selected) > 1) {
-        shinyjs::disable("layout_add")
-        shinyjs::disable("layout_rename")
+        shinyjs::disable("inputs_add")
+        shinyjs::disable("inputs_rename")
         return()
       }
 
-      item.class <-
-        c(blueprint.data$inputs, blueprint.data$pages, blueprint.data$groups) %>%
-        keep(map(., "id") == selected) %>%
-        class %>% print
+      # item.class <-
+      #   c(blueprint.data$inputs, blueprint.data$pages, blueprint.data$groups) %>%
+      #   keep(map(., "id") == selected) %>%
+      #   class
 
-      shinyjs::disable("layout_add")
-      shinyjs::disable("layout_rename")
-      shinyjs::show("layout_add_input")
-      shinyjs::show("layout_add_group")
+      shinyjs::enable("inputs_add")
+      shinyjs::enable("inputs_rename")
+      shinyjs::show("inputs_add_input")
+      shinyjs::show("inputs_add_group")
     })
 
+
+    addInputElement <- function(x) {
+      tree.data(
+        add_row(tree.data(),
+                name = x$name, type = class(x), parent = x$parent,
+                opened = FALSE, selected = TRUE) %>%
+          set_rownames(.$name)
+      )
+
+      input.data[[ x$name ]] <- x
+    }
+
+
+    # handle the add page button
+    observeEvent(input$inputs_add_page, {
+      text.input.modal$show(
+        title = "New Page",
+        label = "Page Name",
+        placeholder = "Enter page name/title",
+        callback = function(value) {
+          page <- slatePage(name = value)
+          addInputElement(page)
+        })
+    })
+
+
+    # handle the add group button
+    observeEvent(input$inputs_add_group, {
+      selected <- selected.inputs()
+
+      req(length(selected) < 2)
+
+      if (length(selected) == 0) {
+        parent <- ".root"
+      } else {
+        item <- input.data[[ selected ]]
+
+        if (class(item) != "slatePage")
+          parent <- item$parent
+        else
+          parent <- item$name
+      }
+
+      group <- slateGroup(name = global.options$group.name.generator(),
+                          parent = parent)
+      addInputElement(group)
+
+      shinyjs::click("inputs_add") # closes the dropdown menu
+    })
+
+
+    new.input.modal <- newInputModal("new_input")
+
+    # handle the add input button
+    observeEvent(input$inputs_add_input, {
+      selected <- selected.inputs()
+
+      req(length(selected) < 2)
+
+      new.input.modal$show(
+        title = "New Input",
+        callback = function(name, type) {
+          if (length(selected) == 0) {
+            parent <- ".root"
+          } else {
+            item <- input.data[[ selected ]]
+
+            if (class(item) == "slateInput")
+              parent <- item$parent
+            else
+              parent <- item$name
+          }
+
+          new.input <- slateInput(name = name, type = type, parent = parent)
+          addInputElement(new.input)
+        })
+    })
+
+
+    # handle rename item button
+    observeEvent(input$inputs_rename, {
+      req(
+        sel <- selected.inputs(),
+        length(sel) == 1,
+        item <- input.data[[ sel ]]
+      )
+
+      text.input.modal$show(
+        title = "Rename Item",
+        label = "Item Name",
+        value = item$name,
+        callback = function(value) {
+          # rename item
+          input.data[[ value ]] <- input.data[[ sel ]]
+          input.data[[ value ]]$name <- value
+
+          # update tree.data
+          df <- tree.data() %>%
+            mutate(name = ifelse(name == sel, value, name),
+                   parent = ifelse(parent == sel, value, parent)) %>%
+            set_rownames(.$name)
+
+          tree.data(df)
+        })
+    })
+
+
+    # handle remove item button
+    observeEvent(input$inputs_remove, {
+      req(
+        sel <- selected.inputs(),
+        length(sel) == 1,
+        item <- input.data[[ sel ]]
+      )
+
+      tree.data(
+        tree.data() %>% filter(name != sel)
+      )
+    })
 
 
 
@@ -653,9 +928,9 @@ blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
         placeholder = "Enter output name",
         callback = function(value) {
           blueprint.data$outputs[[ value ]] <- slateOutput(name = value, type = "plot")
-          updateSelectInput(session, "select_output",
-                            choices = names(blueprint.data$outputs),
-                            selected = value)
+          # updateSelectInput(session, "select_output",
+          #                   choices = names(blueprint.data$outputs),
+          #                   selected = value)
         })
     })
 
@@ -668,9 +943,9 @@ blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
         callback = function(value) {
           blueprint.data$outputs[[ input$select_output ]]$name <- value
           names(blueprint.data$outputs) <- map(blueprint.data$outputs, "name")
-          updateSelectInput(session, "select_output",
-                            choices = names(blueprint.data$outputs),
-                            selected = value)
+          # updateSelectInput(session, "select_output",
+          #                   choices = names(blueprint.data$outputs),
+          #                   selected = value)
         })
     })
 
@@ -681,17 +956,57 @@ blueprintEditorServer <- function(id, blueprint,  global.options = NULL) {
 
       blueprint.data$outputs[[ input$select_output ]] <- NULL
 
-      selected <- names(blueprint.data$outputs)[ selected ]
-      updateSelectInput(session, "select_output",
-                        choices = names(blueprint.data$outputs),
-                        selected = selected)
+      # selected <- names(blueprint.data$outputs)[ selected ]
+      # updateSelectInput(session, "select_output",
+      #                   choices = names(blueprint.data$outputs),
+      #                   selected = selected)
     })
 
 
-    list(
-      blueprint = blueprint
-    )
 
+    # set the active blueprint and initialize everything
+    setBlueprint <- function(bprint) {
+      dlog()
+
+      blueprint.data$name <- bprint$name
+      blueprint.data$author <- bprint$author
+      blueprint.data$category <- bprint$category
+      blueprint.data$tags <- bprint$tags
+      blueprint.data$source <- bprint$source
+      blueprint.data$outputs <- bprint$outputs
+      blueprint.data$imports <- bprint$imports
+      blueprint.data$exports <- bprint$exports
+
+      # regenerate group names
+      gnames <-
+        map_chr(seq_along(bprint$groups), ~global.options$group.name.generator()) %>%
+        set_names(names(bprint$groups))
+
+      bprint$groups %<>%
+        map(~list_modify(., name = gnames[[ .$name ]])) %>%
+        set_names(map(., "name"))
+
+      bprint$inputs %<>%
+        modify_if(~.$parent %in% names(gnames),
+                  ~list_modify(., parent = gnames[[ .$parent ]]))
+
+      tree.data(
+        inputsToShinyTree(
+          bprint$pages, bprint$groups, bprint$inputs
+        ) %>%
+          shinyTreeToDf
+      )
+
+      for (x in c(bprint$pages, bprint$groups, bprint$inputs))
+        input.data[[ x$name ]] <- x
+    }
+
+    isolate(setBlueprint(blueprint.ini))
+
+    list(
+      blueprint = blueprint,
+      slate.server = slate
+    )
   })
 }
 
