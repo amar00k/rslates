@@ -3,10 +3,13 @@
 
 
 slatesWidgetGalleryApp <- function() {
+  #ns <- NS()
+  ns <- identity
+
   inputs <- list(
-    slateInput("text", "character", default = "Some text", null = TRUE,
+    slateInput("text", "character", default = "Some text",
                description = "A simple text input."),
-    slateInput("expr", "expression", default = "rep(1:10, 2)",
+    slateInput("expr", "expression", default = "rep(1:10, 2)", allow.null = TRUE,
                description = "An expression input. It has a slightly different appearance.
                               Try entering an invalid expression that doesn't parse."),
     slateInput("number", "numeric", default = "42",
@@ -27,7 +30,7 @@ slatesWidgetGalleryApp <- function() {
     slateInput("multiple_anythings", "choices", choices = c("write", "something", "or choose this", "or this"),
                default = c("write", "something"), multiple = TRUE, custom = TRUE,
                description = "A multiple-choice select input that allows arbitrary entries."),
-    slateInput("multi_input", type = "multi",
+    slateInput("multi_input", type = "multi", allow.null = FALSE,
                default = "character",
                inputs = list(
                  character = list(default = "Life"),
@@ -36,8 +39,9 @@ slatesWidgetGalleryApp <- function() {
                  numeric = list(default = 42)
                )
     ),
-    slateInput("multi_input_2", type = "multi",
-               default = "character",
+    slateInput("multi_input_2",
+               type = "multi",
+               default = "numeric2",
                allow.null = TRUE,
                inputs = list(
                  numeric = list(default = 1),
@@ -47,7 +51,9 @@ slatesWidgetGalleryApp <- function() {
     )
   ) %>% set_names(sapply(., "[[", "name"))
 
-  group <- slateGroup(name = "group", layout = "flow-3")
+  #inputs <- head(inputs, 12)
+
+  group <- slateGroup(name = "group", layout = "flow-3", description = "Inputs")
 
   inputs %<>% map(~list_modify(., parent = group$name))
 
@@ -64,6 +70,19 @@ slatesWidgetGalleryApp <- function() {
     )
   }
 
+  page.ui <- div(
+    class = "container",
+    createGroupUI(group, inputs, ns),
+    #reactable::reactableOutput(ns("input_table"))
+    div(
+      class = "card align-items-center mt-3",
+      div(
+        class = "card-body",
+        tableOutput(ns("input_table"))
+      )
+    )
+  )
+
   ui <- slatesNavbarPage(
     title = "Slates Widget Gallery",
     theme = getOption("rslates.default.theme"),
@@ -71,7 +90,8 @@ slatesWidgetGalleryApp <- function() {
       tabPanel(
         "Inputs",
         section.div(
-          widgetGalleryInputsUI(id = "gallery", inputs, group)
+          page.ui
+          #widgetGalleryInputsUI(id = "gallery", inputs, group)
         )
       )
     ),
@@ -101,7 +121,54 @@ slatesWidgetGalleryApp <- function() {
       session$setCurrentTheme(theme)
     })
 
-    widgetGalleryServer("gallery", inputs, global.options)
+    #
+    # App
+    #
+
+    ready <- uiReady(session)
+
+    # input observers
+    observe({
+      for (x in inputs) {
+        getHandler(x)$observer(x, session)
+      }
+    })
+
+
+    valueString <- function(val, max.length = 400) {
+      val <- toString(val)
+      if (nchar(val) > (max.length))
+        val <- paste0(
+          substring(val, 1, max.length / 2),
+          "...",
+          substring(val, nchar(val) - max.length / 2, nchar(val))
+        )
+
+      return(val)
+    }
+
+
+    inputs.table <- reactive({
+      req(ready())
+
+      values <- map(inputs, ~getHandler(.x)$as.value(.x, session))
+
+      data.frame(
+        Name = map_chr(inputs, "name"),
+        Type = map_chr(inputs, "type"),
+        Value = map_chr(values, valueString),
+        Class = map_chr(values, class),
+        Source = map_chr(inputs, ~getHandler(.x)$as.source(.x, session)),
+        check.names = FALSE
+      )
+    })
+
+    output$input_table <- renderTable({
+      inputs.table()
+    })
+
+
+    #widgetGalleryServer("gallery", inputs, global.options)
   }
 
   if (options()$rslates.run.themer == TRUE)
