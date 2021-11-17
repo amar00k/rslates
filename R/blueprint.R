@@ -117,6 +117,8 @@ slateBlueprint <- function(name = "Untitled",
 #'
 #' @return A list of input parameters suitable to be passed along to other `rslates` functions.
 #' @export
+
+
 slateInput <- function(name,
                        type = "character",
                        default = NULL,
@@ -127,13 +129,39 @@ slateInput <- function(name,
                        condition = NULL,
                        wizards = list(),
                        ...) {
-  if (is.null(default))
-    default <- input.handlers[[ type ]]$default.value
+  # create the "inputs" structure
+  if (type != "multi") {
+    # TODO: do this below for all input types
+    if (is.null(default))
+      default <- input.handlers[[ type ]]$default.value
+
+    # create an inputs structure
+    inputs <- list()
+    inputs[[ type ]] <- list(
+      type = type,
+      default = default,
+      id = paste0("input_", name, "-", type),
+      ...
+    )
+
+    default <- type
+    type <- "multi"
+  } else {
+    inputs <- list(...)$inputs
+  }
+
+  if (allow.null && !("null" %in% names(inputs)))
+    inputs <- append(inputs, list("null"=list(default = NULL)))
+
+  inputs <- imap(inputs, ~list_modify(.x, type = .y, id = paste0("input_", name, "-", .y)))
+  inputs <- map(inputs, ~getHandler(.)$initInput(.))
+  inputs <- map(inputs, ~list_modify(., value = .$default))
 
   input <- list(
     name = name,
-    type = type,
+    type = "multi",
     default = default,
+    inputs = inputs,
     allow.null = allow.null,
     parent = parent,
     long.name = long.name,
@@ -165,8 +193,65 @@ slateInput <- function(name,
   input$id <- paste0("input_", name)
   input$value <- input$default
 
+  #input$type <- NULL
+
   return (input)
 }
+
+# old version
+
+# slateInput <- function(name,
+#                        type = "character",
+#                        default = NULL,
+#                        allow.null = FALSE,
+#                        parent = "auto", # "auto", "none", id
+#                        long.name = NULL,
+#                        description = "",
+#                        condition = NULL,
+#                        wizards = list(),
+#                        ...) {
+#   if (is.null(default))
+#     default <- input.handlers[[ type ]]$default.value
+#
+#   input <- list(
+#     name = name,
+#     type = type,
+#     default = default,
+#     allow.null = allow.null,
+#     parent = parent,
+#     long.name = long.name,
+#     description = description,
+#     condition = condition,
+#     wizards = wizards
+#   )
+#
+#   class(input) <- "slateInput"
+#
+#   # add additional input parameters specified
+#   input <- modifyList(input, list(...))
+#
+#   # check if valid input type
+#   if (!(input$type %in% names(input.handlers)))
+#     stop("\"", input$type, "\" is not a valid input type.")
+#
+#   # set default value
+#   if (is.null(input$default))
+#     input$default <- getHandler(input)$default.value
+#
+#   # initialize type specific variables
+#   input <- getHandler(input)$initInput(input)
+#
+#   # coerce default value
+#   input$default <- getHandler(input)$as.value(x = input, value = input$default)
+#
+#   # make sure the id is set
+#   input$id <- paste0("input_", name)
+#   input$value <- input$default
+#
+#   return (input)
+# }
+
+
 
 
 #' Define a Page For Slate Inputs
@@ -360,22 +445,6 @@ slateExport <- function(var.name, out.name = var.name) {
     var.name = var.name,
     out.name = out.name
   )
-}
-
-
-getHandler <- function(x) {
-  if (class(x) == "slateInput") {
-    input.handlers[[ x$type ]]
-  } else if (class(x) == "slateOutput") {
-    output.handlers[[ x$type ]]
-  }
-}
-
-
-assignInputValues <- function(x, values) {
-  x %>%
-    modify_if(~.$name %in% names(values),
-              ~list_modify(., value = values[[ .$name ]]))
 }
 
 

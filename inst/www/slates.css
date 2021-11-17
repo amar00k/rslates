@@ -282,6 +282,20 @@
 }
 
 
+.slates-input-tabset {
+  float: right;
+  font-size: xx-small;
+}
+
+.slates-input-tabset > li {
+/*  border-radius: .3rem; */
+}
+
+.slates-input-tabset > .nav-item > .nav-link {
+/*  border-radius: inherit; */
+  padding: 2px 4px;
+}
+
 /* Inputs */
 .expression-input {
   font-family: Monaco, Menlo, "Ubuntu Mono", Consolas, source-code-pro, monospace;

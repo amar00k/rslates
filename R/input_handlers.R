@@ -214,6 +214,16 @@ inputHandler <- function(
 input.handlers <- list(
 
   #
+  # null
+  #
+  null = inputHandler(
+    default.value = NULL,
+    get.input = function(x, session) NULL,
+    as.value = function(x, session = NULL, value = NULL) NULL,
+    as.source = function(x = NULL, session = NULL, value = NULL) "NULL"
+  ),
+
+  #
   # logical
   #
   logical = inputHandler(
@@ -301,6 +311,18 @@ input.handlers <- list(
       quote = list(label = "Quote", type = "logical", default = TRUE)
     ),
 
+    # initInput = function(x) {
+    #
+    #   #x$default <- ifelse(x$default, x$default, "")
+    #   #x$quote <- ifelse(x$quote,)
+    #
+    #
+    #   # if (class(x$default) != "character")
+    #   #   stop("Default must be a single character string.")
+    #
+    #   return(x)
+    # },
+
     createUI = function(x, ns = identity) {
       value <- if (!is.null(x$value)) x$value else x$default
 
@@ -318,7 +340,7 @@ input.handlers <- list(
       if (is.null(value))
         value <- input.handlers$character$as.value(x, session, value)
 
-      if (x$quote == TRUE)
+      if (!is.null(x$quote) && x$quote == TRUE)
         paste0('"', value, '"')
       else
         value
@@ -487,9 +509,11 @@ input.handlers <- list(
 
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
-        value <- input.handlers$expression$get.input(x, session)[[1]]
+        value <- session$input[[ x$id ]]
 
       value <- as.character(value)
+
+      dlog(value)
 
       return(value)
     },
@@ -497,7 +521,7 @@ input.handlers <- list(
     as.source = function(x = NULL, session = NULL, value = NULL) {
       value <- input.handlers$choices$as.value(x, session, value)
 
-      if (x$quote == TRUE)
+      if (!is.null(x$quote) && x$quote == TRUE)
         value %<>% paste0('"', ., '"')
 
       if (length(value) > 1)
@@ -632,8 +656,8 @@ input.handlers <- list(
       x$inputs %<>%
         imap(~list_modify(.x,
                           type = .y,
-                          name = paste0(x$name, "-", .y))) %>%
-        map(~do.call(slateInput, .))
+                          name = paste0(x$name, "-", .y))) #%>%
+        #map(~do.call(slateInput, .))
 
       if (class(x$default) != "character")
         stop("Default must be a single character string indicating the selected input type.")
@@ -670,12 +694,16 @@ input.handlers <- list(
       #   return(x$default)
       # }
 
+      #dlog(list(selected = selected, values = values))
+
       list(selected = selected, values = values)
     },
 
     as.value = function(x, session = NULL, value = NULL) {
       if (is.null(value))
         value <- input.handlers$multi$get.input(x, session)
+
+      dlog("MULTI AS VALUE")
 
       if (length(value) != 2 || class(value) != "list")
         stop("Value must be a list of length 2.")
@@ -686,20 +714,24 @@ input.handlers <- list(
       value$values %<>%
         imap(~input.handlers[[ .y ]]$as.value(x = x$inputs[[ .y ]], value = .x))
 
-      return(value)
+      return(value$values[[ value$selected ]])
     },
 
     as.source = function(x = NULL, session = NULL, value = NULL) {
       if (is.null(value))
-        value <- input.handlers$multi$as.value(x, session, value)
+        value <- input.handlers$multi$get.input(x, session)
 
-      if (is.null(value))
-        return("NULL")
+      if (length(value) != 2 || class(value) != "list")
+        stop("Value must be a list of length 2.")
 
-      source <- input.handlers[[ value$selected ]]$as.source(
-        x = x$inputs[[ value$selected ]],
-        value = value$values[[ value$selected ]]
-      )
+      if (is.null(value$selected) || value$selected == "NULL")
+        return(NULL)
+
+      selected <- value$selected
+      source <- input.handlers[[ selected ]]$as.source(
+        x = x$inputs[[ selected ]],
+        session = session,
+        value$values[[ selected ]])
 
       return(source)
     },
@@ -707,19 +739,132 @@ input.handlers <- list(
     observer = function(x, session) {
       req(selected <- session$input[[ x$id ]])
 
-      # selected input id
-      sel.name <- paste0(x$name, "-", selected)
-
-      js <- map_chr(x$inputs, ~{
-        getHandler(.)$setVisible(., session, visible = (selected != "NULL" && .$name == sel.name),
-                                  tag.only = TRUE, return.js = TRUE)
-      }) %>% paste(collapse = "\n")
-
-      shinyjs::runjs(js)
+#      print(session$input[[ x$id ]])
+#
+#       # selected input id
+#       sel.name <- paste0(x$name, "-", selected)
+#
+#       js <- map_chr(x$inputs, ~{
+#         getHandler(.)$setVisible(., session, visible = (selected != "NULL" && .$name == sel.name),
+#                                   tag.only = TRUE, return.js = TRUE)
+#       }) %>% paste(collapse = "\n")
+#
+#       shinyjs::runjs(js)
     }
   )
 
 )
+
+
+
+
+
+initInput <- function(x) {
+  x$inputs %<>%
+    imap(~list_modify(.x,
+                      type = .y,
+                      name = paste0(x$name, "-", .y)))
+
+  if (is.null(x$default))
+    x$default <- names(x$inputs)[[1]]
+
+  if (class(x$default) != "character")
+    stop("Default must be a single character string indicating the selected input type.")
+
+  x$default <- list(selected = x$default,
+                    values = map(x$inputs, "default"))
+
+  return(x)
+}
+
+  # createUI = function(x, ns = identity) {
+  #   value <- if (!is.null(x$value)) x$value else x$default
+  #
+  #   makeSlatesMultiInput(
+  #     ns(x$id), label = x$name,
+  #     value = value$selected,
+  #     inputs = x$inputs,
+  #     allow.null = x$allow.null
+  #   )
+  # },
+
+  # updateUI = function(x, session) {
+  #
+  # },
+  #
+#   get.input = function(x, session) {
+#     selected <- session$input[[ x$id ]]
+#
+#     values <- x$inputs %>%
+#       map(~getHandler(.)$get.input(., session))
+#
+#     # if (!selected %in% names(x$inputs) ||
+#     #     any(map_lgl(values, is.null))) {
+#     #   return(x$default)
+#     # }
+#
+#     #dlog(list(selected = selected, values = values))
+#
+#     list(selected = selected, values = values)
+#   },
+#
+#   as.value = function(x, session = NULL, value = NULL) {
+#     if (is.null(value))
+#       value <- input.handlers$multi$get.input(x, session)
+#
+#     dlog("MULTI AS VALUE")
+#
+#     if (length(value) != 2 || class(value) != "list")
+#       stop("Value must be a list of length 2.")
+#
+#     if (is.null(value$selected) || value$selected == "NULL")
+#       return(NULL)
+#
+#     value$values %<>%
+#       imap(~input.handlers[[ .y ]]$as.value(x = x$inputs[[ .y ]], value = .x))
+#
+#     return(value$values[[ value$selected ]])
+#   },
+#
+#   as.source = function(x = NULL, session = NULL, value = NULL) {
+#     if (is.null(value))
+#       value <- input.handlers$multi$get.input(x, session)
+#
+#     if (length(value) != 2 || class(value) != "list")
+#       stop("Value must be a list of length 2.")
+#
+#     if (is.null(value$selected) || value$selected == "NULL")
+#       return(NULL)
+#
+#     selected <- value$selected
+#     source <- input.handlers[[ selected ]]$as.source(
+#       x = x$inputs[[ selected ]],
+#       session = session,
+#       value$values[[ selected ]])
+#
+#     return(source)
+#   },
+#
+#   observer = function(x, session) {
+#     req(selected <- session$input[[ x$id ]])
+#
+#     #      print(session$input[[ x$id ]])
+#     #
+#     #       # selected input id
+#     #       sel.name <- paste0(x$name, "-", selected)
+#     #
+#     #       js <- map_chr(x$inputs, ~{
+#     #         getHandler(.)$setVisible(., session, visible = (selected != "NULL" && .$name == sel.name),
+#     #                                   tag.only = TRUE, return.js = TRUE)
+#     #       }) %>% paste(collapse = "\n")
+#     #
+#     #       shinyjs::runjs(js)
+#   }
+# )
+
+
+
+
 
 
 
@@ -739,6 +884,29 @@ dataset.handlers <- list(
     as.value = function(s, session = NULL, value = NULL) { NULL }
   )
 )
+
+
+
+getHandler <- function(x) {
+  if (class(x) == "slateOutput") {
+    output.handlers[[ x$type ]]
+  } else {
+    input.handlers[[ x$type ]]
+  }
+
+  #if (class(x) == "slateInput") {
+  #}
+}
+
+
+assignInputValues <- function(x, values) {
+  x %>%
+    modify_if(~.$name %in% names(values),
+              ~list_modify(., value = values[[ .$name ]]))
+}
+
+
+
 
 
 getLayoutFun <- function(layout) {

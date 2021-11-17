@@ -15,6 +15,27 @@
 
 
 
+#' #' slatesInputChooserTabset
+#' #'
+#' #' @description Used to group multiple input types in a single interface.
+#' #' Builds a modified tabsetPanel.
+#' #'
+#' #' @param ... tabPanel element containing inputs.
+#' #'
+#' #' @return
+#' #' @export
+#' #'
+#' #' @examples
+#' slatesInputChooserTabset <- function(id, ...) {
+#'   ts <- tabsetPanel(id = id, ..., type = "pills")
+#'
+#'   ts$children[[1]] %<>%
+#'     tagAppendAttributes(class = "slates-input-tabset") # , style = "float: right;")
+#'
+#'   ts$children
+#'  }
+
+
 
 
 slatesSwitchInput <- function(id, label, value = FALSE, on.off.labels = c("True", "False"), wizards = NULL) {

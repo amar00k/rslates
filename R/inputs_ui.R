@@ -61,6 +61,9 @@ slatesWizardButton <- function(id, wizards) {
 
 
 
+slatesNullInputTag <- function(id, value = "", visible = TRUE, size = "m", ...) {
+  tags$div()
+}
 
 
 
@@ -83,6 +86,24 @@ slatesNumericInputTag <- function(id, value = "", visible = TRUE, size = "m", ..
     tagAppendAttributes(class = paste0("form-control-", size)) %>%
     tagAppendAttributes(class = if (visible) "" else "d-none")
 }
+
+
+slatesLogicalInputTag <- function(id, value = TRUE, visible = TRUE, size = "m",
+                                  display.type = c("select", "checkbox", "switch"), ...) {
+  display.type <- match.arg(display.type)
+
+  switch(display.type,
+         "select" = slatesChoicesInputTag(
+           id, choices = c(TRUE, FALSE), value = as.logical(value)
+         ),
+         "checkbox" = NULL,
+         "switch" = NULL
+  )
+
+
+}
+
+
 
 slatesChoicesInputTag <- function(id, choices, value = NULL, size = "m",
                                   multiple = FALSE, custom = FALSE, visible = TRUE, ...) {
@@ -165,6 +186,7 @@ slatesNumeric4InputTag <- function(id, value = c(0, 0, 0, 0), visible = TRUE, si
 
 
 shortFromType <- list(
+  "null" = "NULL",
   "character" = "CHR",
   "expression" = "EXP",
   "logical" = "LGL",
@@ -175,8 +197,10 @@ shortFromType <- list(
 )
 
 tagFromType <- list(
+  "null" = slatesNullInputTag,
   "character" = slatesTextInputTag,
   "expression" = slatesExpressionInputTag,
+  "logical" = slatesLogicalInputTag,
   "choices" = slatesChoicesInputTag,
   "numeric" = slatesNumericInputTag,
   "numeric2" = slatesNumeric2InputTag,
@@ -204,7 +228,7 @@ slatesMultiInputRadio <- function(id, types, value = NULL, allow.null = FALSE) {
 }
 
 
-makeSlatesInput <- function(type, id, label, ..., wizards = NULL, allow.null = FALSE) {
+makeSlatesInput_ <- function(type, id, label, ..., wizards = NULL, allow.null = FALSE) {
   if (!is.null(wizards) && length(wizards) > 0) {
     wizard.button <-
       slatesWizardButton(paste0(id, "-wizard"), wizards) %>%
@@ -234,7 +258,9 @@ makeSlatesInput <- function(type, id, label, ..., wizards = NULL, allow.null = F
 
 
 
-makeSlatesMultiInput <- function(id, label, inputs,
+
+# TODO: rewrite multi inputs to use a (custom) pills container instead of radio buttons.
+makeSlatesMultiInput_ <- function(id, label, inputs,
                                  value = NULL,
                                  allow.null = FALSE,
                                  wizards = NULL) {
@@ -272,6 +298,61 @@ makeSlatesMultiInput <- function(id, label, inputs,
   )
 
 }
+
+
+
+
+
+
+# TODO: rewrite multi inputs to use a (custom) pills container instead of radio buttons.
+makeSlatesMultiInput <- function(id, label, inputs,
+                                 value = NULL,
+                                 allow.null = FALSE,
+                                 wizards = NULL) {
+  if (length(inputs) < 1)
+    stop("Need at least 1 type.")
+
+  chooserTabset <- function(id, ...) {
+    ts <- tabsetPanel(id = id, ..., type = "pills")
+
+    ts$children[[1]] %<>%
+      tagAppendAttributes(class = "slates-input-tabset") # , style = "float: right;")
+
+    ts$children
+  }
+
+  # if (allow.null == TRUE) {
+  #   inputs <- append(inputs, list("null"=list(default = NULL)))
+  # }
+
+  #str(inputs)
+
+  input.tags <- map(inputs, ~{
+    print(.$type)
+
+    fun <- tagFromType[[ .$type ]]
+    tag.id <- paste0(id, "-", .$type)
+
+    .$id <- tag.id
+    # .$value <- .$default
+
+    tabPanel(title = shortFromType[ .$type ], do.call(fun, .), value = .$type)
+  }) %>%
+    unname
+
+  #input.panel <- do.call(slatesInputChooserTabset, append(input.tags, list(type = "pills")))
+  input.tabs <- do.call(chooserTabset, append(input.tags, list(id = id)))
+
+  div(
+    class = "form-group shiny-input-container",
+    slatesInputLabel(label, id),
+    #wizard.button,
+    input.tabs
+  )
+
+}
+
+
 
 
 #
